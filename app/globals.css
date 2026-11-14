@@ -1,0 +1,185 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+  --color-primary-950: #082f49;
+
+  --color-owl-class: #4ade80;
+  --color-owl-property: #60a5fa;
+  --color-owl-individual: #f472b6;
+  --color-owl-axiom: #fbbf24;
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+}
+
+@utility font-emoji {
+  font-family: var(--font-noto-emoji, "Noto Color Emoji"), "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 250, 250, 250;
+  --background-end-rgb: 255, 255, 255;
+}
+
+.dark {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 15, 23, 42;
+  --background-end-rgb: 30, 41, 59;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  min-height: 100vh;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(203 213 225);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(148 163 184);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgb(71 85 105);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgb(100 116 139);
+}
+
+/* Class tree item styling */
+.tree-item {
+  @apply flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer transition-colors;
+}
+
+.tree-item:hover {
+  @apply bg-slate-100 dark:bg-slate-800;
+}
+
+.tree-item.selected {
+  @apply bg-primary-100 dark:bg-primary-900/30;
+}
+
+/* Root-level tree item emphasis */
+.tree-item-root {
+  @apply font-semibold border-l-2 border-transparent;
+  background: rgb(248 250 252 / 0.5);
+}
+
+.dark .tree-item-root {
+  background: rgb(30 41 59 / 0.3);
+}
+
+.tree-item-root.selected {
+  @apply border-primary-500;
+}
+
+/* Leaf dot for nodes without children */
+.tree-leaf-dot {
+  @apply h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-slate-500 flex-shrink-0;
+}
+
+.tree-item.selected .tree-leaf-dot {
+  @apply bg-white dark:bg-white;
+}
+
+/* Search match highlight */
+.tree-search-match mark {
+  @apply bg-yellow-200 dark:bg-yellow-800/60 text-inherit rounded-xs px-0.5;
+}
+
+/* Keyboard focus ring for tree navigation */
+.tree-item-focused {
+  @apply ring-2 ring-primary-500/50 ring-inset;
+}
+
+/* Drag-and-drop tree reparenting */
+.tree-item-dragging {
+  @apply opacity-30;
+}
+
+.tree-item-drop-valid {
+  @apply ring-2 ring-primary-500 ring-inset bg-primary-50 dark:bg-primary-900/20;
+}
+
+.tree-item-drop-invalid {
+  @apply ring-2 ring-red-400 ring-inset bg-red-50 dark:bg-red-900/20 cursor-not-allowed;
+}
+
+.tree-drag-overlay {
+  @apply flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-lg dark:border-slate-600 dark:bg-slate-800;
+  max-width: 260px;
+}
+
+/* Skip link for accessibility */
+.skip-link {
+  @apply absolute -translate-y-full bg-primary-600 text-white px-4 py-2 z-200 focus:translate-y-0 transition-transform;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast preference */
+@media (prefers-contrast: more) {
+  :root {
+    --focus-ring-width: 3px;
+  }
+}
