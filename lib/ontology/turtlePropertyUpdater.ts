@@ -78,17 +78,17 @@ function genPropertyBlock(
 
   for (const l of data.labels) {
     if (!l.value.trim()) continue;
-    po.push(`${t(`${RDFS}label`)} ${literal(l.value, l.lang)}`);
+    po.push(`${t(`${RDFS}label`)} ${literal(l.value)}`);
   }
 
   for (const c of data.comments) {
     if (!c.value.trim()) continue;
-    po.push(`${t(`${RDFS}comment`)} ${literal(c.value, c.lang)}`);
+    po.push(`${t(`${RDFS}comment`)} ${literal(c.value)}`);
   }
 
   for (const d of data.definitions) {
     if (!d.value.trim()) continue;
-    po.push(`${t(`${SKOS}definition`)} ${literal(d.value, d.lang)}`);
+    po.push(`${t(`${SKOS}definition`)} ${literal(d.value)}`);
   }
 
   for (const d of data.domainIris) {
@@ -127,10 +127,10 @@ function genPropertyBlock(
     const prop = t(ann.property_iri);
     for (const v of ann.values) {
       if (!v.value.trim()) continue;
-      if (!v.lang && isIriValue(v.value)) {
+      if (isIriValue(v.value)) {
         po.push(`${prop} ${t(v.value)}`);
       } else {
-        po.push(`${prop} ${literal(v.value, v.lang)}`);
+        po.push(`${prop} ${literal(v.value)}`);
       }
     }
   }

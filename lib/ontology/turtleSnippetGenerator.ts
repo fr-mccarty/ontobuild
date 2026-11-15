@@ -60,9 +60,9 @@ export function generateTurtleSnippet(options: TurtleSnippetOptions): string {
   lines.push(`${subject} a ${owlType} ;`);
 
   if (parentIri) {
-    lines.push(`    rdfs:label "${escapedLabel}"@en ;`);
+    lines.push(`    rdfs:label "${escapedLabel}" ;`);
   } else {
-    lines.push(`    rdfs:label "${escapedLabel}"@en .`);
+    lines.push(`    rdfs:label "${escapedLabel}" .`);
   }
 
   if (parentIri) {

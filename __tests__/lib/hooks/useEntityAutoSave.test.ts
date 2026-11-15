@@ -33,7 +33,7 @@ function makeDraftEntry(): AnyDraftEntry {
   return {
     entityType: "property",
     propertyType: "object",
-    labels: [{ value: "MyProp", lang: "en" }],
+    labels: [{ value: "MyProp" }],
     comments: [],
     definitions: [],
     domainIris: [],

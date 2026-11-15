@@ -4,8 +4,8 @@ import { TURTLE_FIXTURE } from "./fixtures";
 
 describe("updateClassInTurtle", () => {
   const baseData = {
-    labels: [{ value: "Dog", lang: "en" }],
-    comments: [{ value: "A domesticated canine", lang: "en" }],
+    labels: [{ value: "Dog" }],
+    comments: [{ value: "A domesticated canine" }],
     parent_iris: ["http://example.org/ont#Animal"],
   };
 
@@ -16,11 +16,11 @@ describe("updateClassInTurtle", () => {
       baseData,
     );
     expect(result).toContain("ex:Dog");
-    expect(result).toContain('rdfs:label "Dog"@en');
+    expect(result).toContain('rdfs:label "Dog"');
     expect(result).toContain("rdfs:subClassOf ex:Animal");
 
-    expect(result).toContain('rdfs:label "Animal"@en');
-    expect(result).toContain('rdfs:comment "A living organism"@en');
+    expect(result).toContain('rdfs:label "Animal"');
+    expect(result).toContain('rdfs:comment "A living organism"');
   });
 
   it("throws when class IRI is not found", () => {
@@ -39,15 +39,15 @@ describe("updateClassInTurtle", () => {
       "http://example.org/ont#Dog",
       {
         labels: [
-          { value: "Dog", lang: "en" },
-          { value: "Hund", lang: "de" },
+          { value: "Dog" },
+          { value: "Hund" },
         ],
         comments: [],
         parent_iris: [],
       },
     );
-    expect(result).toContain('"Dog"@en');
-    expect(result).toContain('"Hund"@de');
+    expect(result).toContain('"Dog"');
+    expect(result).toContain('"Hund"');
   });
 
   it("removes comments when given empty array", () => {
@@ -55,7 +55,7 @@ describe("updateClassInTurtle", () => {
       TURTLE_FIXTURE,
       "http://example.org/ont#Dog",
       {
-        labels: [{ value: "Dog", lang: "en" }],
+        labels: [{ value: "Dog" }],
         comments: [],
         parent_iris: ["http://example.org/ont#Animal"],
       },
@@ -72,7 +72,7 @@ describe("updateClassInTurtle", () => {
       TURTLE_FIXTURE,
       "http://example.org/ont#Dog",
       {
-        labels: [{ value: "Dog", lang: "en" }],
+        labels: [{ value: "Dog" }],
         comments: [],
         parent_iris: [],
       },
@@ -128,13 +128,13 @@ describe("updateClassInTurtle", () => {
         annotations: [
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#prefLabel",
-            values: [{ value: "Dog", lang: "en" }],
+            values: [{ value: "Dog" }],
           },
         ],
       },
     );
     expect(result).toContain("skos:prefLabel");
-    expect(result).toContain('"Dog"@en');
+    expect(result).toContain('"Dog"');
   });
 
   it("handles annotation with IRI value", () => {
@@ -146,7 +146,7 @@ describe("updateClassInTurtle", () => {
         annotations: [
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
-            values: [{ value: "http://example.org/ont#Canine", lang: "" }],
+            values: [{ value: "http://example.org/ont#Canine" }],
           },
         ],
       },
@@ -160,8 +160,8 @@ describe("updateClassInTurtle", () => {
       "http://example.org/ont#Dog",
       {
         labels: [
-          { value: "Dog", lang: "en" },
-          { value: "   ", lang: "de" },
+          { value: "Dog" },
+          { value: "   " },
         ],
         comments: [],
         parent_iris: [],

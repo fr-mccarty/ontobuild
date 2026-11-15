@@ -26,30 +26,6 @@ const { mockRdfsLabel, mockSkosPrefLabel, mockSkosDefinition } = vi.hoisted(() =
 
 vi.mock("@/lib/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
-  langToFlag: () => null,
-}));
-
-vi.mock("@/components/editor/LanguagePicker", () => ({
-  LanguagePicker: ({
-    value,
-    onChange,
-    disabled,
-  }: {
-    value: string;
-    onChange: (code: string) => void;
-    disabled?: boolean;
-  }) => (
-    <select
-      data-testid="lang-picker"
-      aria-label="Language tag"
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="en">en</option>
-      <option value="fr">fr</option>
-    </select>
-  ),
 }));
 
 vi.mock("@/lib/ontology/annotationProperties", () => ({
@@ -82,12 +58,6 @@ describe("InlineAnnotationAdder", () => {
     const valueInput = screen.getByLabelText("Annotation value") as HTMLInputElement;
     expect(valueInput.disabled).toBe(true);
     expect(valueInput.placeholder).toBe("Select a property first");
-  });
-
-  it("renders language picker defaulting to 'en'", () => {
-    render(<InlineAnnotationAdder {...defaultProps} />);
-    const langPicker = screen.getByLabelText("Language tag") as HTMLSelectElement;
-    expect(langPicker.value).toBe("en");
   });
 
   it("opens dropdown when property input is focused", () => {
@@ -147,13 +117,12 @@ describe("InlineAnnotationAdder", () => {
     expect(valueInput.placeholder).toBe("Enter value...");
   });
 
-  it("enables value and lang inputs after property selection", () => {
+  it("enables value input after property selection", () => {
     render(<InlineAnnotationAdder {...defaultProps} />);
     fireEvent.focus(screen.getByPlaceholderText("Select property..."));
     fireEvent.click(screen.getByText("Definition"));
 
     expect((screen.getByLabelText("Annotation value") as HTMLInputElement).disabled).toBe(false);
-    expect((screen.getByLabelText("Language tag") as HTMLSelectElement).disabled).toBe(false);
   });
 
   it("calls onAdd when Enter is pressed with a value", async () => {
@@ -169,8 +138,7 @@ describe("InlineAnnotationAdder", () => {
 
     expect(onAdd).toHaveBeenCalledWith(
       mockRdfsLabel.iri,
-      "Test Value",
-      "en"
+      "Test Value"
     );
   });
 
@@ -237,7 +205,7 @@ describe("InlineAnnotationAdder", () => {
     await user.type(valueInput, "Blur value");
     fireEvent.blur(valueInput);
 
-    expect(onAdd).toHaveBeenCalledWith(mockRdfsLabel.iri, "Blur value", "en");
+    expect(onAdd).toHaveBeenCalledWith(mockRdfsLabel.iri, "Blur value");
   });
 
   it("closes dropdown when Escape is pressed", async () => {

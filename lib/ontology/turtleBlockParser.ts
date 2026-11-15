@@ -6,7 +6,7 @@ import {
 
 export type ParsedObject =
   | { type: "iri"; value: string }
-  | { type: "literal"; value: string; lang?: string; datatype?: string }
+  | { type: "literal"; value: string; datatype?: string }
   | { type: "boolean"; value: boolean };
 
 export interface ParsedTriple {
@@ -80,9 +80,6 @@ function parseLiteral(raw: string): ParsedObject {
   }
 
   const suffix = raw.slice(i);
-  if (suffix.startsWith("@")) {
-    return { type: "literal", value, lang: suffix.slice(1) };
-  }
   if (suffix.startsWith("^^")) {
     const dtToken = suffix.slice(2);
     return { type: "literal", value, datatype: dtToken };

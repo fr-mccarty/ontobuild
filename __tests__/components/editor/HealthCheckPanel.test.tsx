@@ -547,29 +547,6 @@ describe("HealthCheckPanel", () => {
     expect(onNav).toHaveBeenCalledWith("http://example.org/hasBar", "property");
   });
 
-  it("shows conflicting values for label-per-language issues", async () => {
-    mockLintApi.getIssues.mockResolvedValue({
-      items: [
-        {
-          ...baseIssues.items[0],
-          rule_id: "label-per-language",
-          message: "Multiple different rdfs:label values for language 'no language tag'",
-          details: {
-            labels: ["Label One", "Label Two"],
-            predicate: "rdfs:label",
-            language: "no language tag",
-            local_name: "Foo",
-          },
-        },
-      ],
-      total: 1, skip: 0, limit: 500,
-    });
-    setup();
-    await waitFor(() => {
-      expect(screen.getByText("Values:")).toBeDefined();
-    });
-  });
-
   it("switches to consistency tab", async () => {
     setup();
     await waitFor(() => {

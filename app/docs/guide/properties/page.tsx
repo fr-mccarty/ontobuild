@@ -114,7 +114,7 @@ ex:Alice ex:hasAge "34"^^xsd:nonNegativeInteger .`}</pre>
             </p>
             <div className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm font-mono overflow-x-auto">
               <pre>{`ex:hasMaintainer a owl:AnnotationProperty ;
-    rdfs:label "Has maintainer"@en .
+    rdfs:label "Has maintainer" .
 
 ex:MyOntology ex:hasMaintainer "Jane Doe" .  # not used in inference`}</pre>
             </div>

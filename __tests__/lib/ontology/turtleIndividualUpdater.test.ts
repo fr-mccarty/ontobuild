@@ -4,8 +4,8 @@ import { TURTLE_FIXTURE } from "./fixtures";
 
 describe("updateIndividualInTurtle", () => {
   const baseData = {
-    labels: [{ value: "Fido", lang: "en" }],
-    comments: [{ value: "A specific dog", lang: "en" }],
+    labels: [{ value: "Fido" }],
+    comments: [{ value: "A specific dog" }],
     definitions: [],
     typeIris: ["http://example.org/ont#Dog"],
     sameAsIris: [],
@@ -21,8 +21,8 @@ describe("updateIndividualInTurtle", () => {
       baseData,
     );
     expect(result).toContain("a owl:NamedIndividual, ex:Dog");
-    expect(result).toContain('rdfs:label "Fido"@en');
-    expect(result).toContain('rdfs:comment "A specific dog"@en');
+    expect(result).toContain('rdfs:label "Fido"');
+    expect(result).toContain('rdfs:comment "A specific dog"');
 
     expect(result).toContain("ex:Animal a owl:Class");
     expect(result).toContain("ex:Dog a owl:Class");
@@ -94,24 +94,6 @@ describe("updateIndividualInTurtle", () => {
     expect(result).toContain("ex:hasPart ex:tail");
   });
 
-  it("adds data property assertions with language tag", () => {
-    const result = updateIndividualInTurtle(
-      TURTLE_FIXTURE,
-      "http://example.org/ont#fido",
-      {
-        ...baseData,
-        dataPropertyAssertions: [
-          {
-            propertyIri: "http://example.org/ont#hasNickname",
-            value: "Buddy",
-            lang: "en",
-          },
-        ],
-      },
-    );
-    expect(result).toContain('"Buddy"@en');
-  });
-
   it("adds data property assertions with datatype", () => {
     const result = updateIndividualInTurtle(
       TURTLE_FIXTURE,
@@ -130,7 +112,7 @@ describe("updateIndividualInTurtle", () => {
     expect(result).toContain('"5"^^xsd:integer');
   });
 
-  it("adds data property assertions without lang or datatype", () => {
+  it("adds plain data property assertions", () => {
     const result = updateIndividualInTurtle(
       TURTLE_FIXTURE,
       "http://example.org/ont#fido",
@@ -165,7 +147,7 @@ describe("updateIndividualInTurtle", () => {
       "http://example.org/ont#fido",
       {
         ...baseData,
-        definitions: [{ value: "A particular dog named Fido", lang: "en" }],
+        definitions: [{ value: "A particular dog named Fido" }],
       },
     );
     expect(result).toContain("skos:definition");
@@ -195,7 +177,7 @@ describe("updateIndividualInTurtle", () => {
           {
             property_iri:
               "http://www.w3.org/2004/02/skos/core#editorialNote",
-            values: [{ value: "Needs review", lang: "en" }],
+            values: [{ value: "Needs review" }],
           },
         ],
       },
@@ -213,7 +195,7 @@ describe("updateIndividualInTurtle", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
             values: [
-              { value: "http://example.org/ont#dogs", lang: "" },
+              { value: "http://example.org/ont#dogs" },
             ],
           },
         ],

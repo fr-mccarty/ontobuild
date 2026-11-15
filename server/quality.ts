@@ -227,34 +227,33 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
   },
 
   (store) => {
-    const map = new Map<string, { etype: string; value: string; lang: string; iris: string[] }>();
+    const map = new Map<string, { etype: string; value: string; iris: string[] }>();
     for (const u of declaredUris(store)) {
       if (u === OWL_THING) continue;
       const etype = qualityEntityType(store, u);
       if (etype === "unknown") continue;
       for (const o of store.getObjects(u, RDFS_LABEL, null)) {
         if (!isLiteral(o)) continue;
-        const lang = (o as unknown as { language: string }).language || "";
-        const key = `${etype}\u0000${o.value}\u0000${lang}`;
-        if (!map.has(key)) map.set(key, { etype, value: o.value, lang, iris: [] });
-        map.get(key)!.iris.push(u);
+        const key = `${etype}\u0000${o.value}`;
+        if (!map.has(key)) map.set(key, { etype, value: o.value, iris: [] });
+        const entry = map.get(key)!;
+        if (!entry.iris.includes(u)) entry.iris.push(u);
       }
     }
     const out: ConsistencyIssue[] = [];
     const reported = new Set<string>();
-    for (const { etype, value, lang, iris } of map.values()) {
+    for (const { etype, value, iris } of map.values()) {
       if (iris.length < 2) continue;
       for (const iri of iris) {
         if (reported.has(iri)) continue;
         reported.add(iri);
-        const langStr = lang ? `@${lang}` : "";
         out.push(
           ci(
             "duplicate_label",
             "warning",
             iri,
             etype,
-            `Duplicate label "${value}"${langStr} shared with ${iris.length - 1} other ${etype}(s)`,
+            `Duplicate label "${value}" shared with ${iris.length - 1} other ${etype}(s)`,
             { duplicates: iris.filter((i) => i !== iri) },
           ),
         );
@@ -378,14 +377,7 @@ export function findDuplicates(
 ): DuplicateDetectionResult {
   const labelled: { iri: string; label: string; type: string; tri: Set<string> }[] = [];
   for (const e of entities) {
-    const labels = store
-      .getObjects(e.iri, RDFS_LABEL, null)
-      .filter(isLiteral)
-      .map((l) => ({ value: l.value, lang: (l as unknown as { language: string }).language || "" }))
-      .sort((a, b) => {
-        if (!a.lang !== !b.lang) return a.lang ? -1 : 1;
-        return a.lang < b.lang ? -1 : a.lang > b.lang ? 1 : 0;
-      });
+    const labels = store.getObjects(e.iri, RDFS_LABEL, null).filter(isLiteral);
     if (!labels.length) continue;
     labelled.push({ iri: e.iri, label: labels[0].value, type: e.entity_type, tri: trigrams(labels[0].value) });
   }

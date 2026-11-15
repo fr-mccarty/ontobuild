@@ -50,34 +50,19 @@ describe("getNamespace", () => {
 });
 
 describe("getPreferredLabel", () => {
-  it("returns preferred language label", () => {
-    const labels = [
-      { value: "Persona", lang: "it" },
-      { value: "Person", lang: "en" },
-    ];
-    expect(getPreferredLabel(labels, "en")).toBe("Person");
+  it("returns the first label", () => {
+    expect(getPreferredLabel([{ value: "Person" }, { value: "Human" }])).toBe("Person");
   });
 
-  it("falls back to first label", () => {
-    const labels = [
-      { value: "Persona", lang: "it" },
-      { value: "Personne", lang: "fr" },
-    ];
-    expect(getPreferredLabel(labels, "en")).toBe("Persona");
+  it("skips empty labels", () => {
+    expect(getPreferredLabel([{ value: "  " }, { value: "Person" }])).toBe("Person");
   });
 
   it("returns empty string for empty array", () => {
     expect(getPreferredLabel([])).toBe("");
   });
-
-  it("uses en as default language", () => {
-    const labels = [
-      { value: "Persona", lang: "it" },
-      { value: "Person", lang: "en" },
-    ];
-    expect(getPreferredLabel(labels)).toBe("Person");
-  });
 });
+
 
 describe("formatDate", () => {
   it("formats a date string", () => {

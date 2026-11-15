@@ -54,23 +54,6 @@ vi.mock("@/lib/stores/editorModeStore", () => ({
     selector({ ...editorModeOverrides }),
 }));
 
-vi.mock("@/components/editor/LanguageFlag", () => ({
-  LanguageFlag: () => null,
-}));
-vi.mock("@/components/editor/LanguagePicker", () => ({
-  LanguagePicker: ({ value, onChange }: { value: string; onChange: (code: string) => void }) => (
-    <select
-      data-testid="lang-picker"
-      aria-label="Language tag"
-      value={value}
-      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange(e.target.value)}
-    >
-      <option value="en">en</option>
-      <option value="de">de</option>
-      <option value="fr">fr</option>
-    </select>
-  ),
-}));
 vi.mock("@/components/editor/ParentClassPicker", () => ({
   ParentClassPicker: () => null,
 }));
@@ -129,8 +112,8 @@ const mockSearchEntities = projectOntologyApi.searchEntities as Mock;
 function makeClassDetail(overrides: Record<string, unknown> = {}) {
   return {
     iri: "http://example.org/ontology#Person",
-    labels: [{ value: "Person", lang: "en" }],
-    comments: [{ value: "A human being", lang: "en" }],
+    labels: [{ value: "Person" }],
+    comments: [{ value: "A human being" }],
     deprecated: false,
     parent_iris: ["http://example.org/ontology#Agent"],
     parent_labels: { "http://example.org/ontology#Agent": "Agent" },
@@ -455,7 +438,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: DEFINITION_IRI,
             property_label: "Definition",
-            values: [{ value: "A rational animal", lang: "en" }],
+            values: [{ value: "A rational animal" }],
           },
         ],
       })
@@ -477,7 +460,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: PREF_LABEL_IRI,
             property_label: "Preferred Label",
-            values: [{ value: "Human Person", lang: "en" }],
+            values: [{ value: "Human Person" }],
           },
         ],
       })
@@ -547,31 +530,6 @@ describe("ClassDetailPanel", () => {
     await user.type(labelInput, "Human");
 
     expect(screen.getByDisplayValue("Human")).not.toBeNull();
-  });
-
-  it("updates label language tag in edit mode", async () => {
-    const user = userEvent.setup();
-    const onUpdateClass = vi.fn();
-    render(
-      <ClassDetailPanel
-        {...DEFAULT_PROPS}
-        canEdit={true}
-        onUpdateClass={onUpdateClass}
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
-    });
-
-    await waitFor(() => {
-      expect(screen.getAllByLabelText("Language tag").length).toBeGreaterThanOrEqual(1);
-    });
-
-    const langPickers = screen.getAllByLabelText("Language tag");
-    await user.selectOptions(langPickers[0], "de");
-
-    expect((langPickers[0] as HTMLSelectElement).value).toBe("de");
   });
 
   it("renders comment textareas in edit mode", async () => {
@@ -824,8 +782,8 @@ describe("ClassDetailPanel", () => {
     mockGetClassDetail.mockResolvedValue(
       makeClassDetail({
         labels: [
-          { value: "Person", lang: "en" },
-          { value: "Personne", lang: "fr" },
+          { value: "Person" },
+          { value: "Personne" },
         ],
       })
     );
@@ -853,8 +811,8 @@ describe("ClassDetailPanel", () => {
     mockGetClassDetail.mockResolvedValue(
       makeClassDetail({
         labels: [
-          { value: "Person", lang: "en" },
-          { value: "Personne", lang: "fr" },
+          { value: "Person" },
+          { value: "Personne" },
         ],
       })
     );
@@ -906,7 +864,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#definition",
             property_label: "Definition",
-            values: [{ value: "A rational animal", lang: "en" }],
+            values: [{ value: "A rational animal" }],
           },
         ],
       })
@@ -953,12 +911,12 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#prefLabel",
             property_label: "Preferred Label",
-            values: [{ value: "Human Person", lang: "en" }],
+            values: [{ value: "Human Person" }],
           },
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#altLabel",
             property_label: "Alternative Label",
-            values: [{ value: "Homo sapiens", lang: "la" }],
+            values: [{ value: "Homo sapiens" }],
           },
         ],
       })
@@ -1152,12 +1110,12 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
             property_label: "See Also",
-            values: [{ value: "http://example.org/ontology#Related", lang: "" }],
+            values: [{ value: "http://example.org/ontology#Related" }],
           },
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#prefLabel",
             property_label: "Preferred Label",
-            values: [{ value: "Human Person", lang: "en" }],
+            values: [{ value: "Human Person" }],
           },
         ],
       })
@@ -1187,7 +1145,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
             property_label: "See Also",
-            values: [{ value: "http://example.org/ontology#Related", lang: "" }],
+            values: [{ value: "http://example.org/ontology#Related" }],
           },
         ],
       })
@@ -1228,7 +1186,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
             property_label: "See Also",
-            values: [{ value: "", lang: "" }],
+            values: [{ value: "" }],
           },
         ],
       })
@@ -1284,7 +1242,7 @@ describe("ClassDetailPanel", () => {
             {
               property_iri: SEE_ALSO,
               property_label: "See Also",
-              values: [{ value: targetIri, lang: "" }],
+              values: [{ value: targetIri }],
             },
           ],
         })
@@ -1317,14 +1275,14 @@ describe("ClassDetailPanel", () => {
             {
               property_iri: SEE_ALSO,
               property_label: "See Also",
-              values: [{ value: targetIri, lang: "" }],
+              values: [{ value: targetIri }],
             },
           ],
         })
       )
       .mockResolvedValueOnce({
         iri: targetIri,
-        labels: [{ value: "Related Class", lang: "en" }],
+        labels: [{ value: "Related Class" }],
         comments: [],
         deprecated: false,
         parent_iris: [],
@@ -1352,7 +1310,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#isDefinedBy",
             property_label: "Is Defined By",
-            values: [{ value: "http://example.org/ontology", lang: "" }],
+            values: [{ value: "http://example.org/ontology" }],
           },
         ],
       })
@@ -1390,34 +1348,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  it("updates comment language tag in edit mode", async () => {
-    const user = userEvent.setup();
-    const onUpdateClass = vi.fn();
-    render(
-      <ClassDetailPanel
-        {...DEFAULT_PROPS}
-        canEdit={true}
-        onUpdateClass={onUpdateClass}
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue("A human being")).not.toBeNull();
-    });
-
-    const langPickers = screen.getAllByLabelText("Language tag");
-    expect(langPickers.length).toBeGreaterThanOrEqual(2);
-
-    const commentLangPicker = langPickers[langPickers.length - 1];
-    await user.selectOptions(commentLangPicker, "fr");
-
-    expect((commentLangPicker as HTMLSelectElement).value).toBe("fr");
-  });
-
   it("renders definition values in edit mode with annotation rows", async () => {
     const onUpdateClass = vi.fn();
     const DEFINITION_IRI = "http://www.w3.org/2004/02/skos/core#definition";
@@ -1428,8 +1358,8 @@ describe("ClassDetailPanel", () => {
             property_iri: DEFINITION_IRI,
             property_label: "Definition",
             values: [
-              { value: "A rational animal", lang: "en" },
-              { value: "Un animal raisonnable", lang: "fr" },
+              { value: "A rational animal" },
+              { value: "Un animal raisonnable" },
             ],
           },
         ],
@@ -1477,7 +1407,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#notation",
             property_label: "Notation",
-            values: [{ value: "P001", lang: "" }],
+            values: [{ value: "P001" }],
           },
         ],
       })
@@ -1496,7 +1426,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://example.org/custom#note",
             property_label: "Custom Note",
-            values: [{ value: "Some custom note", lang: "en" }],
+            values: [{ value: "Some custom note" }],
           },
         ],
       })
@@ -1579,8 +1509,8 @@ describe("ClassDetailPanel", () => {
   it("auto-enters edit mode when restoredDraft is available", async () => {
     autoSaveOverrides = {
       restoredDraft: {
-        labels: [{ value: "Restored Label", lang: "en" }],
-        comments: [{ value: "Restored Comment", lang: "en" }],
+        labels: [{ value: "Restored Label" }],
+        comments: [{ value: "Restored Comment" }],
         parentIris: ["http://example.org/ontology#Agent"],
         parentLabels: { "http://example.org/ontology#Agent": "Agent" },
         annotations: [],
@@ -1636,7 +1566,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: PREF_LABEL_IRI,
             property_label: "Preferred Label",
-            values: [{ value: "Existing Value", lang: "en" }],
+            values: [{ value: "Existing Value" }],
           },
         ],
       })
@@ -1657,8 +1587,8 @@ describe("ClassDetailPanel", () => {
       expect(capturedInlineAnnotationAdderProps).not.toBeNull();
     });
 
-    const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string, lang: string) => void;
-    onAdd(PREF_LABEL_IRI, "New Value", "fr");
+    const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string) => void;
+    onAdd(PREF_LABEL_IRI, "New Value");
 
     await waitFor(() => {
       expect(mockTriggerSave).toHaveBeenCalled();
@@ -1686,8 +1616,8 @@ describe("ClassDetailPanel", () => {
       expect(capturedInlineAnnotationAdderProps).not.toBeNull();
     });
 
-    const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string, lang: string) => void;
-    onAdd("http://www.w3.org/2004/02/skos/core#example", "Example value", "en");
+    const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string) => void;
+    onAdd("http://www.w3.org/2004/02/skos/core#example", "Example value");
 
     await waitFor(() => {
       expect(mockTriggerSave).toHaveBeenCalled();
@@ -1702,7 +1632,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
             property_label: "See Also",
-            values: [{ value: "http://example.org/ontology#Related", lang: "" }],
+            values: [{ value: "http://example.org/ontology#Related" }],
           },
         ],
       })
@@ -1738,7 +1668,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
             property_label: "See Also",
-            values: [{ value: "http://example.org/ontology#Related", lang: "" }],
+            values: [{ value: "http://example.org/ontology#Related" }],
           },
         ],
       })
@@ -1774,7 +1704,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
             property_label: "See Also",
-            values: [{ value: "http://example.org/ontology#Related", lang: "" }],
+            values: [{ value: "http://example.org/ontology#Related" }],
           },
         ],
       })
@@ -1838,7 +1768,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
             property_label: "See Also",
-            values: [{ value: "http://example.org/ontology#Related", lang: "" }],
+            values: [{ value: "http://example.org/ontology#Related" }],
           },
         ],
       })
@@ -1873,7 +1803,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: PREF_LABEL_IRI,
             property_label: "Preferred Label",
-            values: [{ value: "Human", lang: "en" }],
+            values: [{ value: "Human" }],
           },
         ],
       })
@@ -1921,8 +1851,8 @@ describe("ClassDetailPanel", () => {
             property_iri: PREF_LABEL_IRI,
             property_label: "Preferred Label",
             values: [
-              { value: "Label One", lang: "en" },
-              { value: "Label Two", lang: "fr" },
+              { value: "Label One" },
+              { value: "Label Two" },
             ],
           },
         ],
@@ -1968,7 +1898,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: DEFINITION_IRI,
             property_label: "Definition",
-            values: [{ value: "A rational animal", lang: "en" }],
+            values: [{ value: "A rational animal" }],
           },
         ],
       })
@@ -2015,7 +1945,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: DEFINITION_IRI,
             property_label: "Definition",
-            values: [{ value: "A rational animal", lang: "en" }],
+            values: [{ value: "A rational animal" }],
           },
         ],
       })
@@ -2069,7 +1999,7 @@ describe("ClassDetailPanel", () => {
             {
               property_iri: SEE_ALSO,
               property_label: "See Also",
-              values: [{ value: targetIri, lang: "" }],
+              values: [{ value: targetIri }],
             },
           ],
         })
@@ -2089,53 +2019,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  it("updates annotation language via AnnotationRow callback", async () => {
-    const onUpdateClass = vi.fn();
-    const PREF_LABEL_IRI = "http://www.w3.org/2004/02/skos/core#prefLabel";
-    mockGetClassDetail.mockResolvedValue(
-      makeClassDetail({
-        annotations: [
-          {
-            property_iri: PREF_LABEL_IRI,
-            property_label: "Preferred Label",
-            values: [{ value: "Human", lang: "en" }],
-          },
-        ],
-      })
-    );
-    render(
-      <ClassDetailPanel
-        {...DEFAULT_PROPS}
-        canEdit={true}
-        onUpdateClass={onUpdateClass}
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
-    });
-
-    await waitFor(() => {
-      const annRow = capturedAnnotationRowProps.find(
-        (p) => p.propertyIri === PREF_LABEL_IRI
-      );
-      expect(annRow).not.toBeNull();
-    });
-
-    const annRow = capturedAnnotationRowProps.find(
-      (p) => p.propertyIri === PREF_LABEL_IRI
-    );
-    const onLangChange = annRow!.onLangChange as (l: string) => void;
-    onLangChange("de");
-
-    await waitFor(() => {
-      const updatedRow = capturedAnnotationRowProps.find(
-        (p) => p.propertyIri === PREF_LABEL_IRI && p.lang === "de"
-      );
-      expect(updatedRow).toBeDefined();
-    });
-  });
-
   it("removes definition value via AnnotationRow callback", async () => {
     const onUpdateClass = vi.fn();
     const DEFINITION_IRI = "http://www.w3.org/2004/02/skos/core#definition";
@@ -2146,8 +2029,8 @@ describe("ClassDetailPanel", () => {
             property_iri: DEFINITION_IRI,
             property_label: "Definition",
             values: [
-              { value: "First def", lang: "en" },
-              { value: "Second def", lang: "fr" },
+              { value: "First def" },
+              { value: "Second def" },
             ],
           },
         ],
@@ -2192,7 +2075,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: PREF_LABEL_IRI,
             property_label: "Preferred Label",
-            values: [{ value: "Human", lang: "en" }],
+            values: [{ value: "Human" }],
           },
         ],
       })
@@ -2269,26 +2152,26 @@ describe("ClassDetailPanel", () => {
 describe("ensureTrailingEmpty", () => {
   it("appends empty row to empty array", () => {
     const result = ensureTrailingEmpty([]);
-    expect(result).toEqual([{ value: "", lang: "en" }]);
+    expect(result).toEqual([{ value: "" }]);
   });
 
   it("appends empty row when last item has non-empty value", () => {
-    const result = ensureTrailingEmpty([{ value: "hello", lang: "en" }]);
+    const result = ensureTrailingEmpty([{ value: "hello" }]);
     expect(result).toHaveLength(2);
-    expect(result[1]).toEqual({ value: "", lang: "en" });
+    expect(result[1]).toEqual({ value: "" });
   });
 
   it("does not append when last item is already empty", () => {
     const input = [
-      { value: "hello", lang: "en" },
-      { value: "", lang: "en" },
+      { value: "hello" },
+      { value: "" },
     ];
     const result = ensureTrailingEmpty(input);
     expect(result).toHaveLength(2);
   });
 
   it("does not append when last item is whitespace-only", () => {
-    const input = [{ value: "  ", lang: "en" }];
+    const input = [{ value: "  " }];
     const result = ensureTrailingEmpty(input);
     expect(result).toHaveLength(1);
   });

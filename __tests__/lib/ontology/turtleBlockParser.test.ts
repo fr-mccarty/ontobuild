@@ -39,7 +39,6 @@ describe("parseBlockTriples", () => {
     expect(labelTriple!.object).toEqual({
       type: "literal",
       value: "Animal",
-      lang: "en",
     });
 
     const commentTriple = triples!.find(
@@ -49,7 +48,6 @@ describe("parseBlockTriples", () => {
     expect(commentTriple!.object).toEqual({
       type: "literal",
       value: "A living organism",
-      lang: "en",
     });
   });
 
@@ -165,11 +163,10 @@ describe("parseBlockTriples", () => {
       (t) => t.predicate === "http://www.w3.org/2000/01/rdf-schema#label",
     );
     expect(labelTriples).toHaveLength(2);
-    const langs = labelTriples.map(
-      (t) => (t.object as { type: "literal"; lang?: string }).lang,
-    );
-    expect(langs).toContain("en");
-    expect(langs).toContain("es");
+    expect(labelTriples.map((t) => t.object)).toEqual([
+      { type: "literal", value: "Person" },
+      { type: "literal", value: "Persona" },
+    ]);
   });
 
   it("parses a block found via @base", () => {
@@ -202,7 +199,6 @@ describe("parseBlockTriples", () => {
     expect(labelTriple!.object).toEqual({
       type: "literal",
       value: "Bird",
-      lang: "en",
     });
   });
 

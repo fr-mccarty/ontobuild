@@ -36,7 +36,7 @@ ex:birthDate a rdf:Property .
     );
     expect(detail).not.toBeNull();
     expect(detail!.propertyType).toBe("object");
-    expect(detail!.labels).toEqual([{ value: "has part", lang: "en" }]);
+    expect(detail!.labels).toEqual([{ value: "has part" }]);
     expect(detail!.domainIris).toEqual(["http://example.org/ont#Animal"]);
     expect(detail!.rangeIris).toEqual(["http://example.org/ont#Animal"]);
   });
@@ -48,7 +48,7 @@ ex:birthDate a rdf:Property .
     );
     expect(detail).not.toBeNull();
     expect(detail!.propertyType).toBe("data");
-    expect(detail!.labels).toEqual([{ value: "has age", lang: "en" }]);
+    expect(detail!.labels).toEqual([{ value: "has age" }]);
     expect(detail!.rangeIris).toEqual([
       "http://www.w3.org/2001/XMLSchema#integer",
     ]);
@@ -61,7 +61,7 @@ ex:birthDate a rdf:Property .
     );
     expect(detail).not.toBeNull();
     expect(detail!.propertyType).toBe("annotation");
-    expect(detail!.labels).toEqual([{ value: "note", lang: "en" }]);
+    expect(detail!.labels).toEqual([{ value: "note" }]);
   });
 
   it("extracts characteristics from type line", () => {
@@ -160,7 +160,7 @@ ex:birthDate a rdf:Property .
       "http://example.org/ont#hasFriend",
     );
     expect(detail!.definitions).toEqual([
-      { value: "Relates a person to a friend", lang: "en" },
+      { value: "Relates a person to a friend" },
     ]);
   });
 
@@ -200,9 +200,9 @@ describe("extractIndividualDetail", () => {
       "http://example.org/ont#fido",
     );
     expect(detail).not.toBeNull();
-    expect(detail!.labels).toEqual([{ value: "Fido", lang: "en" }]);
+    expect(detail!.labels).toEqual([{ value: "Fido" }]);
     expect(detail!.comments).toEqual([
-      { value: "A specific dog", lang: "en" },
+      { value: "A specific dog" },
     ]);
     expect(detail!.typeIris).toContain("http://example.org/ont#Dog");
   });
@@ -289,7 +289,7 @@ describe("extractIndividualDetail", () => {
       TURTLE_INDIVIDUAL_RICH,
       "http://example.org/ont#john",
     );
-    expect(detail!.definitions).toEqual([{ value: "John Doe", lang: "en" }]);
+    expect(detail!.definitions).toEqual([{ value: "John Doe" }]);
   });
 
   it("extracts labels and comments", () => {
@@ -297,9 +297,9 @@ describe("extractIndividualDetail", () => {
       TURTLE_INDIVIDUAL_RICH,
       "http://example.org/ont#john",
     );
-    expect(detail!.labels).toEqual([{ value: "John", lang: "en" }]);
+    expect(detail!.labels).toEqual([{ value: "John" }]);
     expect(detail!.comments).toEqual([
-      { value: "An employee", lang: "en" },
+      { value: "An employee" },
     ]);
   });
 });

@@ -231,7 +231,6 @@ const LOCALIZED: JsonSchema = {
   type: "object",
   properties: {
     value: str("Text value"),
-    lang: str("Language tag such as 'en'. Use an empty string for no language tag. Defaults to 'en'."),
   },
   required: ["value"],
 };
@@ -243,7 +242,7 @@ function localizedArray(description: string): JsonSchema {
 const ANNOTATIONS: JsonSchema = {
   type: "array",
   description:
-    "Full replacement list of extra annotations (e.g. skos:definition, dcterms:creator). Each entry has the annotation property IRI and its values. Values that are IRIs use an empty lang.",
+    "Full replacement list of extra annotations (e.g. skos:definition, dcterms:creator). Each entry has the annotation property IRI and its values. A value that is a full IRI is written as an IRI reference; any other value is written as a plain string.",
   items: {
     type: "object",
     properties: {
@@ -257,13 +256,13 @@ const ANNOTATIONS: JsonSchema = {
 const COMMIT_MESSAGE = str("Git commit message for this change. Optional; a sensible default is used.");
 
 function toLocalized(v: unknown): LocalizedString[] {
-  return (v as { value: string; lang?: string }[]).map((x) => ({ value: x.value, lang: x.lang ?? "en" }));
+  return (v as { value: string }[]).map((x) => ({ value: x.value }));
 }
 
 function toAnnotations(v: unknown): AnnotationUpdate[] {
-  return (v as { property_iri: string; values: { value: string; lang?: string }[] }[]).map((a) => ({
+  return (v as { property_iri: string; values: { value: string }[] }[]).map((a) => ({
     property_iri: a.property_iri,
-    values: a.values.map((x) => ({ value: x.value, lang: x.lang ?? (/^(https?:|urn:)/.test(x.value) ? "" : "en") })),
+    values: a.values.map((x) => ({ value: x.value })),
   }));
 }
 
@@ -272,7 +271,6 @@ function toAssertions(v: unknown): PropertyAssertion[] {
     propertyIri: a.property_iri!,
     targetIri: a.target_iri,
     value: a.value,
-    lang: a.lang,
     datatype: a.datatype,
   }));
 }
@@ -520,7 +518,7 @@ export const AGENT_TOOLS: ToolDef[] = [
         ontologyNamespace: namespace,
       });
       const comment = opt<string>(input, "comment");
-      if (comment?.trim()) snippet = snippet.replace(/ \.\n$/, ` ;\n    rdfs:comment ${literal(comment, "en")} .\n`);
+      if (comment?.trim()) snippet = snippet.replace(/ \.\n$/, ` ;\n    rdfs:comment ${literal(comment)} .\n`);
       const base = onto.content.endsWith("\n") ? onto.content : `${onto.content}\n`;
       const message = opt<string>(input, "commit_message") || `Add ${kind.label} ${label}`;
       const saved = await saveSource(ctx, base + snippet, message);
@@ -669,7 +667,6 @@ export const AGENT_TOOLS: ToolDef[] = [
             properties: {
               property_iri: str("Data property IRI"),
               value: str("Literal value"),
-              lang: str("Optional language tag"),
               datatype: str("Optional datatype IRI, e.g. http://www.w3.org/2001/XMLSchema#integer"),
             },
             required: ["property_iri", "value"],

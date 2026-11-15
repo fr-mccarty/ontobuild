@@ -4,7 +4,7 @@ import * as git from "../git";
 import { all, get, insert, newId, nowIso, run, transaction, update } from "../db";
 import { httpError, noContent, queryInt, readJson } from "../http";
 import { LOCAL_USER } from "../user";
-import { emitOntologyEvent, requireProject } from "../ontology";
+import { emitOntologyEvent, enforcePlainLiterals, requireProject } from "../ontology";
 
 const r = new Hono();
 
@@ -378,6 +378,11 @@ r.post("/projects/:id/pull-requests/:prNumber/merge", async (c) => {
       message: mergeMessage,
       origin: "merge",
     });
+    try {
+      await enforcePlainLiterals(id, pr.target_branch);
+    } catch (e) {
+      console.warn("[ontokit] failed to strip language tags after merge:", e);
+    }
   }
 
   if (deleteSource) {

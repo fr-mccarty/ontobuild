@@ -2,15 +2,12 @@
 
 import { Trash2 } from "lucide-react";
 import { getAnnotationPropertyInfo } from "@/lib/ontology/annotationProperties";
-import { LanguagePicker } from "@/components/editor/LanguagePicker";
 import { Tooltip } from "@/components/ui/tooltip";
 
 interface AnnotationRowProps {
   propertyIri: string;
   value: string;
-  lang: string;
   onValueChange: (value: string) => void;
-  onLangChange: (lang: string) => void;
   onRemove?: () => void;
   onBlur?: () => void;
   showPropertyLabel?: boolean;
@@ -20,9 +17,7 @@ interface AnnotationRowProps {
 export function AnnotationRow({
   propertyIri,
   value,
-  lang,
   onValueChange,
-  onLangChange,
   onRemove,
   onBlur,
   showPropertyLabel = true,
@@ -61,13 +56,6 @@ export function AnnotationRow({
           className="flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
         />
       )}
-      <LanguagePicker
-        value={lang}
-        onChange={(code) => {
-          onLangChange(code);
-          onBlur?.();
-        }}
-      />
       {onRemove ? (
         <button
           onClick={onRemove}

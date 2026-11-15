@@ -178,7 +178,6 @@ const ANNOTATION_PROPERTIES: [string, string][] = [
 ];
 
 function classDetail(store: Store, iri: string, prefs: string[] | null) {
-  const withDefaultLang = (xs: LocalizedString[]) => xs.map((l) => ({ value: l.value, lang: l.lang || "en" }));
   const parentIris = getObjectIris(store, iri, RDFS_SUBCLASS_OF);
   const parentLabels: Record<string, string> = {};
   for (const p of parentIris) parentLabels[p] = displayLabel(store, p, prefs);
@@ -187,8 +186,7 @@ function classDetail(store: Store, iri: string, prefs: string[] | null) {
   for (const [label, prop] of ANNOTATION_PROPERTIES) {
     const values: LocalizedString[] = [];
     for (const o of store.getObjects(iri, prop, null)) {
-      if (o.termType === "Literal") values.push({ value: o.value, lang: (o as Term & { language: string }).language || "" });
-      else if (o.termType === "NamedNode") values.push({ value: o.value, lang: "" });
+      if (o.termType === "Literal" || o.termType === "NamedNode") values.push({ value: o.value });
     }
     if (values.length) annotations.push({ property_iri: prop, property_label: label, values });
   }
@@ -199,8 +197,8 @@ function classDetail(store: Store, iri: string, prefs: string[] | null) {
 
   return {
     iri,
-    labels: withDefaultLang(getLiterals(store, iri, RDFS_LABEL)),
-    comments: withDefaultLang(getLiterals(store, iri, RDFS_COMMENT)),
+    labels: getLiterals(store, iri, RDFS_LABEL),
+    comments: getLiterals(store, iri, RDFS_COMMENT),
     deprecated: deprecated(store, iri),
     parent_iris: parentIris,
     parent_labels: parentLabels,

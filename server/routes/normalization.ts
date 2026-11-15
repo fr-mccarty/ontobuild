@@ -58,6 +58,7 @@ async function normalize(content: string, filename: string) {
   if (format !== "turtle") notes.push(`Converted from ${FORMAT_NAMES[format]} to Turtle format`);
   if (removed.length) notes.push(`Removed ${removed.length} unused prefix(es): ${removed.join(", ")}`);
   if (added.length) notes.push(`Added ${added.length} prefix(es): ${added.join(", ")}`);
+  if (n.languageTagsRemoved > 0) notes.push(`Removed language tags from ${n.languageTagsRemoved} literal(s)`);
   const diff = normalizedSize - originalSize;
   if (diff < 0) notes.push(`File size reduced by ${Math.abs(diff).toLocaleString("en-US")} bytes`);
   else if (diff > 0) notes.push(`File size increased by ${diff.toLocaleString("en-US")} bytes`);

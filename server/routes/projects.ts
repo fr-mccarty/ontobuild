@@ -9,6 +9,7 @@ import {
   commitOntology,
   emitOntologyEvent,
   invalidateOntologyCache,
+  normalizeLabelPreferences,
   ontologyFilePath,
   openPullRequestBranches,
   projectToResponse,
@@ -25,6 +26,7 @@ import {
   formatFromFilename,
   extensionOf,
   normalizeToTurtle,
+  stripLanguageTagsFromTurtle,
   parseTurtle,
   serializeTurtle,
 } from "../rdf";
@@ -102,10 +104,9 @@ async function updateMetadataTurtle(
     for (const [p, curie] of props) {
       const existing = store.getObjects(subj, p, null);
       if (existing.length) {
-        const lang = existing[0].termType === "Literal" ? (existing[0] as unknown as { language: string }).language : "";
         const old = existing[0].value || "(empty)";
         for (const o of existing) store.removeQuad(subj, DataFactory.namedNode(p), o as never);
-        store.addQuad(subj, DataFactory.namedNode(p), DataFactory.literal(value, lang || undefined));
+        store.addQuad(subj, DataFactory.namedNode(p), DataFactory.literal(value));
         changes.push(kind === "Title" ? `Title (${curie}): "${old}" → "${value}"` : `Description (${curie}): updated`);
         return;
       }
@@ -155,7 +156,7 @@ async function createProjectWithContent(opts: {
     commit = await git.commitFile(id, {
       branch: git.DEFAULT_BRANCH,
       path: DEFAULT_ONTOLOGY_FILE,
-      content: opts.content,
+      content: (await stripLanguageTagsFromTurtle(opts.content)).content,
       message: opts.commitMessage,
       author: AUTHOR,
     });
@@ -301,6 +302,7 @@ r.post("/projects/import", async (c) => {
   if (format !== "turtle") notes.push(`Converted from ${FORMAT_NAMES[format]} to Turtle format`);
   if (removed.length) notes.push(`Removed ${removed.length} unused prefix(es): ${removed.join(", ")}`);
   if (added.length) notes.push(`Added ${added.length} prefix(es): ${added.join(", ")}`);
+  if (normalized.languageTagsRemoved > 0) notes.push(`Removed language tags from ${normalized.languageTagsRemoved} literal(s)`);
   const diff = normalizedSize - originalSize;
   if (diff < 0) notes.push(`File size reduced by ${Math.abs(diff).toLocaleString("en-US")} bytes`);
   else if (diff > 0) notes.push(`File size increased by ${diff.toLocaleString("en-US")} bytes`);
@@ -357,7 +359,7 @@ r.patch("/projects/:id", async (c) => {
   if (body.name != null) set.name = body.name;
   if (body.description != null) set.description = body.description;
   if (body.is_public != null) set.is_public = !!body.is_public;
-  if (body.label_preferences != null) set.label_preferences = toJson(body.label_preferences);
+  if (body.label_preferences != null) set.label_preferences = toJson(normalizeLabelPreferences(Array.isArray(body.label_preferences) ? body.label_preferences : []));
   set.updated_at = nowIso();
   update("projects", set, { id });
 

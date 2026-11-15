@@ -111,7 +111,6 @@ export default function DocsPage() {
                     <li>Drag-and-drop reparenting with cycle detection and undo</li>
                     <li>Right-click context menus for Add Subclass, Copy IRI, and Delete</li>
                     <li>Draft indicators on nodes with unsaved changes</li>
-                    <li>Language tags displayed as country flag emojis</li>
                     <li>Keyboard navigation with arrow keys and aria-activedescendant</li>
                   </ul>
                 </div>
@@ -124,7 +123,7 @@ export default function DocsPage() {
                     specific OWL constructs.
                   </p>
                   <ul className="list-disc list-inside text-slate-600 dark:text-slate-400 text-sm space-y-1">
-                    <li>Multi-language label and comment editing with inline annotation adder</li>
+                    <li>Label and comment editing with inline annotation adder</li>
                     <li>Superclass/subclass and equivalent/disjoint relationships</li>
                     <li>Annotation properties with IRI-valued relationship editing</li>
                     <li>Property assertions for individuals</li>

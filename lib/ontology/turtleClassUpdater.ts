@@ -34,12 +34,12 @@ function genBlock(
 
   for (const l of data.labels) {
     if (!l.value.trim()) continue;
-    po.push(`rdfs:label ${literal(l.value, l.lang)}`);
+    po.push(`rdfs:label ${literal(l.value)}`);
   }
 
   for (const c of data.comments) {
     if (!c.value.trim()) continue;
-    po.push(`rdfs:comment ${literal(c.value, c.lang)}`);
+    po.push(`rdfs:comment ${literal(c.value)}`);
   }
 
   for (const p of data.parent_iris) {
@@ -63,10 +63,10 @@ function genBlock(
       const prop = toTurtle(ann.property_iri, rev);
       for (const v of ann.values) {
         if (!v.value.trim()) continue;
-        if (!v.lang && isIriValue(v.value)) {
+        if (isIriValue(v.value)) {
           po.push(`${prop} ${toTurtle(v.value, rev)}`);
         } else {
-          po.push(`${prop} ${literal(v.value, v.lang)}`);
+          po.push(`${prop} ${literal(v.value)}`);
         }
       }
     }

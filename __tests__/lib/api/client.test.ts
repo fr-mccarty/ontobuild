@@ -644,7 +644,7 @@ describe("classApi", () => {
   });
 
   it("create posts class data", async () => {
-    const data = { iri: "http://ex.org/NewClass", labels: [{ value: "New", lang: "en" }] };
+    const data = { iri: "http://ex.org/NewClass", labels: [{ value: "New" }] };
     await classApi.create("onto-1", data);
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain("/api/v1/ontologies/onto-1/classes");
@@ -653,7 +653,7 @@ describe("classApi", () => {
   });
 
   it("update puts class data with encoded IRI", async () => {
-    const data = { labels: [{ value: "Updated", lang: "en" }] };
+    const data = { labels: [{ value: "Updated" }] };
     await classApi.update("onto-1", "http://ex.org/MyClass", data);
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain(encodeURIComponent("http://ex.org/MyClass"));
@@ -725,7 +725,7 @@ describe("projectOntologyApi", () => {
 
   it("updateClass sends PATCH with auth and data", async () => {
     const data = {
-      labels: [{ value: "Test", lang: "en" }],
+      labels: [{ value: "Test" }],
       comments: [],
       parent_iris: [],
     };
@@ -736,7 +736,7 @@ describe("projectOntologyApi", () => {
     expect(options.method).toBe("PATCH");
     const body = JSON.parse(options.body as string);
     expect(body.commit_message).toBe("update labels");
-    expect(body.labels).toEqual([{ value: "Test", lang: "en" }]);
+    expect(body.labels).toEqual([{ value: "Test" }]);
     const headers = options.headers as Headers;
     expect(headers.get("Authorization")).toBeNull();
   });

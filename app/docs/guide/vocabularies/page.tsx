@@ -51,7 +51,7 @@ export default function VocabulariesPage() {
               <pre>{`@prefix dcterms: <http://purl.org/dc/terms/> .
 
 <http://example.org/my-ontology>
-    dcterms:title "My Ontology"@en ;
+    dcterms:title "My Ontology" ;
     dcterms:creator "Jane Doe" ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> .`}</pre>
             </div>
@@ -81,11 +81,11 @@ export default function VocabulariesPage() {
               <pre>{`@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
 ex:Animals a skos:Concept ;
-    skos:prefLabel "Animals"@en ;
+    skos:prefLabel "Animals" ;
     skos:narrower ex:Mammals , ex:Birds .
 
 ex:Mammals a skos:Concept ;
-    skos:prefLabel "Mammals"@en ;
+    skos:prefLabel "Mammals" ;
     skos:broader ex:Animals .`}</pre>
             </div>
             <p className="text-sm mt-3">

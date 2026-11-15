@@ -18,7 +18,7 @@ import { useDraftStore, draftKey, type DraftEntry, type PropertyDraftEntry, type
 
 function makeClassDraft(overrides?: Partial<DraftEntry>): DraftEntry {
   return {
-    labels: [{ lang: "en", value: "Test" }],
+    labels: [{ value: "Test" }],
     comments: [],
     parentIris: [],
     parentLabels: {},

@@ -83,7 +83,6 @@ export interface PropertyAssertion {
   propertyIri: string;
   targetIri?: string;
   value?: string;
-  lang?: string;
   datatype?: string;
 }
 
@@ -106,8 +105,8 @@ function extractLiterals(triples: ParsedTriple[], predicateIri: string): Localiz
   return triples
     .filter((t) => t.predicate === predicateIri && t.object.type === "literal")
     .map((t) => {
-      const obj = t.object as { type: "literal"; value: string; lang?: string };
-      return { value: obj.value, lang: obj.lang || "" };
+      const obj = t.object as { type: "literal"; value: string };
+      return { value: obj.value };
     });
 }
 
@@ -135,14 +134,14 @@ function groupAnnotations(
   triples: ParsedTriple[],
   excludeIris: Set<string>,
 ): AnnotationUpdate[] {
-  const groups = new Map<string, { value: string; lang: string }[]>();
+  const groups = new Map<string, { value: string }[]>();
 
   for (const t of triples) {
     if (excludeIris.has(t.predicate)) continue;
     if (t.object.type !== "literal") continue;
-    const obj = t.object as { type: "literal"; value: string; lang?: string };
+    const obj = t.object as { type: "literal"; value: string };
     if (!groups.has(t.predicate)) groups.set(t.predicate, []);
-    groups.get(t.predicate)!.push({ value: obj.value, lang: obj.lang || "" });
+    groups.get(t.predicate)!.push({ value: obj.value });
   }
 
   return Array.from(groups.entries()).map(([property_iri, values]) => ({
@@ -211,14 +210,13 @@ export function extractIndividualDetail(
         targetIri: t.object.value,
       });
     } else if (t.object.type === "literal") {
-      const obj = t.object as { type: "literal"; value: string; lang?: string; datatype?: string };
+      const obj = t.object as { type: "literal"; value: string; datatype?: string };
       const isKnownAnnotation = !INDIVIDUAL_METADATA_IRIS.has(t.predicate) &&
         groupAnnotations([t], INDIVIDUAL_METADATA_IRIS).length > 0;
       if (!isKnownAnnotation) {
         dataPropertyAssertions.push({
           propertyIri: t.predicate,
           value: obj.value,
-          lang: obj.lang,
           datatype: obj.datatype,
         });
       }
@@ -239,7 +237,7 @@ export function extractIndividualDetail(
     if (isAnnotation) {
       annotationTriples.push({
         predicate: da.propertyIri,
-        object: { type: "literal", value: da.value || "", lang: da.lang, datatype: da.datatype },
+        object: { type: "literal", value: da.value || "", datatype: da.datatype },
       });
     } else {
       pureDataAssertions.push(da);

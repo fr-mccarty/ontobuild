@@ -5,7 +5,7 @@ import { TURTLE_FIXTURE } from "./fixtures";
 describe("updatePropertyInTurtle", () => {
   const baseData = {
     propertyType: "object" as const,
-    labels: [{ value: "has part", lang: "en" }],
+    labels: [{ value: "has part" }],
     comments: [],
     definitions: [],
     domainIris: ["http://example.org/ont#Animal"],
@@ -22,7 +22,7 @@ describe("updatePropertyInTurtle", () => {
       baseData,
     );
     expect(result).toContain("a owl:ObjectProperty");
-    expect(result).toContain('rdfs:label "has part"@en');
+    expect(result).toContain('rdfs:label "has part"');
     expect(result).toContain("rdfs:domain ex:Animal");
     expect(result).toContain("rdfs:range ex:Animal");
   });
@@ -44,7 +44,7 @@ describe("updatePropertyInTurtle", () => {
       {
         ...baseData,
         propertyType: "data",
-        labels: [{ value: "has age", lang: "en" }],
+        labels: [{ value: "has age" }],
         rangeIris: ["http://www.w3.org/2001/XMLSchema#integer"],
       },
     );
@@ -58,7 +58,7 @@ describe("updatePropertyInTurtle", () => {
       {
         ...baseData,
         propertyType: "annotation",
-        labels: [{ value: "note", lang: "en" }],
+        labels: [{ value: "note" }],
         domainIris: [],
         rangeIris: [],
       },
@@ -163,7 +163,7 @@ describe("updatePropertyInTurtle", () => {
       "http://example.org/ont#hasPart",
       {
         ...baseData,
-        definitions: [{ value: "Relates a whole to its parts", lang: "en" }],
+        definitions: [{ value: "Relates a whole to its parts" }],
       },
     );
     expect(result).toContain("skos:definition");
@@ -179,7 +179,7 @@ describe("updatePropertyInTurtle", () => {
           {
             property_iri:
               "http://www.w3.org/2004/02/skos/core#editorialNote",
-            values: [{ value: "Review needed", lang: "en" }],
+            values: [{ value: "Review needed" }],
           },
         ],
       },
@@ -228,7 +228,7 @@ ex:birthDate a rdf:Property, ex:AuditedTerm ;
 `;
   const data = {
     propertyType: "other" as const,
-    labels: [{ value: "date of birth", lang: "" }],
+    labels: [{ value: "date of birth" }],
     comments: [],
     definitions: [],
     domainIris: [],
@@ -250,12 +250,12 @@ ex:birthDate a rdf:Property, ex:AuditedTerm ;
       ...data,
       propertyType: "data",
       characteristics: ["http://www.w3.org/2002/07/owl#FunctionalProperty"],
-      definitions: [{ value: "When the person was born", lang: "en" }],
+      definitions: [{ value: "When the person was born" }],
     });
     expect(result).toContain(
       "a <http://www.w3.org/2002/07/owl#DatatypeProperty>, <http://www.w3.org/2002/07/owl#FunctionalProperty>, rdf:Property, ex:AuditedTerm ;",
     );
-    expect(result).toContain('<http://www.w3.org/2004/02/skos/core#definition> "When the person was born"@en');
+    expect(result).toContain('<http://www.w3.org/2004/02/skos/core#definition> "When the person was born"');
     expect(result).not.toMatch(/\bowl:/);
     expect(result).not.toMatch(/\bskos:/);
   });

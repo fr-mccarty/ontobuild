@@ -47,16 +47,8 @@ export function formatDateTime(dateString: string): string {
   });
 }
 
-export function getPreferredLabel(
-  labels: { value: string; lang: string }[],
-  preferredLang = "en"
-): string {
-  if (!labels.length) return "";
-
-  const preferred = labels.find((l) => l.lang === preferredLang);
-  if (preferred) return preferred.value;
-
-  return labels[0].value;
+export function getPreferredLabel(labels: { value: string }[]): string {
+  return labels.find((l) => l.value.trim())?.value ?? "";
 }
 
 export function generateId(): string {
@@ -75,67 +67,3 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
   };
 }
 
-const LANG_TO_COUNTRY: Record<string, string> = {
-  en: "US",
-  la: "VA",
-  ja: "JP",
-  ko: "KR",
-  zh: "CN",
-  hi: "IN",
-  ur: "PK",
-  bn: "BD",
-  ta: "IN",
-  te: "IN",
-  mr: "IN",
-  gu: "IN",
-  kn: "IN",
-  ml: "IN",
-  pa: "IN",
-  vi: "VN",
-  uk: "UA",
-  el: "GR",
-  he: "IL",
-  ar: "SA",
-  fa: "IR",
-  cs: "CZ",
-  da: "DK",
-  sv: "SE",
-  nb: "NO",
-  nn: "NO",
-  et: "EE",
-  sl: "SI",
-  sq: "AL",
-  ms: "MY",
-  ga: "IE",
-  cy: "GB",
-  eu: "ES",
-  ca: "ES",
-  gl: "ES",
-  sw: "KE",
-  af: "ZA",
-  zu: "ZA",
-};
-
-export function langToFlag(lang: string): string | null {
-  if (!lang) return null;
-  const normalized = lang.trim().toLowerCase();
-  if (!normalized) return null;
-
-  let countryCode: string | undefined;
-
-  if (normalized.includes("-")) {
-    const parts = normalized.split("-");
-    countryCode = parts[parts.length - 1].toUpperCase();
-  } else {
-    countryCode = LANG_TO_COUNTRY[normalized] ?? normalized.toUpperCase();
-  }
-
-  if (!countryCode || countryCode.length !== 2 || !/^[A-Z]{2}$/.test(countryCode)) {
-    return null;
-  }
-
-  const flag = String.fromCodePoint(
-    ...countryCode.split("").map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
-  );
-  return flag;
-}

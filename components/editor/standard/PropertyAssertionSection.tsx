@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Trash2 } from "lucide-react";
 import { getLocalName } from "@/lib/utils";
-import { LanguageFlag } from "@/components/editor/LanguageFlag";
 import { projectOntologyApi } from "@/lib/api/client";
 import type { PropertyAssertion } from "@/lib/ontology/entityDetailExtractors";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -60,7 +59,6 @@ export function PropertyAssertionSection({
                 </Tooltip>
               ) : (
                 <>
-                  {a.lang && <LanguageFlag lang={a.lang} />}
                   <span className="text-sm text-slate-700 dark:text-slate-300">{a.value}</span>
                   {a.datatype && (
                     <Tooltip content={a.datatype}>
@@ -122,7 +120,6 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
   const [isValueFocused, setIsValueFocused] = useState(false);
 
   const [dataValue, setDataValue] = useState("");
-  const [dataLang, setDataLang] = useState("en");
 
   const propContainerRef = useRef<HTMLDivElement>(null);
   const valueContainerRef = useRef<HTMLDivElement>(null);
@@ -184,12 +181,11 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
 
   const handleAddData = useCallback(() => {
     if (!selectedPropIri || !dataValue.trim()) return;
-    onAdd({ propertyIri: selectedPropIri, value: dataValue.trim(), lang: dataLang.trim() || undefined });
+    onAdd({ propertyIri: selectedPropIri, value: dataValue.trim() });
     setSelectedPropIri(null);
     setSelectedPropLabel("");
     setDataValue("");
-    setDataLang("en");
-  }, [selectedPropIri, dataValue, dataLang, onAdd]);
+  }, [selectedPropIri, dataValue, onAdd]);
 
   return (
     <div className="flex gap-2">
@@ -264,34 +260,16 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
             )}
           </div>
         ) : (
-          <div className="flex items-start gap-2">
-            <input
-              type="text"
-              value={dataValue}
-              onChange={(e) => setDataValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAddData(); }}
-              onBlur={() => { if (dataValue.trim()) handleAddData(); }}
-              placeholder={selectedPropIri ? "Enter value..." : "Select a property first"}
-              disabled={!selectedPropIri}
-              className="flex-1 rounded-md border border-dashed border-slate-300 bg-white px-2.5 py-1.5 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:border-solid focus:outline-hidden focus:ring-1 focus:ring-primary-500 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-slate-800"
-            />
-            <div className="mt-1 shrink-0">
-              <LanguageFlag lang={dataLang} />
-            </div>
-            <Tooltip content="Language tag">
-              <span className="inline-flex shrink-0">
-                <input
-                  type="text"
-                  value={dataLang}
-                  onChange={(e) => setDataLang(e.target.value)}
-                  className="w-14 shrink-0 rounded-md border border-dashed border-slate-300 bg-white px-2 py-1.5 text-center text-xs focus:border-primary-500 focus:border-solid focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-                  aria-label="Language tag"
-                  placeholder="lang"
-                  disabled={!selectedPropIri}
-                />
-              </span>
-            </Tooltip>
-          </div>
+          <input
+            type="text"
+            value={dataValue}
+            onChange={(e) => setDataValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAddData(); }}
+            onBlur={() => { if (dataValue.trim()) handleAddData(); }}
+            placeholder={selectedPropIri ? "Enter value..." : "Select a property first"}
+            disabled={!selectedPropIri}
+            className="w-full rounded-md border border-dashed border-slate-300 bg-white px-2.5 py-1.5 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:border-solid focus:outline-hidden focus:ring-1 focus:ring-primary-500 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-slate-800"
+          />
         )}
       </div>
     </div>

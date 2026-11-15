@@ -33,8 +33,8 @@ describe("getSeeAlsoIris", () => {
           property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
           property_label: "seeAlso",
           values: [
-            { value: "https://example.org/related", lang: "" },
-            { value: "http://example.org/other", lang: "" },
+            { value: "https://example.org/related" },
+            { value: "http://example.org/other" },
           ],
         },
       ],
@@ -53,8 +53,8 @@ describe("getSeeAlsoIris", () => {
           property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
           property_label: "seeAlso",
           values: [
-            { value: "just some text", lang: "" },
-            { value: "urn:not-http", lang: "" },
+            { value: "just some text" },
+            { value: "urn:not-http" },
           ],
         },
       ],
@@ -69,7 +69,7 @@ describe("getSeeAlsoIris", () => {
         {
           property_iri: "http://www.w3.org/2000/01/rdf-schema#label",
           property_label: "label",
-          values: [{ value: "Test", lang: "en" }],
+          values: [{ value: "Test" }],
         },
       ],
     });
@@ -173,7 +173,7 @@ describe("buildGraphFromClassDetail", () => {
   it("always includes the focus node in output", () => {
     const focusIri = "urn:focus";
     const resolved = new Map([
-      [focusIri, makeClassDetail({ iri: focusIri, labels: [{ value: "Focus", lang: "" }] })],
+      [focusIri, makeClassDetail({ iri: focusIri, labels: [{ value: "Focus" }] })],
     ]);
 
     const result = buildGraphFromClassDetail(focusIri, resolved);
@@ -192,7 +192,7 @@ describe("buildGraphFromClassDetail", () => {
         makeClassDetail({
           iri: focusIri,
           parent_iris: [parentIri],
-          labels: [{ value: "Focus", lang: "" }],
+          labels: [{ value: "Focus" }],
         }),
       ],
     ]);
@@ -215,7 +215,7 @@ describe("buildGraphFromClassDetail", () => {
         makeClassDetail({
           iri: childIri,
           parent_iris: [parentIri],
-          labels: [{ value: `Child ${i}`, lang: "" }],
+          labels: [{ value: `Child ${i}` }],
         }),
       ]);
     }
@@ -227,7 +227,7 @@ describe("buildGraphFromClassDetail", () => {
         makeClassDetail({
           iri: focusIri,
           parent_iris: [parentIri],
-          labels: [{ value: "Focus", lang: "" }],
+          labels: [{ value: "Focus" }],
         }),
       ],
     ]);
@@ -265,7 +265,7 @@ describe("buildGraphFromClassDetail", () => {
         makeClassDetail({
           iri: focusIri,
           parent_iris: [owlThing],
-          labels: [{ value: "Focus", lang: "" }],
+          labels: [{ value: "Focus" }],
         }),
       ],
     ]);

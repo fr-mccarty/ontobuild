@@ -367,7 +367,6 @@ export interface OWLClassUpdate {
 
 export interface LocalizedString {
   value: string;
-  lang: string;
 }
 
 export interface CommitHistory {

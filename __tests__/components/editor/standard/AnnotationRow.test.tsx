@@ -19,38 +19,13 @@ vi.mock("@/lib/ontology/annotationProperties", () => ({
   }),
 }));
 
-vi.mock("@/components/editor/LanguagePicker", () => ({
-  LanguagePicker: ({
-    value,
-    onChange,
-    disabled,
-  }: {
-    value: string;
-    onChange: (code: string) => void;
-    disabled?: boolean;
-  }) => (
-    <select
-      data-testid="lang-picker"
-      aria-label="Language tag"
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="en">en</option>
-      <option value="fr">fr</option>
-    </select>
-  ),
-}));
-
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
 
 describe("AnnotationRow", () => {
   const defaultProps = {
     propertyIri: "http://www.w3.org/2000/01/rdf-schema#label",
     value: "Hello",
-    lang: "en",
     onValueChange: vi.fn(),
-    onLangChange: vi.fn(),
   };
 
   beforeEach(() => {
@@ -90,12 +65,6 @@ describe("AnnotationRow", () => {
     expect((await screen.findAllByText("rdfs:label")).length).toBeGreaterThan(0);
   });
 
-  it("renders the language picker with correct value", () => {
-    render(<AnnotationRow {...defaultProps} />);
-    const langPicker = screen.getByLabelText("Language tag") as HTMLSelectElement;
-    expect(langPicker.value).toBe("en");
-  });
-
   it("calls onValueChange when the value input changes", () => {
     const onValueChange = vi.fn();
     render(<AnnotationRow {...defaultProps} onValueChange={onValueChange} />);
@@ -113,14 +82,6 @@ describe("AnnotationRow", () => {
     const textarea = screen.getByLabelText("Label value");
     fireEvent.change(textarea, { target: { value: "Changed" } });
     expect(onValueChange).toHaveBeenCalledWith("Changed");
-  });
-
-  it("calls onLangChange when the language picker changes", () => {
-    const onLangChange = vi.fn();
-    render(<AnnotationRow {...defaultProps} onLangChange={onLangChange} />);
-    const langPicker = screen.getByLabelText("Language tag");
-    fireEvent.change(langPicker, { target: { value: "fr" } });
-    expect(onLangChange).toHaveBeenCalledWith("fr");
   });
 
   it("renders remove button when onRemove is provided", () => {
@@ -149,16 +110,6 @@ describe("AnnotationRow", () => {
     render(<AnnotationRow {...defaultProps} onBlur={onBlur} />);
     const input = screen.getByLabelText("Label value");
     fireEvent.blur(input);
-    expect(onBlur).toHaveBeenCalledTimes(1);
-  });
-
-  it("calls onBlur after language picker changes to trigger auto-save", () => {
-    const onBlur = vi.fn();
-    const onLangChange = vi.fn();
-    render(<AnnotationRow {...defaultProps} onBlur={onBlur} onLangChange={onLangChange} />);
-    const langPicker = screen.getByLabelText("Language tag");
-    fireEvent.change(langPicker, { target: { value: "fr" } });
-    expect(onLangChange).toHaveBeenCalledWith("fr");
     expect(onBlur).toHaveBeenCalledTimes(1);
   });
 

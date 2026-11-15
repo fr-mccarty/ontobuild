@@ -20,8 +20,6 @@ import {
 } from "lucide-react";
 import type { LocalizedString, AnnotationUpdate } from "@/lib/api/client";
 import { cn, getLocalName } from "@/lib/utils";
-import { LanguageFlag } from "@/components/editor/LanguageFlag";
-import { LanguagePicker } from "@/components/editor/LanguagePicker";
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
 import { InlineAnnotationAdder } from "@/components/editor/standard/InlineAnnotationAdder";
 import { RelationshipSection, type RelationshipGroup, type RelationshipTarget } from "@/components/editor/standard/RelationshipSection";
@@ -41,7 +39,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 
 function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
-    return [...arr, { value: "", lang: "en" }];
+    return [...arr, { value: "" }];
   }
   return arr;
 }
@@ -174,7 +172,7 @@ export function PropertyDetailPanel({
         .filter((g) => g.targets.length > 0)
         .map((g) => ({
           property_iri: g.property_iri,
-          values: g.targets.map((t) => ({ value: t.iri, lang: "" })),
+          values: g.targets.map((t) => ({ value: t.iri })),
         }));
 
       await onUpdateProperty(iri, {
@@ -202,7 +200,7 @@ export function PropertyDetailPanel({
 
   const initEditState = useCallback((d: ParsedPropertyDetail) => {
     setEditPropertyType(d.propertyType);
-    setEditLabels(d.labels.length > 0 ? d.labels.map((l) => ({ ...l })) : [{ value: "", lang: "en" }]);
+    setEditLabels(d.labels.length > 0 ? d.labels.map((l) => ({ ...l })) : [{ value: "" }]);
     setEditComments(ensureTrailingEmpty(d.comments.map((c) => ({ ...c }))));
     setEditDefinitions(ensureTrailingEmpty(d.definitions.map((def) => ({ ...def }))));
     setEditDomainIris([...d.domainIris]);
@@ -294,8 +292,8 @@ export function PropertyDetailPanel({
     enterEditMode();
   }, [detail, canEdit, restoredDraft, propertyIri, clearRestoredDraft, onUpdateProperty, isEditing, enterEditMode]);
 
-  const updateLabel = useCallback((index: number, field: "value" | "lang", val: string) => {
-    setEditLabels((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: val } : l)));
+  const updateLabel = useCallback((index: number, val: string) => {
+    setEditLabels((prev) => prev.map((l, i) => (i === index ? { ...l, value: val } : l)));
   }, []);
 
   const removeLabel = useCallback((index: number) => {
@@ -303,8 +301,8 @@ export function PropertyDetailPanel({
     requestAnimationFrame(() => triggerSave());
   }, [triggerSave]);
 
-  const updateComment = useCallback((index: number, field: "value" | "lang", val: string) => {
-    setEditComments((prev) => ensureTrailingEmpty(prev.map((c, i) => (i === index ? { ...c, [field]: val } : c))));
+  const updateComment = useCallback((index: number, val: string) => {
+    setEditComments((prev) => ensureTrailingEmpty(prev.map((c, i) => (i === index ? { ...c, value: val } : c))));
   }, []);
 
   const removeComment = useCallback((index: number) => {
@@ -312,8 +310,8 @@ export function PropertyDetailPanel({
     requestAnimationFrame(() => triggerSave());
   }, [triggerSave]);
 
-  const updateDefinition = useCallback((index: number, field: "value" | "lang", val: string) => {
-    setEditDefinitions((prev) => ensureTrailingEmpty(prev.map((d, i) => (i === index ? { ...d, [field]: val } : d))));
+  const updateDefinition = useCallback((index: number, val: string) => {
+    setEditDefinitions((prev) => ensureTrailingEmpty(prev.map((d, i) => (i === index ? { ...d, value: val } : d))));
   }, []);
 
   const removeDefinition = useCallback((index: number) => {
@@ -322,11 +320,11 @@ export function PropertyDetailPanel({
   }, [triggerSave]);
 
   const updateAnnotationValue = useCallback(
-    (propertyIri: string, valueIdx: number, field: "value" | "lang", val: string) => {
+    (propertyIri: string, valueIdx: number, val: string) => {
       setEditAnnotations((prev) =>
         prev.map((a) => {
           if (a.property_iri !== propertyIri) return a;
-          const updated = a.values.map((v, vi) => (vi === valueIdx ? { ...v, [field]: val } : v));
+          const updated = a.values.map((v, vi) => (vi === valueIdx ? { ...v, value: val } : v));
           return { ...a, values: ensureTrailingEmpty(updated) };
         })
       );
@@ -483,8 +481,7 @@ export function PropertyDetailPanel({
               <div className="space-y-2">
                 {editLabels.map((label, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <input type="text" value={label.value} onChange={(e) => updateLabel(index, "value", e.target.value)} onBlur={() => triggerSave()} placeholder="Label text" className="flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
-                    <LanguagePicker value={label.lang} onChange={(code) => { updateLabel(index, "lang", code); triggerSave(); }} />
+                    <input type="text" value={label.value} onChange={(e) => updateLabel(index, e.target.value)} onBlur={() => triggerSave()} placeholder="Label text" className="flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
                     {editLabels.length > 1 ? (
                       <Tooltip content="Remove">
                         <button onClick={() => removeLabel(index)} className="rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400" aria-label="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
@@ -516,9 +513,7 @@ export function PropertyDetailPanel({
                     key={index}
                     propertyIri={DEFINITION_IRI}
                     value={def.value}
-                    lang={def.lang}
-                    onValueChange={(v) => updateDefinition(index, "value", v)}
-                    onLangChange={(l) => updateDefinition(index, "lang", l)}
+                    onValueChange={(v) => updateDefinition(index, v)}
                     onRemove={editDefinitions.filter((d) => d.value.trim()).length > 0 && index < editDefinitions.length - 1 ? () => removeDefinition(index) : undefined}
                     onBlur={() => triggerSave()}
                     showPropertyLabel={false}
@@ -532,7 +527,6 @@ export function PropertyDetailPanel({
               <div className="space-y-1">
                 {detail.definitions.map((def, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    {def.lang && <LanguageFlag lang={def.lang} />}
                     <span className="text-sm text-slate-700 dark:text-slate-300">{def.value}</span>
                   </div>
                 ))}
@@ -548,9 +542,7 @@ export function PropertyDetailPanel({
                     key={index}
                     propertyIri={COMMENT_IRI}
                     value={comment.value}
-                    lang={comment.lang}
-                    onValueChange={(v) => updateComment(index, "value", v)}
-                    onLangChange={(l) => updateComment(index, "lang", l)}
+                    onValueChange={(v) => updateComment(index, v)}
                     onRemove={editComments.filter((c) => c.value.trim()).length > 0 && index < editComments.length - 1 ? () => removeComment(index) : undefined}
                     onBlur={() => triggerSave()}
                     showPropertyLabel={false}
@@ -564,7 +556,6 @@ export function PropertyDetailPanel({
               <div className="space-y-1">
                 {detail.comments.map((c, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    {c.lang && <LanguageFlag lang={c.lang} />}
                     <span className="text-sm text-slate-700 dark:text-slate-300">{c.value}</span>
                   </div>
                 ))}
@@ -698,9 +689,7 @@ export function PropertyDetailPanel({
                         key={`${ann.property_iri}-${vi}`}
                         propertyIri={ann.property_iri}
                         value={v.value}
-                        lang={v.lang}
-                        onValueChange={(val) => updateAnnotationValue(ann.property_iri, vi, "value", val)}
-                        onLangChange={(lang) => updateAnnotationValue(ann.property_iri, vi, "lang", lang)}
+                        onValueChange={(val) => updateAnnotationValue(ann.property_iri, vi, val)}
                         onRemove={ann.values.filter((x) => x.value.trim()).length > 0 && vi < ann.values.length - 1 ? () => removeAnnotationValue(ann.property_iri, vi) : undefined}
                         onBlur={() => triggerSave()}
                       />
@@ -709,17 +698,17 @@ export function PropertyDetailPanel({
                 ))}
                 <InlineAnnotationAdder
                   excludeIris={[LABEL_IRI, COMMENT_IRI, DEFINITION_IRI, ...editAnnotations.map((a) => a.property_iri)]}
-                  onAdd={(propIri, value, lang) => {
+                  onAdd={(propIri, value) => {
                     setEditAnnotations((prev) => {
                       const existing = prev.find((a) => a.property_iri === propIri);
                       if (existing) {
                         return prev.map((a) =>
                           a.property_iri === propIri
-                            ? { ...a, values: [...a.values.filter((v) => v.value.trim()), { value, lang }, { value: "", lang: "en" }] }
+                            ? { ...a, values: [...a.values.filter((v) => v.value.trim()), { value }, { value: "" }] }
                             : a
                         );
                       }
-                      return [...prev, { property_iri: propIri, values: [{ value, lang }, { value: "", lang: "en" }] }];
+                      return [...prev, { property_iri: propIri, values: [{ value }, { value: "" }] }];
                     });
                   }}
                   onSaveNeeded={() => triggerSave()}
@@ -746,7 +735,6 @@ export function PropertyDetailPanel({
                         </Tooltip>
                       </div>
                       <div className="min-w-0 flex-1 flex items-center gap-2">
-                        {v.lang && <LanguageFlag lang={v.lang} />}
                         <span className="text-sm text-slate-700 dark:text-slate-300">{v.value}</span>
                       </div>
                     </div>

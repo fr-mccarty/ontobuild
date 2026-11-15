@@ -49,13 +49,13 @@ export function AnnotationEditor({
   }
 
   const updateValue = useCallback(
-    (annotationIdx: number, valueIdx: number, field: "value" | "lang", newVal: string) => {
+    (annotationIdx: number, valueIdx: number, newVal: string) => {
       const updated = annotations.map((a, ai) => {
         if (ai !== annotationIdx) return a;
         return {
           ...a,
           values: a.values.map((v, vi) =>
-            vi === valueIdx ? { ...v, [field]: newVal } : v
+            vi === valueIdx ? { ...v, value: newVal } : v
           ),
         };
       });
@@ -84,11 +84,11 @@ export function AnnotationEditor({
       if (existingIdx >= 0) {
         const updated = annotations.map((a, i) => {
           if (i !== existingIdx) return a;
-          return { ...a, values: [...a.values, { value: "", lang: "en" }] };
+          return { ...a, values: [...a.values, { value: "" }] };
         });
         onChange(updated);
       } else {
-        onChange([...annotations, { property_iri: propertyIri, values: [{ value: "", lang: "en" }] }]);
+        onChange([...annotations, { property_iri: propertyIri, values: [{ value: "" }] }]);
       }
       setShowPicker(false);
     },
@@ -102,9 +102,7 @@ export function AnnotationEditor({
           key={`${row.propertyIri}-${row.valueIdx}-${i}`}
           propertyIri={row.propertyIri}
           value={row.value.value}
-          lang={row.value.lang}
-          onValueChange={(v) => updateValue(row.annotationIdx, row.valueIdx, "value", v)}
-          onLangChange={(l) => updateValue(row.annotationIdx, row.valueIdx, "lang", l)}
+          onValueChange={(v) => updateValue(row.annotationIdx, row.valueIdx, v)}
           onRemove={() => removeValue(row.annotationIdx, row.valueIdx)}
           showPropertyLabel={showPropertyLabels}
         />

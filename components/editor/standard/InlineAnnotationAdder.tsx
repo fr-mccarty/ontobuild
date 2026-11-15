@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LanguagePicker } from "@/components/editor/LanguagePicker";
 import {
   ANNOTATION_PROPERTIES,
   getAnnotationPropertiesByVocabulary,
@@ -12,7 +11,7 @@ import {
 
 interface InlineAnnotationAdderProps {
   excludeIris: string[];
-  onAdd: (propertyIri: string, value: string, lang: string) => void;
+  onAdd: (propertyIri: string, value: string) => void;
   onSaveNeeded?: () => void;
 }
 
@@ -21,7 +20,6 @@ export function InlineAnnotationAdder({ excludeIris, onAdd, onSaveNeeded }: Inli
   const [propertyQuery, setPropertyQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [value, setValue] = useState("");
-  const [lang, setLang] = useState("en");
 
   const containerRef = useRef<HTMLDivElement>(null);
   const propertyInputRef = useRef<HTMLInputElement>(null);
@@ -68,11 +66,10 @@ export function InlineAnnotationAdder({ excludeIris, onAdd, onSaveNeeded }: Inli
 
   const handleCommit = () => {
     if (!selectedProperty || !value.trim()) return;
-    onAdd(selectedProperty.iri, value.trim(), lang.trim());
+    onAdd(selectedProperty.iri, value.trim());
     setSelectedProperty(null);
     setPropertyQuery("");
     setValue("");
-    setLang("en");
     onSaveNeeded?.();
   };
 
@@ -193,7 +190,6 @@ export function InlineAnnotationAdder({ excludeIris, onAdd, onSaveNeeded }: Inli
                 : "border-dashed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
             )}
           />
-          <LanguagePicker value={lang} onChange={setLang} disabled={!selectedProperty} />
           <div className="shrink-0 rounded-sm p-1">
             <div className="h-3.5 w-3.5" />
           </div>

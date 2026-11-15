@@ -41,18 +41,24 @@ export default function FormatsPage() {
               supports prefix abbreviations, multi-value shorthand with commas, and multi-predicate{" "}
               shorthand with semicolons. OntoKit uses Turtle as its canonical format.
             </p>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              OntoKit assumes all text is English and stores labels, comments, and other text{" "}
+              values as plain strings such as{" "}
+              <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded-sm text-xs">&quot;Dog&quot;</code>,{" "}
+              without RDF language tags.
+            </p>
             <div className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm font-mono overflow-x-auto">
               <pre>{`@prefix ex:   <http://example.org/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
 
 ex:Animal a owl:Class ;
-    rdfs:label "Animal"@en ;
-    rdfs:comment "A living organism that feeds on organic matter."@en .
+    rdfs:label "Animal" ;
+    rdfs:comment "A living organism that feeds on organic matter." .
 
 ex:Dog a owl:Class ;
     rdfs:subClassOf ex:Animal ;
-    rdfs:label "Dog"@en .`}</pre>
+    rdfs:label "Dog" .`}</pre>
             </div>
           </div>
         </section>
@@ -71,11 +77,11 @@ ex:Dog a owl:Class ;
          xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
          xmlns:owl="http://www.w3.org/2002/07/owl#">
   <owl:Class rdf:about="http://example.org/Animal">
-    <rdfs:label xml:lang="en">Animal</rdfs:label>
+    <rdfs:label>Animal</rdfs:label>
   </owl:Class>
   <owl:Class rdf:about="http://example.org/Dog">
     <rdfs:subClassOf rdf:resource="http://example.org/Animal"/>
-    <rdfs:label xml:lang="en">Dog</rdfs:label>
+    <rdfs:label>Dog</rdfs:label>
   </owl:Class>
 </rdf:RDF>`}</pre>
             </div>
@@ -94,10 +100,10 @@ ex:Dog a owl:Class ;
             </p>
             <div className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm font-mono overflow-x-auto">
               <pre>{`<http://example.org/Animal> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .
-<http://example.org/Animal> <http://www.w3.org/2000/01/rdf-schema#label> "Animal"@en .
+<http://example.org/Animal> <http://www.w3.org/2000/01/rdf-schema#label> "Animal" .
 <http://example.org/Dog> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .
 <http://example.org/Dog> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://example.org/Animal> .
-<http://example.org/Dog> <http://www.w3.org/2000/01/rdf-schema#label> "Dog"@en .`}</pre>
+<http://example.org/Dog> <http://www.w3.org/2000/01/rdf-schema#label> "Dog" .`}</pre>
             </div>
           </div>
         </section>
@@ -124,13 +130,13 @@ ex:Dog a owl:Class ;
     {
       "@id": "ex:Animal",
       "@type": "owl:Class",
-      "rdfs:label": { "@value": "Animal", "@language": "en" }
+      "rdfs:label": "Animal"
     },
     {
       "@id": "ex:Dog",
       "@type": "owl:Class",
       "rdfs:subClassOf": { "@id": "ex:Animal" },
-      "rdfs:label": { "@value": "Dog", "@language": "en" }
+      "rdfs:label": "Dog"
     }
   ]
 }`}</pre>

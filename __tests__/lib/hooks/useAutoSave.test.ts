@@ -33,7 +33,7 @@ beforeEach(() => {
 function makeClassDetail(overrides: Partial<OWLClassDetail> = {}): OWLClassDetail {
   return {
     iri: "http://example.org/MyClass",
-    labels: [{ value: "MyClass", lang: "en" }],
+    labels: [{ value: "MyClass" }],
     comments: [],
     parent_iris: [],
     annotations: [],
@@ -54,7 +54,7 @@ const BASE_OPTIONS = {
 
 function setEditState(
   result: { current: ReturnType<typeof useAutoSave> },
-  labels: Array<{ value: string; lang: string }>,
+  labels: Array<{ value: string }>,
 ) {
   result.current.editStateRef.current = {
     labels,
@@ -73,7 +73,7 @@ describe("useAutoSave", () => {
     );
 
     act(() => {
-      setEditState(result, [{ value: "Test", lang: "en" }]);
+      setEditState(result, [{ value: "Test" }]);
       result.current.triggerSave();
     });
 
@@ -84,7 +84,7 @@ describe("useAutoSave", () => {
     const { result } = renderHook(() => useAutoSave(BASE_OPTIONS));
 
     act(() => {
-      setEditState(result, [{ value: "", lang: "en" }]);
+      setEditState(result, [{ value: "" }]);
       result.current.triggerSave();
     });
 
@@ -96,7 +96,7 @@ describe("useAutoSave", () => {
     const { result } = renderHook(() => useAutoSave(BASE_OPTIONS));
 
     act(() => {
-      setEditState(result, [{ value: "MyClass", lang: "en" }]);
+      setEditState(result, [{ value: "MyClass" }]);
       result.current.triggerSave();
     });
 
@@ -115,7 +115,7 @@ describe("useAutoSave", () => {
     );
 
     act(() => {
-      setEditState(result, [{ value: "MyClass", lang: "en" }]);
+      setEditState(result, [{ value: "MyClass" }]);
       result.current.triggerSave();
     });
 
@@ -128,7 +128,7 @@ describe("useAutoSave", () => {
     expect(onUpdateClass).toHaveBeenCalledWith(
       "http://example.org/MyClass",
       expect.objectContaining({
-        labels: [{ value: "MyClass", lang: "en" }],
+        labels: [{ value: "MyClass" }],
       }),
     );
     expect(result.current.saveStatus).toBe("saved");
@@ -145,7 +145,7 @@ describe("useAutoSave", () => {
     );
 
     act(() => {
-      setEditState(result, [{ value: "MyClass", lang: "en" }]);
+      setEditState(result, [{ value: "MyClass" }]);
       result.current.triggerSave();
     });
 
@@ -179,7 +179,7 @@ describe("useAutoSave", () => {
     const { result } = renderHook(() => useAutoSave(BASE_OPTIONS));
 
     act(() => {
-      setEditState(result, [{ value: "MyClass", lang: "en" }]);
+      setEditState(result, [{ value: "MyClass" }]);
       result.current.triggerSave();
     });
 
@@ -200,7 +200,7 @@ describe("useAutoSave", () => {
   it("restores draft on mount when one exists in the store", () => {
     const key = "proj-1:main:http://example.org/MyClass";
     mockDrafts[key] = {
-      labels: [{ value: "Restored", lang: "en" }],
+      labels: [{ value: "Restored" }],
       comments: [],
       parentIris: [],
       parentLabels: {},
@@ -218,7 +218,7 @@ describe("useAutoSave", () => {
   it("resets state when classIri changes", () => {
     const key = "proj-1:main:http://example.org/MyClass";
     mockDrafts[key] = {
-      labels: [{ value: "Draft", lang: "en" }],
+      labels: [{ value: "Draft" }],
       comments: [],
       parentIris: [],
       parentLabels: {},
@@ -243,7 +243,7 @@ describe("useAutoSave", () => {
   it("clearRestoredDraft clears the restored draft", () => {
     const key = "proj-1:main:http://example.org/MyClass";
     mockDrafts[key] = {
-      labels: [{ value: "Draft", lang: "en" }],
+      labels: [{ value: "Draft" }],
       comments: [],
       parentIris: [],
       parentLabels: {},

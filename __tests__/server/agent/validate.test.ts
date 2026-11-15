@@ -14,7 +14,7 @@ const schema: JsonSchema = {
       type: "array",
       items: {
         type: "object",
-        properties: { value: { type: "string" }, lang: { type: "string" } },
+        properties: { value: { type: "string" }, note: { type: "string" } },
         required: ["value"],
       },
     },
@@ -32,7 +32,7 @@ describe("validateJson", () => {
         ratio: 0.5,
         flag: true,
         inverse: null,
-        labels: [{ value: "A", lang: "en" }],
+        labels: [{ value: "A", note: "x" }],
       }),
     ).toEqual([]);
   });
@@ -60,7 +60,7 @@ describe("validateJson", () => {
   });
 
   it("validates array items and nested objects with paths", () => {
-    const errors = validateJson(schema, { iri: "a", labels: [{ value: "ok" }, { lang: "en" }, "x"] });
+    const errors = validateJson(schema, { iri: "a", labels: [{ value: "ok" }, { note: "x" }, "x"] });
     expect(errors).toEqual(["labels[1].value is required", "labels[2] must be object, got string"]);
   });
 

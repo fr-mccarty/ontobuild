@@ -63,7 +63,8 @@ function termSig(store: Store, t: Term, depth = 0): string {
   }
   if (t.termType === "Literal") {
     const l = t as unknown as { language: string; datatype?: { value: string } };
-    return JSON.stringify(t.value) + (l.language ? "@" + l.language : l.datatype ? "^^" + l.datatype.value : "");
+    const dt = l.language ? null : l.datatype?.value;
+    return JSON.stringify(t.value) + (dt && dt !== NS.xsd + "string" ? "^^" + dt : "");
   }
   return `<${t.value}>`;
 }

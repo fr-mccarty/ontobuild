@@ -31,7 +31,6 @@ export const LINT_RULES: LintRuleInfo[] = [
   { rule_id: "circular-hierarchy", name: "Circular Hierarchy", description: "Circular inheritance detected in class hierarchy", severity: "error", scope: ["class"] },
   { rule_id: "empty-label", name: "Empty Label", description: "Resource has a label that is an empty string", severity: "warning", scope: ALL },
   { rule_id: "duplicate-label", name: "Duplicate Label", description: "Multiple resources share the same label, which may cause confusion", severity: "warning", scope: ALL },
-  { rule_id: "label-per-language", name: "Duplicate Label Per Language", description: "Resource has multiple different labels for the same language tag", severity: "error", scope: ALL },
   { rule_id: "undefined-prefix", name: "Undefined Prefix", description: "IRI uses a prefix that is not defined in the namespace bindings", severity: "error", scope: ALL },
   { rule_id: "duplicate-triple", name: "Duplicate Triple", description: "Same predicate-object pair appears multiple times for the same subject", severity: "info", scope: ALL },
   { rule_id: "domain-violation", name: "Domain Violation", description: "Property used on a subject that is not in its declared domain", severity: "warning", scope: ALL },
@@ -39,16 +38,13 @@ export const LINT_RULES: LintRuleInfo[] = [
   { rule_id: "cardinality-violation", name: "Cardinality Violation", description: "Property usage violates declared cardinality constraints", severity: "error", scope: ["individual"] },
   { rule_id: "disjoint-violation", name: "Disjoint Class Violation", description: "Resource is typed with classes declared as disjoint", severity: "error", scope: ["individual"] },
   { rule_id: "inverse-property-inconsistency", name: "Inverse Property Inconsistency", description: "Inverse property relationship is not symmetric", severity: "warning", scope: ["individual"] },
-  { rule_id: "missing-english-label", name: "Missing English Label", description: "Resource has labels but none in English", severity: "warning", scope: ALL },
-  { rule_id: "missing-language-tag", name: "Missing Language Tag", description: "Label or annotation has no language tag (plain literal or xsd:string)", severity: "warning", scope: ALL },
-  { rule_id: "redundant-regional-label", name: "Redundant Regional Label", description: "Regional language variants have identical values and should use the base tag", severity: "info", scope: ALL },
   { rule_id: "missing-type-declaration", name: "Missing Type Declaration", description: "Resource has no rdf:type declaration (not declared as class, property, or individual)", severity: "warning", scope: ALL },
 ];
 
 const L1 = ["undefined-parent", "circular-hierarchy", "undefined-prefix"];
 const L2 = [...L1, "orphan-class", "duplicate-triple", "disjoint-violation", "missing-type-declaration"];
-const L3 = [...L2, "missing-label", "empty-label", "duplicate-label", "missing-english-label", "missing-language-tag"];
-const L4 = [...L3, "missing-comment", "label-per-language", "redundant-regional-label"];
+const L3 = [...L2, "missing-label", "empty-label", "duplicate-label"];
+const L4 = [...L3, "missing-comment"];
 const L5 = LINT_RULES.map((r) => r.rule_id);
 
 export const LINT_LEVELS: Record<number, ReadonlySet<string>> = {
@@ -61,11 +57,18 @@ export const LINT_LEVELS: Record<number, ReadonlySet<string>> = {
 
 export const ALL_RULE_IDS: ReadonlySet<string> = LINT_LEVELS[5];
 
+export const REMOVED_RULE_IDS: ReadonlySet<string> = new Set([
+  "label-per-language",
+  "missing-english-label",
+  "missing-language-tag",
+  "redundant-regional-label",
+]);
+
 export const LINT_LEVEL_DEFINITIONS: Record<number, { name: string; description: string; rules: ReadonlySet<string> }> = {
   1: { name: "Critical", description: "Undefined parents, circular hierarchies, undefined prefixes", rules: LINT_LEVELS[1] },
   2: { name: "Consistency", description: "Orphan classes, duplicate triples, and disjointness violations", rules: LINT_LEVELS[2] },
   3: { name: "Labels", description: "Missing, empty, and duplicate label checks", rules: LINT_LEVELS[3] },
-  4: { name: "Quality", description: "Comments, per-language label checks, and redundant regional variants", rules: LINT_LEVELS[4] },
+  4: { name: "Quality", description: "Missing comment checks", rules: LINT_LEVELS[4] },
   5: { name: "All", description: "All available rules including domain/range and cardinality", rules: LINT_LEVELS[5] },
 };
 
@@ -105,26 +108,6 @@ const OWL_MEMBERS = NS.owl + "members";
 const OWL_DISJOINT_WITH = NS.owl + "disjointWith";
 const OWL_INVERSE_OF = NS.owl + "inverseOf";
 const XSD_STRING = NS.xsd + "string";
-const SKOS_PREF_LABEL = NS.skos + "prefLabel";
-
-const ANNOTATION_PREDICATES: [string, string][] = [
-  [RDFS_LABEL, "rdfs:label"],
-  [RDFS_COMMENT, "rdfs:comment"],
-  [SKOS_PREF_LABEL, "skos:prefLabel"],
-  [NS.skos + "altLabel", "skos:altLabel"],
-  [NS.skos + "hiddenLabel", "skos:hiddenLabel"],
-  [NS.skos + "definition", "skos:definition"],
-  [NS.skos + "note", "skos:note"],
-  [NS.skos + "scopeNote", "skos:scopeNote"],
-  [NS.skos + "historyNote", "skos:historyNote"],
-  [NS.skos + "editorialNote", "skos:editorialNote"],
-  [NS.skos + "changeNote", "skos:changeNote"],
-  [NS.skos + "example", "skos:example"],
-  [NS.dc + "title", "dc:title"],
-  [NS.dc + "description", "dc:description"],
-  [NS.dcterms + "title", "dcterms:title"],
-  [NS.dcterms + "description", "dcterms:description"],
-];
 
 const DEFAULT_BOUND_NAMESPACES = [
   NS.rdf,
@@ -137,7 +120,6 @@ const DEFAULT_BOUND_NAMESPACES = [
 
 interface Lit {
   value: string;
-  language: string;
   datatype: { value: string };
 }
 
@@ -156,7 +138,6 @@ function termN3(t: Term): string {
   if (t.termType === "Literal") {
     const l = asLit(t);
     const v = JSON.stringify(l.value);
-    if (l.language) return `${v}@${l.language}`;
     if (l.datatype && l.datatype.value !== XSD_STRING && l.datatype.value !== NS.rdf + "langString")
       return `${v}^^<${l.datatype.value}>`;
     return v;
@@ -365,7 +346,6 @@ const CHECKERS: Record<string, Checker> = {
           out.push(
             issue("warning", "empty-label", "Resource has an empty rdfs:label", s.value, determineEntityType(g, s), {
               local_name: localName(s.value),
-              language: asLit(l).language || null,
             }),
           );
         }
@@ -409,40 +389,6 @@ const CHECKERS: Record<string, Checker> = {
             },
           ),
         );
-      }
-    }
-    return out;
-  },
-
-  "label-per-language": ({ g, uriSubjects }) => {
-    const out: LintResult[] = [];
-    const preds: [string, string][] = [
-      [RDFS_LABEL, "rdfs:label"],
-      [SKOS_PREF_LABEL, "skos:prefLabel"],
-    ];
-    for (const s of uriSubjects) {
-      for (const [pred, predName] of preds) {
-        const byLang = new Map<string, Set<string>>();
-        for (const l of g.objects(s, pred)) {
-          if (!isLiteral(l)) continue;
-          const lang = asLit(l).language ? asLit(l).language.toLowerCase() : "";
-          if (!byLang.has(lang)) byLang.set(lang, new Set());
-          byLang.get(lang)!.add(l.value);
-        }
-        for (const [lang, values] of byLang) {
-          if (values.size <= 1) continue;
-          const langStr = lang || "no language tag";
-          out.push(
-            issue(
-              "error",
-              "label-per-language",
-              `Multiple different ${predName} values for language '${langStr}'`,
-              s.value,
-              determineEntityType(g, s),
-              { local_name: localName(s.value), predicate: predName, language: langStr, labels: [...values] },
-            ),
-          );
-        }
       }
     }
     return out;
@@ -739,97 +685,6 @@ const CHECKERS: Record<string, Checker> = {
           },
         ),
       );
-    }
-    return out;
-  },
-
-  "missing-english-label": ({ g, uriSubjects }) => {
-    const out: LintResult[] = [];
-    for (const s of uriSubjects) {
-      const labels = [...g.objects(s, RDFS_LABEL), ...g.objects(s, SKOS_PREF_LABEL)].filter(isLiteral);
-      if (!labels.length) continue;
-      const hasEnglish = labels.some((l) => asLit(l).language.toLowerCase().startsWith("en"));
-      if (hasEnglish) continue;
-      const languages = [...new Set(labels.map((l) => asLit(l).language || "none"))];
-      out.push(
-        issue(
-          "warning",
-          "missing-english-label",
-          `No English label defined (has labels in: ${languages.join(", ")})`,
-          s.value,
-          determineEntityType(g, s),
-          { local_name: localName(s.value), available_languages: languages },
-        ),
-      );
-    }
-    return out;
-  },
-
-  "missing-language-tag": ({ g, uriSubjects }) => {
-    const out: LintResult[] = [];
-    for (const s of uriSubjects) {
-      for (const [pred, predName] of ANNOTATION_PREDICATES) {
-        for (const o of g.objects(s, pred)) {
-          if (!isLiteral(o)) continue;
-          const l = asLit(o);
-          if (l.language) continue;
-          out.push(
-            issue("warning", "missing-language-tag", `${predName} has no language tag`, s.value, determineEntityType(g, s), {
-              local_name: localName(s.value),
-              predicate: predName,
-              value: o.value.slice(0, 100),
-            }),
-          );
-        }
-      }
-    }
-    return out;
-  },
-
-  "redundant-regional-label": ({ g, uriSubjects }) => {
-    const out: LintResult[] = [];
-    for (const s of uriSubjects) {
-      for (const [pred, predName] of ANNOTATION_PREDICATES) {
-        const groups = new Map<string, { base: string; value: string; tags: string[] }>();
-        for (const o of g.objects(s, pred)) {
-          if (!isLiteral(o) || !asLit(o).language) continue;
-          const lang = asLit(o).language.toLowerCase();
-          const base = lang.split("-")[0];
-          const key = `${base}\u0000${o.value}`;
-          if (!groups.has(key)) groups.set(key, { base, value: o.value, tags: [] });
-          groups.get(key)!.tags.push(lang);
-        }
-        for (const { base, value, tags } of groups.values()) {
-          if (tags.length < 2) continue;
-          const sorted = [...tags].sort();
-          const tagList = sorted.map((t) => `@${t}`).join(", ");
-          let action: string;
-          if (sorted.includes(base)) {
-            action = `consider removing ${sorted
-              .filter((t) => t !== base)
-              .map((t) => `@${t}`)
-              .join(", ")}`;
-          } else {
-            action = `consider using @${base} instead`;
-          }
-          out.push(
-            issue(
-              "info",
-              "redundant-regional-label",
-              `Redundant regional variants: ${predName} "${value.slice(0, 80)}" has identical values for ${tagList} — ${action}`,
-              s.value,
-              determineEntityType(g, s),
-              {
-                local_name: localName(s.value),
-                predicate: predName,
-                value: value.slice(0, 100),
-                regional_tags: sorted,
-                base_language: base,
-              },
-            ),
-          );
-        }
-      }
     }
     return out;
   },

@@ -18,7 +18,7 @@ import { ArrowLeft, Trash2, Tag, Check, GitPullRequest, AlertCircle, FileText, R
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { ProjectForm } from "@/components/projects/project-form";
-import { LabelPreferences } from "@/components/projects/label-preferences";
+import { LabelPreferences, normalizeLabelPreferences } from "@/components/projects/label-preferences";
 import { projectOntologyApi, type IndexStatusResponse, type IndexStatus } from "@/lib/api/client";
 import { IndexWebSocketManager, type IndexWebSocketMessage } from "@/lib/api/indexStatus";
 import {
@@ -186,7 +186,7 @@ export default function ProjectSettingsPage() {
 
   useEffect(() => {
     if (project) {
-      setLabelPreferences(project.label_preferences || []);
+      setLabelPreferences(normalizeLabelPreferences(project.label_preferences || []));
     }
   }, [project]);
 
@@ -265,7 +265,7 @@ export default function ProjectSettingsPage() {
     try {
       const updated = await projectApi.update(
         project.id,
-        { label_preferences: labelPreferences },
+        { label_preferences: normalizeLabelPreferences(labelPreferences) },
         session.accessToken
       );
       queryClient.setQueryData<Project>(projectKey, updated);

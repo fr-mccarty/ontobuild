@@ -860,17 +860,6 @@ function IssueCard({ issue, onNavigate, onDismiss }: IssueCardProps) {
               )}
             </div>
           )}
-          {issue.details?.labels && issue.details.labels.length > 1 && (
-            <div className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-              <span>Values: </span>
-              {issue.details.labels.map((label, i) => (
-                <span key={i}>
-                  {i > 0 && ", "}
-                  <span className="font-mono text-slate-600 dark:text-slate-300">&ldquo;{label}&rdquo;</span>
-                </span>
-              ))}
-            </div>
-          )}
         </div>
         {onDismiss && (
           <Tooltip content="Dismiss issue">

@@ -20,14 +20,7 @@ vi.mock("@/lib/utils", () => ({
     if (iri.includes("#")) return iri.split("#").pop() || iri;
     return iri.split("/").pop() || iri;
   },
-  langToFlag: (lang: string) => (lang === "en" ? "\u{1F1EC}\u{1F1E7}" : null),
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(" "),
-}));
-
-vi.mock("@/components/editor/LanguageFlag", () => ({
-  LanguageFlag: ({ lang }: { lang: string }) => (
-    <span data-testid={`lang-flag-${lang}`}>{lang}</span>
-  ),
 }));
 
 const searchMock = projectOntologyApi.searchEntities as Mock;
@@ -78,12 +71,11 @@ describe("PropertyAssertionSection", () => {
     );
   });
 
-  it("renders data assertions with value and language flag", () => {
+  it("renders data assertions with value", () => {
     const assertions: PropertyAssertion[] = [
       {
         propertyIri: "http://example.org/ontology#label",
         value: "Hello World",
-        lang: "en",
       },
     ];
 
@@ -97,7 +89,6 @@ describe("PropertyAssertionSection", () => {
 
     expect(screen.getByText("label")).not.toBeNull();
     expect(screen.getByText("Hello World")).not.toBeNull();
-    expect(screen.getByTestId("lang-flag-en")).not.toBeNull();
   });
 
   it("renders datatype badge when present", () => {
@@ -279,26 +270,6 @@ describe("PropertyAssertionSection", () => {
 
     expect(screen.getByText("Wheel")).not.toBeNull();
     expect(screen.getByText("Engine")).not.toBeNull();
-  });
-
-  it("renders data assertion without lang flag when lang is absent", () => {
-    const assertions: PropertyAssertion[] = [
-      {
-        propertyIri: "http://example.org/ontology#code",
-        value: "ABC123",
-      },
-    ];
-
-    render(
-      <PropertyAssertionSection
-        {...baseProps}
-        assertionType="data"
-        assertions={assertions}
-      />
-    );
-
-    expect(screen.getByText("ABC123")).not.toBeNull();
-    expect(screen.queryByTestId("lang-flag-en")).toBeNull();
   });
 
   it("shows property IRI in a tooltip on property label", async () => {
@@ -777,7 +748,6 @@ describe("PropertyAssertionSection", () => {
       expect(onAdd).toHaveBeenCalledWith({
         propertyIri: "http://example.org/ontology#label",
         value: "Hello",
-        lang: "en",
       });
       expect(onSaveNeeded).toHaveBeenCalled();
     });
@@ -803,7 +773,6 @@ describe("PropertyAssertionSection", () => {
       expect(onAdd).toHaveBeenCalledWith({
         propertyIri: "http://example.org/ontology#label",
         value: "World",
-        lang: "en",
       });
     });
 
@@ -848,7 +817,7 @@ describe("PropertyAssertionSection", () => {
       expect(onAdd).not.toHaveBeenCalled();
     });
 
-    it("respects custom language tag", async () => {
+    it("adds a plain data value", async () => {
       const onAdd = vi.fn();
 
       render(
@@ -863,44 +832,13 @@ describe("PropertyAssertionSection", () => {
       await selectPropertyForData();
 
       const valueInput = screen.getByPlaceholderText("Enter value...");
-      const langInput = screen.getByLabelText("Language tag");
 
-      fireEvent.change(langInput, { target: { value: "fr" } });
-      fireEvent.change(valueInput, { target: { value: "Bonjour" } });
-      fireEvent.keyDown(valueInput, { key: "Enter" });
-
-      expect(onAdd).toHaveBeenCalledWith({
-        propertyIri: "http://example.org/ontology#label",
-        value: "Bonjour",
-        lang: "fr",
-      });
-    });
-
-    it("omits lang when language tag is empty", async () => {
-      const onAdd = vi.fn();
-
-      render(
-        <PropertyAssertionSection
-          {...baseProps}
-          assertionType="data"
-          isEditing={true}
-          onAdd={onAdd}
-        />
-      );
-
-      await selectPropertyForData();
-
-      const valueInput = screen.getByPlaceholderText("Enter value...");
-      const langInput = screen.getByLabelText("Language tag");
-
-      fireEvent.change(langInput, { target: { value: "" } });
       fireEvent.change(valueInput, { target: { value: "42" } });
       fireEvent.keyDown(valueInput, { key: "Enter" });
 
       expect(onAdd).toHaveBeenCalledWith({
         propertyIri: "http://example.org/ontology#label",
         value: "42",
-        lang: undefined,
       });
     });
 
@@ -927,19 +865,6 @@ describe("PropertyAssertionSection", () => {
       });
     });
 
-    it("shows language flag in data adder", () => {
-      render(
-        <PropertyAssertionSection
-          {...baseProps}
-          assertionType="data"
-          isEditing={true}
-          onAdd={vi.fn()}
-        />
-      );
-
-      expect(screen.getByTestId("lang-flag-en")).not.toBeNull();
-    });
-
     it("disables value input when no property is selected", () => {
       render(
         <PropertyAssertionSection
@@ -954,19 +879,6 @@ describe("PropertyAssertionSection", () => {
       expect((valueInput as HTMLInputElement).disabled).toBe(true);
     });
 
-    it("disables language input when no property is selected", () => {
-      render(
-        <PropertyAssertionSection
-          {...baseProps}
-          assertionType="data"
-          isEditing={true}
-          onAdd={vi.fn()}
-        />
-      );
-
-      const langInput = screen.getByLabelText("Language tag");
-      expect((langInput as HTMLInputElement).disabled).toBe(true);
-    });
   });
 
   describe("AssertionAdder - click outside", () => {

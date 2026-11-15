@@ -378,20 +378,16 @@ describe("esc", () => {
 });
 
 describe("literal", () => {
-  it("creates a language-tagged literal", () => {
-    expect(literal("hello", "en")).toBe('"hello"@en');
-  });
-
-  it("creates a plain literal without language tag", () => {
-    expect(literal("hello", "")).toBe('"hello"');
+  it("creates a plain literal", () => {
+    expect(literal("hello")).toBe('"hello"');
   });
 
   it("escapes special characters in value", () => {
-    expect(literal('say "hi"', "en")).toBe('"say \\"hi\\""@en');
+    expect(literal('say "hi"')).toBe('"say \\"hi\\""');
   });
 
   it("escapes backslashes and newlines", () => {
-    expect(literal("line1\nline2\\end", "")).toBe('"line1\\nline2\\\\end"');
+    expect(literal("line1\nline2\\end")).toBe('"line1\\nline2\\\\end"');
   });
 });
 

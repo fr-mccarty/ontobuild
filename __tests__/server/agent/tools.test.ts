@@ -92,7 +92,7 @@ describe("agent tools against a real project", () => {
 
     const detail = await run("get_entity", { iri: `${NS}MargheritaPizza` });
     expect(detail.data.detail.parent_iris).toEqual([`${NS}Pizza`]);
-    expect(detail.data.detail.comments).toEqual([{ value: 'Tomato, "mozzarella" and basil', lang: "en" }]);
+    expect(detail.data.detail.comments).toEqual([{ value: 'Tomato, "mozzarella" and basil' }]);
 
     const second = await run("create_entity", { entity_type: "class", label: "Margherita Pizza" });
     expect(second.data.iri).toBe(`${NS}MargheritaPizza2`);
@@ -118,8 +118,8 @@ describe("agent tools against a real project", () => {
     expect(out.data.updated_fields).toEqual(["labels"]);
 
     const after = await run("get_entity", { iri: `${NS}Pizza` });
-    expect(after.data.detail.labels).toEqual([{ value: "Pizza pie", lang: "en" }]);
-    expect(after.data.detail.comments).toEqual([{ value: "A baked dish", lang: "en" }]);
+    expect(after.data.detail.labels).toEqual([{ value: "Pizza pie" }]);
+    expect(after.data.detail.comments).toEqual([{ value: "A baked dish" }]);
     expect(after.data.detail.parent_iris).toEqual([`${NS}Food`]);
 
     const revs = await run("list_revisions", { limit: 1 });
@@ -129,7 +129,7 @@ describe("agent tools against a real project", () => {
     expect(deprecate.is_error).toBe(false);
     const again = await run("get_entity", { iri: `${NS}Pizza` });
     expect(again.data.detail.deprecated).toBe(true);
-    expect(again.data.detail.labels).toEqual([{ value: "Pizza pie", lang: "en" }]);
+    expect(again.data.detail.labels).toEqual([{ value: "Pizza pie" }]);
   });
 
   it("update_property and update_individual keep omitted fields", async () => {
@@ -138,7 +138,7 @@ describe("agent tools against a real project", () => {
     const p = await run("get_entity", { iri: `${NS}hasTopping` });
     expect(p.data.detail.domain_iris).toEqual([`${NS}Pizza`]);
     expect(p.data.detail.range_iris).toEqual([`${NS}Topping`]);
-    expect(p.data.detail.labels).toEqual([{ value: "has topping", lang: "en" }]);
+    expect(p.data.detail.labels).toEqual([{ value: "has topping" }]);
 
     const ind = await run("update_individual", {
       iri: `${NS}Mozzarella`,
@@ -146,9 +146,9 @@ describe("agent tools against a real project", () => {
     });
     expect(ind.is_error).toBe(false);
     const i = await run("get_entity", { iri: `${NS}Mozzarella` });
-    expect(i.data.detail.comments).toEqual([{ value: "Soft cheese", lang: "en" }]);
+    expect(i.data.detail.comments).toEqual([{ value: "Soft cheese" }]);
     expect(i.data.detail.type_iris).toEqual([`${NS}Topping`]);
-    expect(i.data.detail.labels).toEqual([{ value: "Mozzarella", lang: "en" }]);
+    expect(i.data.detail.labels).toEqual([{ value: "Mozzarella" }]);
   });
 
   it("delete_entity removes properties and individuals via the generic route", async () => {
@@ -196,9 +196,9 @@ describe("agent tools against a real project", () => {
     expect(missing.is_error).toBe(true);
 
     const ok = await run("edit_source", {
-      old_text: '"Food"@en',
-      new_text: '"Food"@en, "Nourriture"@fr',
-      commit_message: "Add French label to Food",
+      old_text: '"Food"',
+      new_text: '"Food", "Nourriture"',
+      commit_message: "Add second label to Food",
     });
     expect(ok.is_error).toBe(false);
     expect(ok.mutated).toBe(true);

@@ -244,9 +244,8 @@ export function esc(s: string): string {
     .replace(/\t/g, "\\t");
 }
 
-export function literal(value: string, lang: string): string {
-  const escaped = esc(value);
-  return lang ? `"${escaped}"@${lang}` : `"${escaped}"`;
+export function literal(value: string): string {
+  return `"${esc(value)}"`;
 }
 
 export function isIriValue(value: string): boolean {

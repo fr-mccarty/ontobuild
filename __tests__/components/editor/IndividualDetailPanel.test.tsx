@@ -49,24 +49,6 @@ vi.mock("@/lib/hooks/useIriLabels", () => ({
   useIriLabels: () => ({}),
 }));
 
-vi.mock("@/components/editor/LanguageFlag", () => ({
-  LanguageFlag: () => null,
-}));
-vi.mock("@/components/editor/LanguagePicker", () => ({
-  LanguagePicker: ({ value, onChange }: { value: string; onChange: (code: string) => void }) => (
-    <select
-      data-testid="lang-picker"
-      aria-label="Language tag"
-      value={value}
-      onChange={(e) => onChange((e.target as HTMLSelectElement).value)}
-    >
-      <option value="en">en</option>
-      <option value="de">de</option>
-      <option value="fr">fr</option>
-    </select>
-  ),
-}));
-
 let capturedAnnotationRowProps: Array<Record<string, unknown>> = [];
 vi.mock("@/components/editor/standard/AnnotationRow", () => ({
   AnnotationRow: (props: Record<string, unknown>) => {
@@ -110,9 +92,9 @@ import { IndividualDetailPanel } from "@/components/editor/IndividualDetailPanel
 
 function makeIndividualDetail(overrides: Record<string, unknown> = {}) {
   return {
-    labels: [{ value: "John Doe", lang: "en" }],
-    comments: [{ value: "A sample person", lang: "en" }],
-    definitions: [{ value: "An individual representing John Doe", lang: "en" }],
+    labels: [{ value: "John Doe" }],
+    comments: [{ value: "A sample person" }],
+    definitions: [{ value: "An individual representing John Doe" }],
     annotations: [],
     typeIris: ["http://example.org/ontology#Person"],
     sameAsIris: [],
@@ -302,7 +284,7 @@ describe("IndividualDetailPanel", () => {
         annotations: [
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#prefLabel",
-            values: [{ value: "J. Doe", lang: "en" }],
+            values: [{ value: "J. Doe" }],
           },
         ],
       })
@@ -616,8 +598,8 @@ describe("IndividualDetailPanel", () => {
     autoSaveOverrides = {
       restoredDraft: {
         entityType: "individual",
-        labels: [{ value: "Restored Name", lang: "en" }],
-        comments: [{ value: "Restored Comment", lang: "en" }],
+        labels: [{ value: "Restored Name" }],
+        comments: [{ value: "Restored Comment" }],
         definitions: [],
         typeIris: ["http://example.org/ontology#Person"],
         sameAsIris: [],
@@ -668,22 +650,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.queryByText("Edit Item")).toBeNull();
   });
 
-  it("renders language tag pickers in edit mode", async () => {
-    const onUpdateIndividual = vi.fn();
-    render(
-      <IndividualDetailPanel
-        {...DEFAULT_PROPS}
-        canEdit={true}
-        onUpdateIndividual={onUpdateIndividual}
-      />
-    );
-    await waitFor(() => {
-      expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
-    });
-    const langPickers = screen.getAllByLabelText("Language tag");
-    expect(langPickers.length).toBeGreaterThanOrEqual(1);
-  });
-
   it("calls triggerSave on blur of label input", async () => {
     const user = userEvent.setup();
     const onUpdateIndividual = vi.fn();
@@ -719,7 +685,7 @@ describe("IndividualDetailPanel", () => {
     autoSaveOverrides = {
       restoredDraft: {
         entityType: "class",
-        labels: [{ value: "Wrong type", lang: "en" }],
+        labels: [{ value: "Wrong type" }],
         updatedAt: Date.now(),
       },
     };
@@ -741,8 +707,8 @@ describe("IndividualDetailPanel", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
         labels: [
-          { value: "John Doe", lang: "en" },
-          { value: "Jean Dupont", lang: "fr" },
+          { value: "John Doe" },
+          { value: "Jean Dupont" },
         ],
       })
     );
@@ -780,7 +746,6 @@ describe("IndividualDetailPanel", () => {
           {
             propertyIri: "http://example.org/ontology#hasName",
             value: "John",
-            lang: "en",
             datatype: "http://www.w3.org/2001/XMLSchema#string",
           },
         ],
@@ -796,8 +761,8 @@ describe("IndividualDetailPanel", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
         labels: [
-          { value: "John Doe", lang: "en" },
-          { value: "Jean Dupont", lang: "fr" },
+          { value: "John Doe" },
+          { value: "Jean Dupont" },
         ],
       })
     );
@@ -814,27 +779,6 @@ describe("IndividualDetailPanel", () => {
     });
     const removeButtons = container.querySelectorAll('button[aria-label="Remove"]');
     expect(removeButtons.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("allows editing language tag via picker", async () => {
-    const user = userEvent.setup();
-    const onUpdateIndividual = vi.fn();
-    mockTriggerSave.mockClear();
-    render(
-      <IndividualDetailPanel
-        {...DEFAULT_PROPS}
-        canEdit={true}
-        onUpdateIndividual={onUpdateIndividual}
-      />
-    );
-    await waitFor(() => {
-      expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
-    });
-    const langPickers = screen.getAllByLabelText("Language tag");
-    expect(langPickers.length).toBeGreaterThanOrEqual(1);
-    await user.selectOptions(langPickers[0], "fr");
-    expect((langPickers[0] as HTMLSelectElement).value).toBe("fr");
-    expect(mockTriggerSave).toHaveBeenCalled();
   });
 
   it("renders empty comment placeholder in edit mode when no comments", async () => {
@@ -947,8 +891,8 @@ describe("IndividualDetailPanel", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
         comments: [
-          { value: "First comment", lang: "en" },
-          { value: "Second comment", lang: "fr" },
+          { value: "First comment" },
+          { value: "Second comment" },
         ],
       })
     );
@@ -961,8 +905,8 @@ describe("IndividualDetailPanel", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
         definitions: [
-          { value: "Def one", lang: "en" },
-          { value: "Def two", lang: "fr" },
+          { value: "Def one" },
+          { value: "Def two" },
         ],
       })
     );
@@ -1135,16 +1079,6 @@ describe("IndividualDetailPanel", () => {
       );
       expect(updatedRow).toBeDefined();
     });
-
-    const onLangChange = commentRow!.onLangChange as (l: string) => void;
-    onLangChange("fr");
-
-    await waitFor(() => {
-      const updatedRow = capturedAnnotationRowProps.find(
-        (p) => p.propertyIri === "http://www.w3.org/2000/01/rdf-schema#comment" && p.lang === "fr"
-      );
-      expect(updatedRow).toBeDefined();
-    });
   });
 
   it("passes definition callbacks to AnnotationRow", async () => {
@@ -1199,8 +1133,8 @@ describe("IndividualDetailPanel", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
         comments: [
-          { value: "First comment", lang: "en" },
-          { value: "Second comment", lang: "fr" },
+          { value: "First comment" },
+          { value: "Second comment" },
         ],
       })
     );
@@ -1232,8 +1166,8 @@ describe("IndividualDetailPanel", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
         definitions: [
-          { value: "First def", lang: "en" },
-          { value: "Second def", lang: "fr" },
+          { value: "First def" },
+          { value: "Second def" },
         ],
       })
     );
@@ -1472,7 +1406,7 @@ describe("IndividualDetailPanel", () => {
         annotations: [
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#prefLabel",
-            values: [{ value: "J. Doe", lang: "en" }],
+            values: [{ value: "J. Doe" }],
           },
         ],
       })
@@ -1501,16 +1435,6 @@ describe("IndividualDetailPanel", () => {
       );
       expect(updatedRow).toBeDefined();
     });
-
-    const onLangChange = annRow!.onLangChange as (l: string) => void;
-    onLangChange("de");
-
-    await waitFor(() => {
-      const updatedRow = capturedAnnotationRowProps.find(
-        (p) => p.propertyIri === "http://www.w3.org/2004/02/skos/core#prefLabel" && p.lang === "de"
-      );
-      expect(updatedRow).toBeDefined();
-    });
   });
 
   it("invokes removeAnnotationValue for custom annotations in edit mode", async () => {
@@ -1520,8 +1444,8 @@ describe("IndividualDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#prefLabel",
             values: [
-              { value: "Label One", lang: "en" },
-              { value: "Label Two", lang: "fr" },
+              { value: "Label One" },
+              { value: "Label Two" },
             ],
           },
         ],
@@ -1577,8 +1501,8 @@ describe("IndividualDetailPanel", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
         labels: [
-          { value: "label1", lang: "en" },
-          { value: "label2", lang: "fr" },
+          { value: "label1" },
+          { value: "label2" },
         ],
       })
     );
@@ -1608,7 +1532,7 @@ describe("IndividualDetailPanel", () => {
         annotations: [
           {
             property_iri: "http://www.w3.org/2004/02/skos/core#prefLabel",
-            values: [{ value: "Pref Label Value", lang: "en" }],
+            values: [{ value: "Pref Label Value" }],
           },
         ],
       })
@@ -1666,7 +1590,7 @@ describe("IndividualDetailPanel", () => {
         annotations: [
           {
             property_iri: PREF_LABEL_IRI,
-            values: [{ value: "Existing", lang: "en" }],
+            values: [{ value: "Existing" }],
           },
         ],
       })
@@ -1687,8 +1611,8 @@ describe("IndividualDetailPanel", () => {
       expect(capturedInlineAnnotationAdderProps).not.toBeNull();
     });
 
-    const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string, lang: string) => void;
-    onAdd(PREF_LABEL_IRI, "New Value", "fr");
+    const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string) => void;
+    onAdd(PREF_LABEL_IRI, "New Value");
 
     await waitFor(() => {
       const updatedRows = capturedAnnotationRowProps.filter(
@@ -1718,8 +1642,8 @@ describe("IndividualDetailPanel", () => {
       expect(capturedInlineAnnotationAdderProps).not.toBeNull();
     });
 
-    const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string, lang: string) => void;
-    onAdd("http://www.w3.org/2004/02/skos/core#example", "Example value", "en");
+    const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string) => void;
+    onAdd("http://www.w3.org/2004/02/skos/core#example", "Example value");
 
     await waitFor(() => {
       const exampleRow = capturedAnnotationRowProps.find(
@@ -1861,14 +1785,13 @@ describe("IndividualDetailPanel", () => {
     expect((labelInputs[0] as HTMLInputElement).value).toBe("");
   });
 
-  it("renders data property assertion with lang flag in read-only mode", () => {
+  it("renders data property assertion in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
         dataPropertyAssertions: [
           {
             propertyIri: "http://example.org/ontology#hasName",
             value: "Jean",
-            lang: "fr",
           },
         ],
       })
@@ -1899,40 +1822,4 @@ describe("IndividualDetailPanel", () => {
     expect(mockTriggerSave).toHaveBeenCalled();
   });
 
-  it("updates custom annotation language via AnnotationRow callback", async () => {
-    mockExtractIndividualDetail.mockReturnValue(
-      makeIndividualDetail({
-        annotations: [
-          {
-            property_iri: "http://www.w3.org/2004/02/skos/core#prefLabel",
-            values: [{ value: "J. Doe", lang: "en" }],
-          },
-        ],
-      })
-    );
-    const onUpdateIndividual = vi.fn();
-    render(
-      <IndividualDetailPanel
-        {...DEFAULT_PROPS}
-        canEdit={true}
-        onUpdateIndividual={onUpdateIndividual}
-      />
-    );
-    await waitFor(() => {
-      expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
-    });
-    const annRow = capturedAnnotationRowProps.find(
-      (p) => p.propertyIri === "http://www.w3.org/2004/02/skos/core#prefLabel"
-    );
-    expect(annRow).not.toBeNull();
-    const onLangChange = annRow!.onLangChange as (l: string) => void;
-    onLangChange("de");
-
-    await waitFor(() => {
-      const updatedRow = capturedAnnotationRowProps.find(
-        (p) => p.propertyIri === "http://www.w3.org/2004/02/skos/core#prefLabel" && p.lang === "de"
-      );
-      expect(updatedRow).toBeDefined();
-    });
-  });
 });

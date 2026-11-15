@@ -35,7 +35,7 @@ const mockedBuildGraph = buildGraphFromClassDetail as ReturnType<typeof vi.fn>;
 function makeDetail(iri: string, parentIris: string[] = []) {
   return {
     iri,
-    labels: [{ value: iri.split("/").pop() || iri, lang: "en" }],
+    labels: [{ value: iri.split("/").pop() || iri }],
     comments: [],
     parent_iris: parentIris,
     annotations: [],

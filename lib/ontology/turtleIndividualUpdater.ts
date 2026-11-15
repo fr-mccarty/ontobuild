@@ -45,17 +45,17 @@ function genIndividualBlock(
 
   for (const l of data.labels) {
     if (!l.value.trim()) continue;
-    po.push(`rdfs:label ${literal(l.value, l.lang)}`);
+    po.push(`rdfs:label ${literal(l.value)}`);
   }
 
   for (const c of data.comments) {
     if (!c.value.trim()) continue;
-    po.push(`rdfs:comment ${literal(c.value, c.lang)}`);
+    po.push(`rdfs:comment ${literal(c.value)}`);
   }
 
   for (const d of data.definitions) {
     if (!d.value.trim()) continue;
-    po.push(`skos:definition ${literal(d.value, d.lang)}`);
+    po.push(`skos:definition ${literal(d.value)}`);
   }
 
   for (const s of data.sameAsIris) {
@@ -74,13 +74,11 @@ function genIndividualBlock(
   for (const a of data.dataPropertyAssertions) {
     if (!a.value) continue;
     const prop = toTurtle(a.propertyIri, rev);
-    if (a.lang) {
-      po.push(`${prop} ${literal(a.value, a.lang)}`);
-    } else if (a.datatype) {
+    if (a.datatype) {
       const escaped = esc(a.value);
       po.push(`${prop} "${escaped}"^^${toTurtle(a.datatype, rev)}`);
     } else {
-      po.push(`${prop} ${literal(a.value, "")}`);
+      po.push(`${prop} ${literal(a.value)}`);
     }
   }
 
@@ -101,10 +99,10 @@ function genIndividualBlock(
       const prop = toTurtle(ann.property_iri, rev);
       for (const v of ann.values) {
         if (!v.value.trim()) continue;
-        if (!v.lang && isIriValue(v.value)) {
+        if (isIriValue(v.value)) {
           po.push(`${prop} ${toTurtle(v.value, rev)}`);
         } else {
-          po.push(`${prop} ${literal(v.value, v.lang)}`);
+          po.push(`${prop} ${literal(v.value)}`);
         }
       }
     }

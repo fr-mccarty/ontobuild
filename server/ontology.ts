@@ -4,7 +4,7 @@ import * as git from "./git";
 import { all, bool, fromJson, get } from "./db";
 import { httpError } from "./http";
 import { LOCAL_USER, LOCAL_ROLE } from "./user";
-import { NS, parseTurtle, RdfParseError, findOntologyIri } from "./rdf";
+import { NS, parseTurtle, RdfParseError, findOntologyIri, stripLanguageTagsFromTurtle } from "./rdf";
 
 export { NS, findOntologyIri };
 
@@ -43,8 +43,19 @@ export function ontologyFilePath(project: ProjectRow): string {
   return DEFAULT_ONTOLOGY_FILE;
 }
 
+export function normalizeLabelPreferences(prefs: string[]): string[] {
+  const out: string[] = [];
+  for (const p of prefs) {
+    if (typeof p !== "string") continue;
+    const prop = p.split("@")[0].trim();
+    if (prop && !out.includes(prop)) out.push(prop);
+  }
+  return out;
+}
+
 export function projectLabelPreferences(project: ProjectRow): string[] | null {
-  return fromJson<string[] | null>(project.label_preferences, null);
+  const prefs = fromJson<string[] | null>(project.label_preferences, null);
+  return Array.isArray(prefs) ? normalizeLabelPreferences(prefs) : null;
 }
 
 export function projectToResponse(p: ProjectRow) {
@@ -185,6 +196,13 @@ export async function commitOntology(opts: {
       throw e;
     }
   }
+  let content: string;
+  try {
+    content = (await stripLanguageTagsFromTurtle(opts.content)).content;
+  } catch (e) {
+    if (e instanceof RdfParseError) httpError(422, `Invalid Turtle syntax: ${e.message}`);
+    throw e;
+  }
   const branch = await resolveBranch(opts.projectId, opts.branch);
   let parentHash: string | null = null;
   if (git.repoExists(opts.projectId)) {
@@ -197,7 +215,7 @@ export async function commitOntology(opts: {
   const commit = await git.commitFile(opts.projectId, {
     branch,
     path: ontologyFilePath(project),
-    content: opts.content,
+    content,
     message: opts.message,
     author: { name: LOCAL_USER.name, email: LOCAL_USER.email },
   });
@@ -213,6 +231,30 @@ export async function commitOntology(opts: {
   recordChange(event);
   await emitOntologyEvent(event);
   return { ...commit, branch };
+}
+
+export async function enforcePlainLiterals(
+  projectId: string,
+  branch: string,
+): Promise<(git.CommitInfo & { branch: string }) | null> {
+  const project = requireProject(projectId);
+  const content = await git.readFileOrNull(projectId, branch, ontologyFilePath(project));
+  if (content === null) return null;
+  let stripped: { content: string; removed: number };
+  try {
+    stripped = await stripLanguageTagsFromTurtle(content);
+  } catch {
+    return null;
+  }
+  if (!stripped.removed) return null;
+  return commitOntology({
+    projectId,
+    branch,
+    content: stripped.content,
+    message: `Remove language tags from ${stripped.removed} literal(s)`,
+    origin: "plain-literals",
+    validate: false,
+  });
 }
 
 export const RDF_TYPE = NS.rdf + "type";
@@ -237,7 +279,6 @@ export const SKOS_PREF_LABEL = NS.skos + "prefLabel";
 
 export interface LocalizedString {
   value: string;
-  lang: string;
 }
 
 export const LABEL_PROPERTY_MAP: Record<string, string> = {
@@ -249,7 +290,7 @@ export const LABEL_PROPERTY_MAP: Record<string, string> = {
   "dc:title": NS.dc + "title",
 };
 
-export const DEFAULT_LABEL_PREFERENCES = ["rdfs:label@en", "rdfs:label", "skos:prefLabel@en", "skos:prefLabel"];
+export const DEFAULT_LABEL_PREFERENCES = ["rdfs:label", "skos:prefLabel"];
 
 export function getObjects(store: Store, iri: string, predicate: string): Term[] {
   return store.getObjects(subjectTerm(iri), predicate, null);
@@ -266,7 +307,7 @@ export function getObjectIris(store: Store, iri: string, predicate: string): str
 export function getLiterals(store: Store, iri: string, predicate: string): LocalizedString[] {
   return getObjects(store, iri, predicate)
     .filter((t) => t.termType === "Literal")
-    .map((t) => ({ value: t.value, lang: (t as unknown as { language: string }).language || "" }));
+    .map((t) => ({ value: t.value }));
 }
 
 export function getLabels(store: Store, iri: string): LocalizedString[] {
@@ -302,14 +343,10 @@ export function getPreferredLabel(
 ): string | null {
   const prefs = preferences && preferences.length ? preferences : DEFAULT_LABEL_PREFERENCES;
   for (const pref of prefs) {
-    const at = pref.lastIndexOf("@");
-    const prop = at >= 0 ? pref.slice(0, at) : pref;
-    const lang = at >= 0 ? pref.slice(at + 1) : null;
-    const propIri = LABEL_PROPERTY_MAP[prop];
+    const propIri = LABEL_PROPERTY_MAP[pref.split("@")[0].trim()];
     if (!propIri) continue;
-    for (const l of getLiterals(store, iri, propIri)) {
-      if (lang === null || l.lang === lang) return l.value;
-    }
+    const first = getLiterals(store, iri, propIri)[0];
+    if (first) return first.value;
   }
   const any = getLabels(store, iri)[0];
   if (any) return any.value;

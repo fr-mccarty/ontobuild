@@ -158,7 +158,7 @@ export function useAutoSave({
         .filter((g) => g.targets.length > 0)
         .map((g) => ({
           property_iri: g.property_iri,
-          values: g.targets.map((t) => ({ value: t.iri, lang: "" })),
+          values: g.targets.map((t) => ({ value: t.iri })),
         }));
 
       const validLabels = draft.labels.filter((l) => l.value.trim());

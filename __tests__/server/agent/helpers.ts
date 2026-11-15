@@ -9,25 +9,25 @@ export const PIZZA_TTL = `@prefix : <http://example.org/pizza#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
 <http://example.org/pizza> a owl:Ontology ;
-    rdfs:label "Pizza ontology"@en .
+    rdfs:label "Pizza ontology" .
 
 :Food a owl:Class ;
-    rdfs:label "Food"@en .
+    rdfs:label "Food" .
 
 :Pizza a owl:Class ;
-    rdfs:label "Pizza"@en ;
-    rdfs:comment "A baked dish"@en ;
+    rdfs:label "Pizza" ;
+    rdfs:comment "A baked dish" ;
     rdfs:subClassOf :Food .
 
 :Topping a owl:Class ;
-    rdfs:label "Topping"@en .
+    rdfs:label "Topping" .
 
 :hasTopping a owl:ObjectProperty ;
-    rdfs:label "has topping"@en ;
+    rdfs:label "has topping" ;
     rdfs:range :Topping .
 
 :Mozzarella a owl:NamedIndividual, :Topping ;
-    rdfs:label "Mozzarella"@en .
+    rdfs:label "Mozzarella" .
 `;
 
 type G = typeof globalThis & Record<string, unknown>;

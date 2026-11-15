@@ -10,7 +10,7 @@ describe("generateTurtleSnippet", () => {
       entityType: "class",
     });
     expect(snippet).toContain("a owl:Class");
-    expect(snippet).toContain('rdfs:label "Foo"@en');
+    expect(snippet).toContain('rdfs:label "Foo"');
     expect(snippet).toMatch(/\.\s*$/);
   });
 
@@ -21,7 +21,7 @@ describe("generateTurtleSnippet", () => {
       entityType: "objectProperty",
     });
     expect(snippet).toContain("a owl:ObjectProperty");
-    expect(snippet).toContain('rdfs:label "has part"@en');
+    expect(snippet).toContain('rdfs:label "has part"');
   });
 
   it("generates a data property snippet", () => {
@@ -133,7 +133,7 @@ describe("generateTurtleSnippet", () => {
       label: 'He said "hello"',
       entityType: "class",
     });
-    expect(snippet).toContain('rdfs:label "He said \\"hello\\""@en');
+    expect(snippet).toContain('rdfs:label "He said \\"hello\\""');
   });
 
   it("escapes backslashes in labels", () => {
@@ -142,7 +142,7 @@ describe("generateTurtleSnippet", () => {
       label: "path\\to\\thing",
       entityType: "class",
     });
-    expect(snippet).toContain('rdfs:label "path\\\\to\\\\thing"@en');
+    expect(snippet).toContain('rdfs:label "path\\\\to\\\\thing"');
   });
 
   it("starts with a blank line for separation", () => {

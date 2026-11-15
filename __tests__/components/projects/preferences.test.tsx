@@ -40,7 +40,7 @@ describe("LabelPreferences", () => {
     );
 
     expect(screen.getAllByText("rdfs:label").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("en")).toBeDefined();
+    expect(screen.queryByText("en")).toBeNull();
     expect(screen.getAllByText("skos:prefLabel").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("#1")).toBeDefined();
     expect(screen.getByText("#2")).toBeDefined();
@@ -56,25 +56,13 @@ describe("LabelPreferences", () => {
     ).toBeNull();
   });
 
-  it("adds a preference without language tag", async () => {
+  it("adds a preference", async () => {
     const user = userEvent.setup();
     render(<LabelPreferences preferences={[]} onChange={mockOnChange} />);
 
     await user.click(screen.getByRole("button", { name: /Add/ }));
 
     expect(mockOnChange).toHaveBeenCalledWith(["rdfs:label"]);
-  });
-
-  it("adds a preference with language tag", async () => {
-    const user = userEvent.setup();
-    render(<LabelPreferences preferences={[]} onChange={mockOnChange} />);
-
-    const languageSelect = screen.getAllByRole("combobox")[1];
-    await user.selectOptions(languageSelect, "en");
-
-    await user.click(screen.getByRole("button", { name: /Add/ }));
-
-    expect(mockOnChange).toHaveBeenCalledWith(["rdfs:label@en"]);
   });
 
   it("adds a preference with a different property", async () => {
@@ -130,7 +118,7 @@ describe("LabelPreferences", () => {
     const moveUpButtons = screen.getAllByLabelText("Move up");
     await user.click(moveUpButtons[1]);
 
-    expect(mockOnChange).toHaveBeenCalledWith(["skos:prefLabel", "rdfs:label@en"]);
+    expect(mockOnChange).toHaveBeenCalledWith(["skos:prefLabel", "rdfs:label"]);
   });
 
   it("moves a preference down when move down button is clicked", async () => {
@@ -145,7 +133,7 @@ describe("LabelPreferences", () => {
     const moveDownButtons = screen.getAllByLabelText("Move down");
     await user.click(moveDownButtons[0]);
 
-    expect(mockOnChange).toHaveBeenCalledWith(["skos:prefLabel", "rdfs:label@en"]);
+    expect(mockOnChange).toHaveBeenCalledWith(["skos:prefLabel", "rdfs:label"]);
   });
 
   it("disables move up for first item", () => {
@@ -203,16 +191,17 @@ describe("LabelPreferences", () => {
     expect(options.map((o) => o.textContent)).toContain("dcterms:title");
   });
 
-  it("renders all language options in the language select", () => {
-    render(<LabelPreferences preferences={[]} onChange={mockOnChange} />);
+  it("strips language suffixes and dedupes stored preferences", () => {
+    render(
+      <LabelPreferences
+        preferences={["rdfs:label@en", "rdfs:label", "skos:prefLabel@en"]}
+        onChange={mockOnChange}
+      />
+    );
 
-    const languageSelect = screen.getAllByRole("combobox")[1];
-    const options = within(languageSelect).getAllByRole("option");
-
-    expect(options).toHaveLength(8);
-    expect(options.map((o) => o.textContent)).toContain("Any language");
-    expect(options.map((o) => o.textContent)).toContain("English (en)");
-    expect(options.map((o) => o.textContent)).toContain("Latin (la)");
+    expect(screen.getByText("#1")).toBeDefined();
+    expect(screen.getByText("#2")).toBeDefined();
+    expect(screen.queryByText("#3")).toBeNull();
   });
 
   it("shows priority numbers for preferences", () => {

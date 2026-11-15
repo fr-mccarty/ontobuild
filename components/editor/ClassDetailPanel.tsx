@@ -30,8 +30,6 @@ import { projectOntologyApi, type OWLClassDetail, type ClassUpdatePayload, type 
 import type { LocalizedString } from "@/lib/api/client";
 import { lintApi, type LintIssue } from "@/lib/api/lint";
 import { cn, getLocalName, getPreferredLabel } from "@/lib/utils";
-import { LanguageFlag } from "@/components/editor/LanguageFlag";
-import { LanguagePicker } from "@/components/editor/LanguagePicker";
 import { ParentClassPicker } from "@/components/editor/ParentClassPicker";
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
 import { InlineAnnotationAdder } from "@/components/editor/standard/InlineAnnotationAdder";
@@ -46,7 +44,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 
 export function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
-    return [...arr, { value: "", lang: "en" }];
+    return [...arr, { value: "" }];
   }
   return arr;
 }
@@ -159,7 +157,7 @@ export function ClassDetailPanel({
   }, []);
 
   const initEditState = useCallback((detail: OWLClassDetail) => {
-    setEditLabels(detail.labels.length > 0 ? detail.labels.map((l) => ({ ...l })) : [{ value: "", lang: "en" }]);
+    setEditLabels(detail.labels.length > 0 ? detail.labels.map((l) => ({ ...l })) : [{ value: "" }]);
     setEditComments(ensureTrailingEmpty(detail.comments.map((c) => ({ ...c }))));
     setEditParentIris([...detail.parent_iris]);
     setEditParentLabels({ ...detail.parent_labels });
@@ -187,7 +185,7 @@ export function ClassDetailPanel({
     }
 
     if (!regularAnnotations.find((a) => a.property_iri === DEFINITION_IRI)) {
-      regularAnnotations.unshift({ property_iri: DEFINITION_IRI, values: [{ value: "", lang: "en" }] });
+      regularAnnotations.unshift({ property_iri: DEFINITION_IRI, values: [{ value: "" }] });
     }
 
     if (relationships.length === 0) {
@@ -224,7 +222,7 @@ export function ClassDetailPanel({
     if (!canEdit || !onUpdateClass || !classDetail) return;
 
     if (restoredDraft && classIri) {
-      setEditLabels(restoredDraft.labels.length > 0 ? restoredDraft.labels : [{ value: "", lang: "en" }]);
+      setEditLabels(restoredDraft.labels.length > 0 ? restoredDraft.labels : [{ value: "" }]);
       setEditComments(ensureTrailingEmpty(restoredDraft.comments));
       setEditParentIris(restoredDraft.parentIris);
       setEditParentLabels(restoredDraft.parentLabels);
@@ -346,8 +344,8 @@ export function ClassDetailPanel({
     );
   }, [resolvedTargetLabels, isEditing]);
 
-  const updateLabel = useCallback((index: number, field: "value" | "lang", newVal: string) => {
-    setEditLabels((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: newVal } : l)));
+  const updateLabel = useCallback((index: number, newVal: string) => {
+    setEditLabels((prev) => prev.map((l, i) => (i === index ? { ...l, value: newVal } : l)));
   }, []);
 
   const removeLabel = useCallback((index: number) => {
@@ -355,9 +353,9 @@ export function ClassDetailPanel({
     requestAnimationFrame(() => triggerSave());
   }, [triggerSave]);
 
-  const updateComment = useCallback((index: number, field: "value" | "lang", newVal: string) => {
+  const updateComment = useCallback((index: number, newVal: string) => {
     setEditComments((prev) => {
-      const updated = prev.map((c, i) => (i === index ? { ...c, [field]: newVal } : c));
+      const updated = prev.map((c, i) => (i === index ? { ...c, value: newVal } : c));
       return ensureTrailingEmpty(updated);
     });
   }, []);
@@ -382,11 +380,11 @@ export function ClassDetailPanel({
   }, [triggerSave]);
 
   const updateAnnotationValue = useCallback(
-    (propertyIri: string, valueIdx: number, field: "value" | "lang", newVal: string) => {
+    (propertyIri: string, valueIdx: number, newVal: string) => {
       setEditAnnotations((prev) =>
         prev.map((a) => {
           if (a.property_iri !== propertyIri) return a;
-          const updated = a.values.map((v, vi) => (vi === valueIdx ? { ...v, [field]: newVal } : v));
+          const updated = a.values.map((v, vi) => (vi === valueIdx ? { ...v, value: newVal } : v));
           return { ...a, values: ensureTrailingEmpty(updated) };
         })
       );
@@ -609,17 +607,10 @@ export function ClassDetailPanel({
                     <input
                       type="text"
                       value={label.value}
-                      onChange={(e) => updateLabel(index, "value", e.target.value)}
+                      onChange={(e) => updateLabel(index, e.target.value)}
                       onBlur={() => triggerSave()}
                       placeholder="Label text"
                       className="flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-                    />
-                    <LanguagePicker
-                      value={label.lang}
-                      onChange={(code) => {
-                        updateLabel(index, "lang", code);
-                        triggerSave();
-                      }}
                     />
                     {editLabels.length > 1 ? (
                       <Tooltip content="Remove label">
@@ -669,13 +660,11 @@ export function ClassDetailPanel({
                           key={vIdx}
                           propertyIri={DEFINITION_IRI}
                           value={val.value}
-                          lang={val.lang}
-                          onValueChange={(v) => updateAnnotationValue(DEFINITION_IRI, vIdx, "value", v)}
-                          onLangChange={(l) => updateAnnotationValue(DEFINITION_IRI, vIdx, "lang", l)}
+                          onValueChange={(v) => updateAnnotationValue(DEFINITION_IRI, vIdx, v)}
                           onRemove={isGhost ? undefined : () => removeAnnotationValue(DEFINITION_IRI, vIdx)}
                           onBlur={() => triggerSave()}
                           showPropertyLabel={false}
-                          placeholder={isGhost ? "Add another Definition \u2014 or translation." : undefined}
+                          placeholder={isGhost ? "Add another Definition" : undefined}
                         />
                       );
                     })}
@@ -690,7 +679,6 @@ export function ClassDetailPanel({
                   <div className="space-y-1">
                     {defAnnotation.values.map((val, vIndex) => (
                       <div key={vIndex} className="flex items-start gap-2">
-                        {val.lang && <LanguageFlag lang={val.lang} />}
                         <span className="text-sm text-slate-700 dark:text-slate-300">{val.value}</span>
                       </div>
                     ))}
@@ -711,21 +699,12 @@ export function ClassDetailPanel({
                     <div key={index} className="flex items-start gap-2">
                       <textarea
                         value={comment.value}
-                        onChange={(e) => updateComment(index, "value", e.target.value)}
+                        onChange={(e) => updateComment(index, e.target.value)}
                         onBlur={() => triggerSave()}
-                        placeholder={isGhost ? "Add another Comment \u2014 or translation." : ""}
+                        placeholder={isGhost ? "Add another Comment" : ""}
                         rows={isGhost ? 1 : 2}
                         className="flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                       />
-                      <div className="shrink-0">
-                        <LanguagePicker
-                          value={comment.lang}
-                          onChange={(code) => {
-                            updateComment(index, "lang", code);
-                            triggerSave();
-                          }}
-                        />
-                      </div>
                       {!isGhost ? (
                         <Tooltip content="Remove comment">
                           <button
@@ -751,7 +730,6 @@ export function ClassDetailPanel({
               <div className="space-y-1">
                 {classDetail.comments.map((comment, index) => (
                   <div key={index} className="flex items-start gap-2">
-                    {comment.lang && <LanguageFlag lang={comment.lang} />}
                     <span className="text-sm text-slate-700 dark:text-slate-300">{comment.value}</span>
                   </div>
                 ))}
@@ -780,13 +758,11 @@ export function ClassDetailPanel({
                                 key={vIdx}
                                 propertyIri={annotation.property_iri}
                                 value={val.value}
-                                lang={val.lang}
-                                onValueChange={(v) => updateAnnotationValue(annotation.property_iri, vIdx, "value", v)}
-                                onLangChange={(l) => updateAnnotationValue(annotation.property_iri, vIdx, "lang", l)}
+                                onValueChange={(v) => updateAnnotationValue(annotation.property_iri, vIdx, v)}
                                 onRemove={isGhost ? undefined : () => removeAnnotationValue(annotation.property_iri, vIdx)}
                                 onBlur={() => triggerSave()}
                                 showPropertyLabel={false}
-                                placeholder={isGhost ? `Add another ${propInfo.displayLabel} \u2014 or translation.` : undefined}
+                                placeholder={isGhost ? `Add another ${propInfo.displayLabel}` : undefined}
                               />
                             );
                           })}
@@ -800,7 +776,6 @@ export function ClassDetailPanel({
                       <div className="space-y-1">
                         {annotation.values.map((val, vIdx) => (
                           <div key={vIdx} className="flex items-center gap-2">
-                            {val.lang && <LanguageFlag lang={val.lang} />}
                             <span className="text-sm text-slate-700 dark:text-slate-300">{val.value}</span>
                           </div>
                         ))}
@@ -816,19 +791,19 @@ export function ClassDetailPanel({
                       ...Array.from(RELATIONSHIP_PROPERTY_IRIS),
                       ...editAnnotations.map((a) => a.property_iri),
                     ]}
-                    onAdd={(propertyIri, value, lang) => {
+                    onAdd={(propertyIri, value) => {
                       setEditAnnotations((prev) => {
                         const existing = prev.find((a) => a.property_iri === propertyIri);
                         if (existing) {
                           return prev.map((a) =>
                             a.property_iri === propertyIri
-                              ? { ...a, values: ensureTrailingEmpty([...a.values, { value, lang }]) }
+                              ? { ...a, values: ensureTrailingEmpty([...a.values, { value }]) }
                               : a
                           );
                         }
                         return [
                           ...prev,
-                          { property_iri: propertyIri, values: ensureTrailingEmpty([{ value, lang }]) },
+                          { property_iri: propertyIri, values: ensureTrailingEmpty([{ value }]) },
                         ];
                       });
                       requestAnimationFrame(() => triggerSave());

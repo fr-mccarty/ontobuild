@@ -235,9 +235,8 @@ export async function serializeTurtle(
 
   const literal = (t: Term): string => {
     const l = t as unknown as { value: string; language: string; datatype: Term };
-    if (l.language) return `${str(l.value)}@${l.language}`;
-    const dt = l.datatype?.value ?? XSD_STRING;
-    if (dt === XSD_STRING) return str(l.value);
+    const dt = l.language ? XSD_STRING : (l.datatype?.value ?? XSD_STRING);
+    if (dt === XSD_STRING || dt === NS.rdf + "langString") return str(l.value);
     if (dt === NS.xsd + "integer" && /^[+-]?\d+$/.test(l.value)) return l.value;
     if (dt === NS.xsd + "boolean" && /^(true|false)$/.test(l.value)) return l.value;
     if (dt === NS.xsd + "decimal" && /^[+-]?\d*\.\d+$/.test(l.value)) return l.value;
@@ -376,11 +375,27 @@ function sortPreds(qs: Quad[]): Quad[] {
 }
 
 function objectSortKey(t: Term): string {
-  if (t.termType === "Literal") {
-    const l = t as unknown as { value: string; language: string };
-    return `2${l.value}@${l.language}`;
-  }
+  if (t.termType === "Literal") return `2${t.value}`;
   return (t.termType === "NamedNode" ? "0" : "1") + t.value;
+}
+
+export function stripLanguageTags(store: Store): number {
+  let count = 0;
+  for (const q of store.getQuads(null, null, null, null)) {
+    if (q.object.termType !== "Literal" || !(q.object as unknown as { language: string }).language) continue;
+    store.removeQuad(q);
+    store.addQuad(q.subject, q.predicate, DataFactory.literal(q.object.value), q.graph);
+    count++;
+  }
+  return count;
+}
+
+export async function stripLanguageTagsFromTurtle(content: string): Promise<{ content: string; removed: number }> {
+  if (!/["']@[A-Za-z]/.test(content)) return { content, removed: 0 };
+  const parsed = parseTurtle(content);
+  const removed = stripLanguageTags(parsed.store);
+  if (!removed) return { content, removed: 0 };
+  return { content: await serializeTurtle(parsed.store, parsed.prefixes), removed };
 }
 
 export async function normalizeToTurtle(
@@ -392,6 +407,7 @@ export async function normalizeToTurtle(
   format: RdfFormat;
   prefixesBefore: string[];
   prefixesAfter: string[];
+  languageTagsRemoved: number;
 }> {
   const format = formatFromFilename(filename);
   if (!format) {
@@ -400,6 +416,7 @@ export async function normalizeToTurtle(
     );
   }
   const parsed = await parseRdf(content, format);
+  const languageTagsRemoved = stripLanguageTags(parsed.store);
   const turtle = await serializeTurtle(parsed.store, parsed.prefixes);
   const after = parseTurtle(turtle).prefixes;
   return {
@@ -408,5 +425,6 @@ export async function normalizeToTurtle(
     format,
     prefixesBefore: Object.keys(parsed.prefixes).filter(Boolean).sort(),
     prefixesAfter: Object.keys(after).filter(Boolean).sort(),
+    languageTagsRemoved,
   };
 }

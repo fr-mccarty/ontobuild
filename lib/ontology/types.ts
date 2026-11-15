@@ -1,6 +1,5 @@
 export interface LocalizedString {
   value: string;
-  lang: string;
 }
 
 export interface OWLEntity {

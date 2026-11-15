@@ -6,6 +6,7 @@ import { startJob } from "../jobs";
 import { loadOntology, requireProject, resolveBranch } from "../ontology";
 import {
   ALL_RULE_IDS,
+  REMOVED_RULE_IDS,
   LINT_LEVEL_DEFINITIONS,
   getAvailableRules,
   getRulesForLevel,
@@ -85,6 +86,7 @@ function issueToResponse(i: LintIssueRow) {
 }
 
 const SEVERITY_ORDER = "CASE issue_type WHEN 'error' THEN 0 WHEN 'warning' THEN 1 ELSE 2 END";
+const KNOWN_RULES_SQL = `rule_id IN (${[...ALL_RULE_IDS].map((id) => `'${id.replace(/'/g, "''")}'`).join(",")})`;
 
 function getConfigRow(projectId: string): LintConfigRow | undefined {
   return get<LintConfigRow>("SELECT * FROM project_lint_configs WHERE project_id = ?", projectId);
@@ -121,7 +123,7 @@ function serializeConfig(projectId: string, cfg: LintConfigRow | undefined) {
       : cfg.enabled_rules
           .split(",")
           .map((s) => s.trim())
-          .filter(Boolean)
+          .filter((s) => s && ALL_RULE_IDS.has(s))
           .sort();
   return {
     project_id: projectId,
@@ -228,7 +230,7 @@ r.get("/projects/:id/lint/status", (c) => {
     info = 0;
   if (last && last.status === "completed") {
     for (const row of all<{ issue_type: string; n: number }>(
-      "SELECT issue_type, COUNT(*) AS n FROM lint_issues WHERE run_id = ? AND resolved_at IS NULL GROUP BY issue_type",
+      `SELECT issue_type, COUNT(*) AS n FROM lint_issues WHERE run_id = ? AND resolved_at IS NULL AND ${KNOWN_RULES_SQL} GROUP BY issue_type`,
       last.id,
     )) {
       if (row.issue_type === "error") error = Number(row.n);
@@ -273,7 +275,7 @@ r.get("/projects/:id/lint/runs/:runId", (c) => {
   );
   if (!runRow) httpError(404, "Lint run not found");
   const issues = all<LintIssueRow>(
-    `SELECT * FROM lint_issues WHERE run_id = ? ORDER BY ${SEVERITY_ORDER}, rule_id, subject_iri`,
+    `SELECT * FROM lint_issues WHERE run_id = ? AND ${KNOWN_RULES_SQL} ORDER BY ${SEVERITY_ORDER}, rule_id, subject_iri`,
     runRow.id,
   ).map(issueToResponse);
   return c.json({ ...runToResponse(runRow), issues });
@@ -291,7 +293,7 @@ r.get("/projects/:id/lint/issues", (c) => {
   );
   if (!last) return c.json({ items: [], total: 0, skip, limit });
 
-  const where = ["run_id = ?"];
+  const where = ["run_id = ?", KNOWN_RULES_SQL];
   const params: (string | number)[] = [last.id];
   const issueType = c.req.query("issue_type");
   const ruleId = c.req.query("rule_id");
@@ -360,13 +362,14 @@ r.put("/projects/:id/lint/config", async (c) => {
     if (!Array.isArray(rules) || rules.some((x) => typeof x !== "string")) {
       httpError(422, "enabled_rules must be a list of rule IDs");
     }
-    const invalid = [...new Set(rules as string[])].filter((x) => !ALL_RULE_IDS.has(x)).sort();
+    const invalid = [...new Set(rules as string[])].filter((x) => !ALL_RULE_IDS.has(x) && !REMOVED_RULE_IDS.has(x)).sort();
     if (invalid.length) httpError(422, `Unknown rule IDs: ${invalid.join(", ")}`);
   }
   if (level !== null && rules !== null) {
     httpError(422, "lint_level and enabled_rules are mutually exclusive — choose preset OR custom mode");
   }
-  const enabledStr = rules === null ? null : [...(rules as string[])].sort().join(",");
+  const enabledStr =
+    rules === null ? null : [...new Set(rules as string[])].filter((x) => ALL_RULE_IDS.has(x)).sort().join(",");
   run(
     `INSERT INTO project_lint_configs (project_id, lint_level, enabled_rules, updated_at) VALUES (?, ?, ?, ?)
      ON CONFLICT(project_id) DO UPDATE SET lint_level = excluded.lint_level, enabled_rules = excluded.enabled_rules, updated_at = excluded.updated_at`,

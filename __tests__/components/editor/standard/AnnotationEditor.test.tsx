@@ -8,25 +8,17 @@ vi.mock("@/lib/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
-vi.mock("@/components/editor/LanguageFlag", () => ({
-  LanguageFlag: ({ lang }: { lang: string }) => <span data-testid="lang-flag">{lang}</span>,
-}));
-
 vi.mock("@/components/editor/standard/AnnotationRow", () => ({
   AnnotationRow: ({
     propertyIri,
     value,
-    lang,
     onValueChange,
-    onLangChange,
     onRemove,
     showPropertyLabel,
   }: {
     propertyIri: string;
     value: string;
-    lang: string;
     onValueChange: (v: string) => void;
-    onLangChange: (l: string) => void;
     onRemove: () => void;
     showPropertyLabel?: boolean;
   }) => (
@@ -36,11 +28,6 @@ vi.mock("@/components/editor/standard/AnnotationRow", () => ({
         data-testid="row-value-input"
         value={value}
         onChange={(e) => onValueChange(e.target.value)}
-      />
-      <input
-        data-testid="row-lang-input"
-        value={lang}
-        onChange={(e) => onLangChange(e.target.value)}
       />
       {showPropertyLabel && <span data-testid="row-label">label</span>}
       <button data-testid="row-remove" onClick={onRemove}>Remove</button>
@@ -98,13 +85,13 @@ const sampleAnnotations: AnnotationUpdate[] = [
   {
     property_iri: rdfsLabel,
     values: [
-      { value: "My Class", lang: "en" },
-      { value: "Ma Classe", lang: "fr" },
+      { value: "My Class" },
+      { value: "Ma Classe" },
     ],
   },
   {
     property_iri: rdfsComment,
-    values: [{ value: "A description", lang: "en" }],
+    values: [{ value: "A description" }],
   },
 ];
 
@@ -187,15 +174,6 @@ describe("AnnotationEditor", () => {
     expect(updated[1].values[0].value).toBe("A description");
   });
 
-  it("calls onChange when a language is updated", () => {
-    render(<AnnotationEditor annotations={sampleAnnotations} onChange={onChange} />);
-    const langInputs = screen.getAllByTestId("row-lang-input");
-    fireEvent.change(langInputs[1], { target: { value: "de" } });
-    expect(onChange).toHaveBeenCalledTimes(1);
-    const updated = onChange.mock.calls[0][0] as AnnotationUpdate[];
-    expect(updated[0].values[1].lang).toBe("de");
-  });
-
   it("calls onChange with value removed when remove is clicked", () => {
     render(<AnnotationEditor annotations={sampleAnnotations} onChange={onChange} />);
     const removeButtons = screen.getAllByTestId("row-remove");
@@ -230,7 +208,7 @@ describe("AnnotationEditor", () => {
     const updated = onChange.mock.calls[0][0] as AnnotationUpdate[];
     expect(updated.length).toBe(1);
     expect(updated[0].property_iri).toBe(rdfsLabel);
-    expect(updated[0].values).toEqual([{ value: "", lang: "en" }]);
+    expect(updated[0].values).toEqual([{ value: "" }]);
   });
 
   it("appends a value to existing property when selected from picker", () => {
@@ -240,7 +218,7 @@ describe("AnnotationEditor", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     const updated = onChange.mock.calls[0][0] as AnnotationUpdate[];
     expect(updated[0].values.length).toBe(3);
-    expect(updated[0].values[2]).toEqual({ value: "", lang: "en" });
+    expect(updated[0].values[2]).toEqual({ value: "" });
   });
 
   it("hides picker after selecting a property", () => {

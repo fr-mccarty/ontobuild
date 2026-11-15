@@ -14,16 +14,14 @@ const LABEL_PROPERTIES = [
   { value: "dc:title", label: "dc:title" },
 ];
 
-const LANGUAGES = [
-  { value: "", label: "Any language" },
-  { value: "en", label: "English (en)" },
-  { value: "it", label: "Italian (it)" },
-  { value: "es", label: "Spanish (es)" },
-  { value: "fr", label: "French (fr)" },
-  { value: "de", label: "German (de)" },
-  { value: "pt", label: "Portuguese (pt)" },
-  { value: "la", label: "Latin (la)" },
-];
+export function normalizeLabelPreferences(preferences: string[]): string[] {
+  const result: string[] = [];
+  for (const pref of preferences) {
+    const prop = pref.split("@")[0].trim();
+    if (prop && !result.includes(prop)) result.push(prop);
+  }
+  return result;
+}
 
 interface LabelPreferencesProps {
   preferences: string[];
@@ -32,17 +30,16 @@ interface LabelPreferencesProps {
 }
 
 export function LabelPreferences({
-  preferences,
+  preferences: rawPreferences,
   onChange,
   disabled = false,
 }: LabelPreferencesProps) {
   const [newProperty, setNewProperty] = useState("rdfs:label");
-  const [newLanguage, setNewLanguage] = useState("");
+  const preferences = normalizeLabelPreferences(rawPreferences);
 
   const handleAdd = () => {
-    const pref = newLanguage ? `${newProperty}@${newLanguage}` : newProperty;
-    if (!preferences.includes(pref)) {
-      onChange([...preferences, pref]);
+    if (!preferences.includes(newProperty)) {
+      onChange([...preferences, newProperty]);
     }
   };
 
@@ -64,11 +61,6 @@ export function LabelPreferences({
     onChange(newPrefs);
   };
 
-  const parsePreference = (pref: string) => {
-    const [prop, lang] = pref.includes("@") ? pref.split("@") : [pref, null];
-    return { prop, lang };
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
@@ -79,8 +71,8 @@ export function LabelPreferences({
             The system tries each preference in order until it finds a matching label.
           </p>
           <p className="mt-1">
-            For example, <code className="rounded-sm bg-blue-100 px-1 dark:bg-blue-800">rdfs:label@en</code> will
-            look for English labels first.
+            For example, put <code className="rounded-sm bg-blue-100 px-1 dark:bg-blue-800">skos:prefLabel</code> first
+            to prefer SKOS labels over <code className="rounded-sm bg-blue-100 px-1 dark:bg-blue-800">rdfs:label</code>.
           </p>
         </div>
       </div>
@@ -91,8 +83,7 @@ export function LabelPreferences({
             Current preferences (in priority order)
           </label>
           <ul className="space-y-2">
-            {preferences.map((pref, index) => {
-              const { prop, lang } = parsePreference(pref);
+            {preferences.map((prop, index) => {
               return (
                 <li
                   key={index}
@@ -131,11 +122,6 @@ export function LabelPreferences({
                   </div>
                   <span className="flex-1 font-mono text-sm text-slate-700 dark:text-slate-300">
                     <span className="text-primary-600 dark:text-primary-400">{prop}</span>
-                    {lang && (
-                      <span className="text-slate-500">
-                        @<span className="text-amber-600 dark:text-amber-400">{lang}</span>
-                      </span>
-                    )}
                   </span>
                   <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-600 dark:text-slate-400">
                     #{index + 1}
@@ -162,7 +148,7 @@ export function LabelPreferences({
 
       {preferences.length === 0 && (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          No preferences configured. Using defaults: rdfs:label@en, rdfs:label, skos:prefLabel@en, skos:prefLabel
+          No preferences configured. Using defaults: rdfs:label, skos:prefLabel
         </p>
       )}
 
@@ -184,22 +170,6 @@ export function LabelPreferences({
             {LABEL_PROPERTIES.map((prop) => (
               <option key={prop.value} value={prop.value}>
                 {prop.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={newLanguage}
-            onChange={(e) => setNewLanguage(e.target.value)}
-            disabled={disabled}
-            className={cn(
-              "w-40 rounded-md border px-3 py-2 text-sm",
-              "border-slate-300 focus:border-primary-500 focus:ring-primary-500",
-              "dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-            )}
-          >
-            {LANGUAGES.map((lang) => (
-              <option key={lang.value} value={lang.value}>
-                {lang.label}
               </option>
             ))}
           </select>
