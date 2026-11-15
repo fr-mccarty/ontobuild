@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSession } from "@/lib/localUser";
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Settings, FileCode, GitPullRequest, RefreshCw, Keyboard, LayoutDashboard, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { ArrowLeft, Settings, FileCode, RefreshCw, Keyboard, LayoutDashboard, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -721,6 +721,7 @@ export default function ProjectEditorPage() {
                 projectId={projectId}
                 selectedIri={selectedIri}
                 selectedLabel={selectedNodeFallback?.label}
+                openPRCount={openPRCount}
               />
 
               <HistoryButton onClick={() => setShowHistory(!showHistory)} isOpen={showHistory} />
@@ -739,18 +740,6 @@ export default function ProjectEditorPage() {
                   </Link>
                 </Tooltip>
               )}
-
-              <Link href={`/projects/${projectId}/pull-requests`}>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <GitPullRequest className="h-4 w-4" />
-                  <span className="hidden sm:inline">PRs</span>
-                  {openPRCount > 0 && (
-                    <span className="rounded-full bg-primary-100 px-1.5 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
-                      {openPRCount}
-                    </span>
-                  )}
-                </Button>
-              </Link>
 
               <Tooltip side="bottom" content="Project dashboard">
                 <Link href={`/projects/${projectId}/dashboard`}>

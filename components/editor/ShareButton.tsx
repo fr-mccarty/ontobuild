@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Share2, ChevronDown, Link as LinkIcon } from "lucide-react";
+import NextLink from "next/link";
+import { Share2, ChevronDown, Link as LinkIcon, GitPullRequest } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/lib/context/ToastContext";
 import { getLocalName } from "@/lib/utils";
@@ -12,9 +13,10 @@ interface ShareButtonProps {
   projectId: string;
   selectedIri?: string | null;
   selectedLabel?: string | null;
+  openPRCount?: number;
 }
 
-export function ShareButton({ projectId, selectedIri, selectedLabel }: ShareButtonProps) {
+export function ShareButton({ projectId, selectedIri, selectedLabel, openPRCount = 0 }: ShareButtonProps) {
   const toast = useToast();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -112,6 +114,24 @@ export function ShareButton({ projectId, selectedIri, selectedLabel }: ShareButt
             <LinkIcon className="h-3.5 w-3.5 flex-shrink-0" />
             Copy project link
           </button>
+          <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+          <NextLink
+            href={`/projects/${projectId}/pull-requests`}
+            role="menuitem"
+            className={cn(
+              "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100",
+              "dark:text-slate-300 dark:hover:bg-slate-700",
+            )}
+            onClick={() => setDropdownOpen(false)}
+          >
+            <GitPullRequest className="h-3.5 w-3.5 flex-shrink-0" />
+            <span className="flex-1">Pull requests</span>
+            {openPRCount > 0 && (
+              <span className="rounded-full bg-primary-100 px-1.5 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
+                {openPRCount}
+              </span>
+            )}
+          </NextLink>
         </div>
       )}
     </div>
