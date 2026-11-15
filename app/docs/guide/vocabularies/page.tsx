@@ -13,7 +13,6 @@ export default function VocabulariesPage() {
       </p>
 
       <div className="space-y-8">
-        {/* RDFS */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             RDFS (RDF Schema)
@@ -37,7 +36,6 @@ export default function VocabulariesPage() {
           </div>
         </section>
 
-        {/* Dublin Core */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Dublin Core (DC / DCTerms)
@@ -65,7 +63,6 @@ export default function VocabulariesPage() {
           </div>
         </section>
 
-        {/* SKOS */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             SKOS (Simple Knowledge Organization System)
@@ -99,7 +96,6 @@ ex:Mammals a skos:Concept ;
           </div>
         </section>
 
-        {/* FOAF */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             FOAF (Friend of a Friend)
@@ -121,7 +117,6 @@ ex:Mammals a skos:Concept ;
           </div>
         </section>
 
-        {/* Schema.org */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Schema.org
@@ -140,7 +135,6 @@ ex:Mammals a skos:Concept ;
           </div>
         </section>
 
-        {/* OWL */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             OWL (Web Ontology Language)
@@ -164,7 +158,6 @@ ex:Mammals a skos:Concept ;
           </div>
         </section>
 
-        {/* PROV */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             PROV (Provenance)
@@ -185,7 +178,6 @@ ex:Mammals a skos:Concept ;
           </div>
         </section>
 
-        {/* Other Notable */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Other Notable Vocabularies
@@ -202,7 +194,6 @@ ex:Mammals a skos:Concept ;
           </div>
         </section>
 
-        {/* Summary Table */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Vocabulary Summary
@@ -257,7 +248,6 @@ ex:Mammals a skos:Concept ;
           </div>
         </section>
 
-        {/* Finding Vocabularies */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Finding Vocabularies

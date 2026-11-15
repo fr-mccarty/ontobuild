@@ -193,7 +193,6 @@ describe("updatePropertyInTurtle", () => {
       "http://example.org/ont#hasPart",
       baseData,
     );
-    // Other blocks should remain
     expect(result).toContain("ex:Animal a owl:Class");
     expect(result).toContain("ex:Dog a owl:Class");
     expect(result).toContain("ex:fido a owl:NamedIndividual");
@@ -216,5 +215,72 @@ describe("updatePropertyInTurtle", () => {
       },
     );
     expect(result).toContain("ex:hasPart a owl:ObjectProperty .");
+  });
+});
+
+describe("updatePropertyInTurtle with plain rdf:Property", () => {
+  const RDFS_ONLY = `@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex: <http://ex.org/> .
+
+ex:birthDate a rdf:Property, ex:AuditedTerm ;
+    rdfs:label "birth date" .
+`;
+  const data = {
+    propertyType: "other" as const,
+    labels: [{ value: "date of birth", lang: "" }],
+    comments: [],
+    definitions: [],
+    domainIris: [],
+    rangeIris: [],
+    parentIris: [],
+    inverseOf: null,
+    characteristics: [],
+  };
+
+  it("keeps rdf:Property and other existing types instead of rewriting to owl:ObjectProperty", () => {
+    const result = updatePropertyInTurtle(RDFS_ONLY, "http://ex.org/birthDate", data);
+    expect(result).toContain("ex:birthDate a rdf:Property, ex:AuditedTerm ;");
+    expect(result).toContain('rdfs:label "date of birth"');
+    expect(result).not.toContain("ObjectProperty");
+  });
+
+  it("writes full IRIs for vocabulary terms whose prefix is not declared", () => {
+    const result = updatePropertyInTurtle(RDFS_ONLY, "http://ex.org/birthDate", {
+      ...data,
+      propertyType: "data",
+      characteristics: ["http://www.w3.org/2002/07/owl#FunctionalProperty"],
+      definitions: [{ value: "When the person was born", lang: "en" }],
+    });
+    expect(result).toContain(
+      "a <http://www.w3.org/2002/07/owl#DatatypeProperty>, <http://www.w3.org/2002/07/owl#FunctionalProperty>, rdf:Property, ex:AuditedTerm ;",
+    );
+    expect(result).toContain('<http://www.w3.org/2004/02/skos/core#definition> "When the person was born"@en');
+    expect(result).not.toMatch(/\bowl:/);
+    expect(result).not.toMatch(/\bskos:/);
+  });
+
+  it("falls back to rdf:Property when an untyped property is saved", () => {
+    const untyped = `@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex: <http://ex.org/> .
+
+ex:note rdfs:label "note" .
+`;
+    const result = updatePropertyInTurtle(untyped, "http://ex.org/note", { ...data, labels: [] });
+    expect(result).toContain("ex:note a <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property> .");
+  });
+
+  it("drops a characteristic that was unchecked while keeping unmanaged types", () => {
+    const src = `@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix ex: <http://ex.org/> .
+
+ex:knows a owl:ObjectProperty, owl:SymmetricProperty, ex:SocialTerm .
+`;
+    const result = updatePropertyInTurtle(src, "http://ex.org/knows", {
+      ...data,
+      propertyType: "object",
+      labels: [],
+    });
+    expect(result).toContain("ex:knows a owl:ObjectProperty, ex:SocialTerm .");
   });
 });

@@ -1,10 +1,4 @@
-/**
- * Revisions and Branches API client
- */
-
 import { api } from "./client";
-
-// Types
 
 export interface RevisionCommit {
   hash: string;
@@ -91,11 +85,7 @@ export interface SemanticDiffResponse {
   total_removed: number;
 }
 
-// API functions
 export const revisionsApi = {
-  /**
-   * Get revision history for a project
-   */
   getHistory: (projectId: string, token?: string, limit = 50) => {
     const headers: HeadersInit = {};
     if (token) {
@@ -110,9 +100,6 @@ export const revisionsApi = {
     );
   },
 
-  /**
-   * Get file content at a specific revision
-   */
   getFileAtVersion: (
     projectId: string,
     version: string,
@@ -132,9 +119,6 @@ export const revisionsApi = {
     );
   },
 
-  /**
-   * Get diff between two revisions
-   */
   getDiff: (
     projectId: string,
     fromVersion: string,
@@ -156,9 +140,6 @@ export const revisionsApi = {
 };
 
 export const branchesApi = {
-  /**
-   * List all branches for a project
-   */
   list: (projectId: string, token?: string) => {
     const headers: HeadersInit = {};
     if (token) {
@@ -170,17 +151,11 @@ export const branchesApi = {
     );
   },
 
-  /**
-   * Create a new branch
-   */
   create: (projectId: string, data: BranchCreate, token: string) =>
     api.post<BranchInfo>(`/api/v1/projects/${projectId}/branches`, data, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  /**
-   * Switch to a different branch
-   */
   switch: (projectId: string, branchName: string, token: string) =>
     api.post<BranchInfo>(
       `/api/v1/projects/${projectId}/branches/${encodeURIComponent(branchName)}/checkout`,
@@ -190,9 +165,6 @@ export const branchesApi = {
       }
     ),
 
-  /**
-   * Delete a branch
-   */
   delete: (projectId: string, branchName: string, token: string, force = false) =>
     api.delete(
       `/api/v1/projects/${projectId}/branches/${encodeURIComponent(branchName)}`,
@@ -202,9 +174,6 @@ export const branchesApi = {
       }
     ),
 
-  /**
-   * Save user's branch preference (fire-and-forget)
-   */
   savePreference: (projectId: string, branch: string, token: string) =>
     api.put<void>(
       `/api/v1/projects/${projectId}/branch-preference`,

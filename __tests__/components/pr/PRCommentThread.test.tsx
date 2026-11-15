@@ -1,8 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent, waitFor, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import type { Comment } from "@/lib/api/pullRequests";
 
-// Mock pullRequestsApi
 const mockCreateComment = vi.fn();
 const mockUpdateComment = vi.fn();
 const mockDeleteComment = vi.fn();
@@ -55,7 +59,6 @@ const defaultProps = {
 describe("PRCommentThread", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock window.confirm
     vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
@@ -102,8 +105,8 @@ describe("PRCommentThread", () => {
     render(
       <PRCommentThread {...defaultProps} currentUserId="user-1" comments={[comment]} />
     );
-    expect(screen.getByTitle("Edit")).toBeDefined();
-    expect(screen.getByTitle("Delete")).toBeDefined();
+    expect(screen.getByLabelText("Edit")).toBeDefined();
+    expect(screen.getByLabelText("Delete")).toBeDefined();
   });
 
   it("does not show edit/delete buttons for other users comments", () => {
@@ -111,8 +114,8 @@ describe("PRCommentThread", () => {
     render(
       <PRCommentThread {...defaultProps} currentUserId="user-1" comments={[comment]} />
     );
-    expect(screen.queryByTitle("Edit")).toBeNull();
-    expect(screen.queryByTitle("Delete")).toBeNull();
+    expect(screen.queryByLabelText("Edit")).toBeNull();
+    expect(screen.queryByLabelText("Delete")).toBeNull();
   });
 
   it("shows Reply button for top-level comments", () => {
@@ -158,7 +161,6 @@ describe("PRCommentThread", () => {
     const textarea = screen.getByPlaceholderText("Write a reply...");
     fireEvent.change(textarea, { target: { value: "My reply" } });
 
-    // Click the Reply submit button (there are two "Reply" texts, the submit button is the second)
     const replyButtons = screen.getAllByText("Reply");
     const submitReply = replyButtons[replyButtons.length - 1];
     fireEvent.click(submitReply);
@@ -182,7 +184,6 @@ describe("PRCommentThread", () => {
     render(<PRCommentThread {...defaultProps} comments={[comment]} />);
 
     fireEvent.click(screen.getByText("Reply"));
-    // Leave textarea empty and click reply submit
     const replyButtons = screen.getAllByText("Reply");
     fireEvent.click(replyButtons[replyButtons.length - 1]);
 
@@ -196,7 +197,6 @@ describe("PRCommentThread", () => {
     fireEvent.click(screen.getByText("Reply"));
     expect(screen.getByPlaceholderText("Write a reply...")).toBeDefined();
 
-    // Click Cancel in the reply form
     const cancelButtons = screen.getAllByText("Cancel");
     fireEvent.click(cancelButtons[0]);
 
@@ -207,8 +207,7 @@ describe("PRCommentThread", () => {
     const comment = makeComment({ body: "Original body" });
     render(<PRCommentThread {...defaultProps} comments={[comment]} />);
 
-    fireEvent.click(screen.getByTitle("Edit"));
-    // The textarea should contain the original body
+    fireEvent.click(screen.getByLabelText("Edit"));
     const textarea = screen.getByDisplayValue("Original body");
     expect(textarea).toBeDefined();
   });
@@ -225,7 +224,7 @@ describe("PRCommentThread", () => {
       />
     );
 
-    fireEvent.click(screen.getByTitle("Edit"));
+    fireEvent.click(screen.getByLabelText("Edit"));
     const textarea = screen.getByDisplayValue("Original body");
     fireEvent.change(textarea, { target: { value: "Updated body" } });
     fireEvent.click(screen.getByText("Save"));
@@ -249,11 +248,10 @@ describe("PRCommentThread", () => {
     const comment = makeComment({ body: "Original body" });
     render(<PRCommentThread {...defaultProps} comments={[comment]} />);
 
-    fireEvent.click(screen.getByTitle("Edit"));
+    fireEvent.click(screen.getByLabelText("Edit"));
     expect(screen.getByDisplayValue("Original body")).toBeDefined();
 
     fireEvent.click(screen.getByText("Cancel"));
-    // Should show the body text again, not a textarea
     expect(screen.getByText("Original body")).toBeDefined();
     expect(screen.queryByDisplayValue("Original body")).toBeNull();
   });
@@ -270,7 +268,7 @@ describe("PRCommentThread", () => {
       />
     );
 
-    fireEvent.click(screen.getByTitle("Delete"));
+    fireEvent.click(screen.getByLabelText("Delete"));
 
     await waitFor(() => {
       expect(mockDeleteComment).toHaveBeenCalledWith(
@@ -291,7 +289,7 @@ describe("PRCommentThread", () => {
     const comment = makeComment();
     render(<PRCommentThread {...defaultProps} comments={[comment]} />);
 
-    fireEvent.click(screen.getByTitle("Delete"));
+    fireEvent.click(screen.getByLabelText("Delete"));
     expect(mockDeleteComment).not.toHaveBeenCalled();
   });
 

@@ -1,10 +1,3 @@
-/**
- * API client for quality features: cross-references, consistency checks, duplicate detection.
- *
- * Consistency checks and duplicate detection run as background jobs: trigger them,
- * then poll the job-result endpoints (202 + `{status: "pending"}` while running).
- */
-
 import { api } from "./client";
 import type {
   CrossReferencesResponse,

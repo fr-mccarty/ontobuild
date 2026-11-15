@@ -3,6 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { getAnnotationPropertyInfo } from "@/lib/ontology/annotationProperties";
 import { LanguagePicker } from "@/components/editor/LanguagePicker";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface AnnotationRowProps {
   propertyIri: string;
@@ -11,11 +12,8 @@ interface AnnotationRowProps {
   onValueChange: (value: string) => void;
   onLangChange: (lang: string) => void;
   onRemove?: () => void;
-  /** Called when an input loses focus — used for auto-save */
   onBlur?: () => void;
-  /** Show property label chip (false when used in a section that already has a heading) */
   showPropertyLabel?: boolean;
-  /** Custom placeholder for the value input (defaults to "Value") */
   placeholder?: string;
 }
 
@@ -36,12 +34,11 @@ export function AnnotationRow({
   return (
     <div className="flex items-start gap-2">
       {showPropertyLabel && (
-        <span
-          className="mt-1.5 shrink-0 rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-          title={curie}
-        >
-          {displayLabel}
-        </span>
+        <Tooltip content={curie}>
+          <span className="mt-1.5 shrink-0 rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+            {displayLabel}
+          </span>
+        </Tooltip>
       )}
       {isLongValue ? (
         <textarea

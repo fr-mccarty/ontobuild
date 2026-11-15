@@ -7,17 +7,11 @@ import type { ClassTreeNode } from "@/lib/ontology/types";
 export type DragMode = "move" | "add";
 
 export interface DragState {
-  /** IRI of the node currently being dragged */
   draggedIri: string | null;
-  /** Label of the dragged node (for overlay) */
   draggedLabel: string | null;
-  /** IRI of the node currently being hovered as drop target */
   dropTargetIri: string | null;
-  /** Whether the current drop target is a valid destination */
   isValidDropTarget: boolean;
-  /** Whether a drag is currently active */
   isDragActive: boolean;
-  /** Current drag mode: move (default) or add (Alt key held) */
   dragMode: DragMode;
 }
 
@@ -39,7 +33,6 @@ interface UseTreeDragDropOptions {
     newParentIris: string[],
     mode: DragMode,
   ) => Promise<void>;
-  /** Optional screen reader announcement callback */
   onAnnounce?: (message: string) => void;
 }
 
@@ -52,15 +45,10 @@ interface UseTreeDragDropReturn {
   handleDragCancel: () => void;
   handleUndo: () => void;
   clearUndo: () => void;
-  /** Called when pointer enters a droppable node — starts auto-expand timer */
   handleDragEnterNode: (iri: string) => void;
-  /** Called when pointer leaves a droppable node — cancels auto-expand timer */
   handleDragLeaveNode: () => void;
 }
 
-/**
- * Walk the tree to find a node by IRI.
- */
 function findNode(nodes: ClassTreeNode[], iri: string): ClassTreeNode | null {
   for (const node of nodes) {
     if (node.iri === iri) return node;
@@ -72,10 +60,6 @@ function findNode(nodes: ClassTreeNode[], iri: string): ClassTreeNode | null {
   return null;
 }
 
-/**
- * Check if `candidateDescendantIri` is a descendant of `ancestorIri` in the tree.
- * Only checks expanded/loaded parts of the tree.
- */
 function isDescendantOf(
   nodes: ClassTreeNode[],
   ancestorIri: string,
@@ -96,9 +80,6 @@ function isInSubtree(children: ClassTreeNode[], targetIri: string): boolean {
   return false;
 }
 
-/**
- * Find the parent IRI of a node in the tree. Returns null if it's a root node.
- */
 function findParentIri(
   nodes: ClassTreeNode[],
   targetIri: string,
@@ -133,7 +114,6 @@ export function useTreeDragDrop({
 
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
 
-  // Alt-key tracking for drag mode
   const altKeyRef = useRef(false);
 
   useEffect(() => {
@@ -160,7 +140,6 @@ export function useTreeDragDrop({
     };
   }, [dragState.isDragActive]);
 
-  // Auto-expand timer
   const autoExpandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoExpandIriRef = useRef<string | null>(null);
 
@@ -194,24 +173,17 @@ export function useTreeDragDrop({
     cancelAutoExpand();
   }, [cancelAutoExpand]);
 
-  /**
-   * Validate whether dropping `draggedIri` on `targetIri` is allowed.
-   */
   const validateDrop = useCallback(
     (draggedIri: string, targetIri: string | null): boolean => {
       if (!canEdit) return false;
       if (!targetIri) return false;
 
-      // Can't drop on self
       if (draggedIri === targetIri) return false;
 
-      // Can't drop on editing node
       if (editingIri && editingIri === draggedIri) return false;
 
-      // Can't drop on a descendant (would create cycle)
       if (isDescendantOf(nodes, draggedIri, targetIri)) return false;
 
-      // Check if target is already the current parent (in tree structure)
       const currentParent = findParentIri(nodes, draggedIri);
       if (currentParent === targetIri) return false;
 
@@ -227,7 +199,6 @@ export function useTreeDragDrop({
       const iri = event.active.id as string;
       const node = findNode(nodes, iri);
 
-      // Don't allow dragging the currently editing node
       if (editingIri && editingIri === iri) return;
 
       setDragState({
@@ -281,7 +252,6 @@ export function useTreeDragDrop({
       const isRootDrop = targetId === "root-drop-zone";
       const targetIri = isRootDrop ? null : targetId;
 
-      // Validate
       if (!isRootDrop && !validateDrop(draggedIri, targetIri)) {
         setDragState({
           draggedIri: null,
@@ -294,12 +264,10 @@ export function useTreeDragDrop({
         return;
       }
 
-      // Find current parent in tree
       const currentTreeParent = findParentIri(nodes, draggedIri);
       const draggedNode = findNode(nodes, draggedIri);
       const mode = dragState.dragMode;
 
-      // For root drops — dropping on current root is a no-op
       if (isRootDrop && currentTreeParent === null) {
         setDragState({
           draggedIri: null,
@@ -312,13 +280,9 @@ export function useTreeDragDrop({
         return;
       }
 
-      // Build old/new parent arrays
-      // Note: the actual parent_iris from the class detail may differ from tree parent,
-      // so the caller (handleReparentClass) will fetch the full detail first
       const oldParentIris = currentTreeParent ? [currentTreeParent] : [];
       const newParentIris = targetIri ? [targetIri] : [];
 
-      // Reset drag state
       setDragState({
         draggedIri: null,
         draggedLabel: null,
@@ -328,7 +292,6 @@ export function useTreeDragDrop({
         dragMode: "move",
       });
 
-      // Store undo info
       const undoInfo: UndoAction = {
         classIri: draggedIri,
         classLabel: draggedNode?.label ?? draggedIri,
@@ -337,14 +300,12 @@ export function useTreeDragDrop({
       };
       setUndoAction(undoInfo);
 
-      // Execute reparent
       try {
         await onReparent(draggedIri, oldParentIris, newParentIris, mode);
         const targetNode = targetIri ? findNode(nodes, targetIri) : null;
         const targetLabel = targetNode?.label ?? (targetIri ? "root" : "root");
         onAnnounce?.(`Moved ${undoInfo.classLabel} under ${targetLabel}`);
       } catch {
-        // Error handled by caller (toast + rollback)
         setUndoAction(null);
       }
     },
@@ -365,11 +326,9 @@ export function useTreeDragDrop({
 
   const handleUndo = useCallback(() => {
     if (!undoAction) return;
-    // Undo = reparent back to old parents
     const { classIri, oldParentIris, newParentIris } = undoAction;
     setUndoAction(null);
     onReparent(classIri, newParentIris, oldParentIris, "move").catch(() => {
-      // Undo failed — will be caught by caller's error handling
     });
   }, [undoAction, onReparent]);
 

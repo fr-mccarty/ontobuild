@@ -11,7 +11,6 @@ export default function DocsPage() {
           </p>
 
           <div className="space-y-10">
-            {/* Getting Started */}
             <section>
               <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
                 Getting Started
@@ -35,7 +34,6 @@ export default function DocsPage() {
               </div>
             </section>
 
-            {/* Core Concepts */}
             <section>
               <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
                 Core Concepts
@@ -80,39 +78,20 @@ export default function DocsPage() {
               </div>
             </section>
 
-            {/* Editor Modes */}
             <section>
               <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
-                Editor Modes
+                Editing
               </h2>
-              <div className="space-y-4">
-                <p className="text-slate-600 dark:text-slate-400">
-                  OntoKit offers two editing modes to suit different workflows. Your preference{" "}
-                  is saved and persists across sessions.
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-5 border border-slate-200 dark:border-slate-700">
+                <p className="text-slate-600 dark:text-slate-400 text-sm">
+                  A form-based editing experience for classes, properties, and individuals.{" "}
+                  Edit labels, comments, annotations, and relationships through structured{" "}
+                  fields. Entities are read-only by default &mdash; click &quot;Edit Item&quot; to{" "}
+                  start editing, with changes auto-saved as you work.
                 </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="bg-white dark:bg-slate-800 rounded-lg p-5 border border-slate-200 dark:border-slate-700">
-                    <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Standard Mode</h3>
-                    <p className="text-slate-600 dark:text-slate-400 text-sm">
-                      A form-based editing experience for classes, properties, and individuals.{" "}
-                      Edit labels, comments, annotations, and relationships through structured{" "}
-                      fields. Entities are read-only by default &mdash; click &quot;Edit Item&quot; to{" "}
-                      start editing, with changes auto-saved as you work.
-                    </p>
-                  </div>
-                  <div className="bg-white dark:bg-slate-800 rounded-lg p-5 border border-slate-200 dark:border-slate-700">
-                    <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">Developer Mode</h3>
-                    <p className="text-slate-600 dark:text-slate-400 text-sm">
-                      Direct access to the Turtle source with full syntax highlighting,{" "}
-                      auto-completion, and inline validation in a Monaco-based editor. Ideal for{" "}
-                      power users who prefer working with raw RDF/OWL syntax.
-                    </p>
-                  </div>
-                </div>
               </div>
             </section>
 
-            {/* Editor Features */}
             <section>
               <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
                 Editor Features
@@ -130,7 +109,7 @@ export default function DocsPage() {
                     <li>View subclass counts at each level</li>
                     <li>Search for entities by name or IRI</li>
                     <li>Drag-and-drop reparenting with cycle detection and undo</li>
-                    <li>Right-click context menus for Add Subclass, Copy IRI, View in Source, and Delete</li>
+                    <li>Right-click context menus for Add Subclass, Copy IRI, and Delete</li>
                     <li>Draft indicators on nodes with unsaved changes</li>
                     <li>Language tags displayed as country flag emojis</li>
                     <li>Keyboard navigation with arrow keys and aria-activedescendant</li>
@@ -169,25 +148,9 @@ export default function DocsPage() {
                     <li>Root nodes highlighted with distinct amber/gold styling</li>
                   </ul>
                 </div>
-
-                <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
-                  <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-3">Source Editor</h3>
-                  <p className="text-slate-600 dark:text-slate-400 mb-3">
-                    Edit your ontology directly in Turtle syntax with full syntax highlighting,{" "}
-                    auto-completion, and inline validation. Available in Developer mode or via{" "}
-                    the Source tab.
-                  </p>
-                  <ul className="list-disc list-inside text-slate-600 dark:text-slate-400 text-sm space-y-1">
-                    <li>Turtle syntax highlighting</li>
-                    <li>Hover over IRIs to see full definitions</li>
-                    <li>Ctrl+Click to navigate to class definitions or open external IRIs in a new tab</li>
-                    <li>Real-time linting with inline error markers</li>
-                  </ul>
-                </div>
               </div>
             </section>
 
-            {/* Keyboard Shortcuts */}
             <section>
               <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
                 Keyboard Shortcuts
@@ -222,7 +185,6 @@ export default function DocsPage() {
               </div>
             </section>
 
-            {/* Supported Formats */}
             <section>
               <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
                 Supported Formats
@@ -267,7 +229,6 @@ export default function DocsPage() {
               </div>
             </section>
 
-            {/* Import & Normalization */}
             <section>
               <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
                 Import & Normalization
@@ -323,7 +284,6 @@ export default function DocsPage() {
               </div>
             </section>
 
-            {/* API Reference Link */}
             <section>
               <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
                 API Reference

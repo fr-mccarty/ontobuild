@@ -15,13 +15,9 @@ import {
   type BranchInfo,
 } from "@/lib/api/revisions";
 
-// --- Query key factory ---
-
 export const branchQueryKeys = {
   list: (projectId: string, accessToken?: string) => ["branches", projectId, !!accessToken] as const,
 };
-
-// --- sessionStorage helpers ---
 
 function getStoredBranch(projectId: string): string | null {
   try {
@@ -35,14 +31,10 @@ function setStoredBranch(projectId: string, branch: string): void {
   try {
     sessionStorage.setItem(`ontokit:branch:${projectId}`, branch);
   } catch {
-    /* ignore */
   }
 }
 
-// --- Context ---
-
 interface BranchContextValue {
-  // State
   branches: BranchInfo[];
   currentBranch: string;
   defaultBranch: string;
@@ -51,7 +43,6 @@ interface BranchContextValue {
   isFeatureBranch: boolean;
   pendingChanges: boolean;
 
-  // Actions
   refreshBranches: () => Promise<void>;
   createBranch: (name: string, fromBranch?: string) => Promise<BranchInfo>;
   switchBranch: (name: string) => Promise<void>;
@@ -76,7 +67,6 @@ export function BranchProvider({
 }: BranchProviderProps) {
   const queryClient = useQueryClient();
 
-  // React Query for branch list
   const {
     data: response,
     isLoading,
@@ -87,7 +77,6 @@ export function BranchProvider({
     enabled: !!projectId,
   });
 
-  // Derive server state from query data
   const branches = useMemo(() => response?.items ?? [], [response?.items]);
   const defaultBranch = response?.default_branch ?? "main";
   const error = queryError
@@ -96,7 +85,6 @@ export function BranchProvider({
       : "Failed to load branches"
     : null;
 
-  // Local state (not from server)
   const [currentBranch, setCurrentBranch] = useState<string>(
     () => initialBranch || getStoredBranch(projectId) || "main"
   );
@@ -104,20 +92,16 @@ export function BranchProvider({
 
   const isFeatureBranch = currentBranch !== defaultBranch;
 
-  // Validate current branch when server data arrives
   useEffect(() => {
     if (!response) return;
     setCurrentBranch((prev) => {
-      // Unauthenticated users are locked to the default branch
       if (!accessToken) return response.default_branch ?? response.current_branch;
 
       const prevExists = response.items.some((b) => b.name === prev);
       if (prevExists) return prev;
-      // Stored/initial branch was deleted — clear stale sessionStorage
       try {
         sessionStorage.removeItem(`ontokit:branch:${projectId}`);
       } catch {
-        /* ignore */
       }
       const prefExists =
         response.preferred_branch &&
@@ -128,7 +112,6 @@ export function BranchProvider({
     });
   }, [response, projectId, accessToken]);
 
-  // Set initial branch if specified and different from current (authenticated only)
   const [initialBranchHandled, setInitialBranchHandled] = useState(false);
   useEffect(() => {
     if (
@@ -164,10 +147,8 @@ export function BranchProvider({
         accessToken
       );
 
-      // Refresh branches list
       await refreshBranches();
 
-      // Switch to the new branch directly
       setCurrentBranch(name);
       setStoredBranch(projectId, name);
       branchesApi.savePreference(projectId, name, accessToken).catch(() => {});
@@ -189,7 +170,6 @@ export function BranchProvider({
         );
       }
 
-      // Validate branch exists locally — no backend call needed
       const branchExists = branches.some((b) => b.name === name);
       if (!branchExists) {
         throw new Error(`Branch not found: ${name}`);
@@ -198,7 +178,6 @@ export function BranchProvider({
       setCurrentBranch(name);
       setStoredBranch(projectId, name);
 
-      // Fire-and-forget: persist to DB for cross-session restore
       branchesApi.savePreference(projectId, name, accessToken).catch(() => {});
     },
     [branches, pendingChanges, projectId, accessToken]
@@ -220,7 +199,6 @@ export function BranchProvider({
 
       await branchesApi.delete(projectId, name, accessToken, force);
 
-      // Refresh branches list
       await refreshBranches();
     },
     [projectId, accessToken, currentBranch, defaultBranch, refreshBranches]

@@ -25,17 +25,9 @@
 }
 
 @utility font-emoji {
-  font-family: var(--font-noto-emoji, "Noto Color Emoji"), "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  font-family: "Apple Color Emoji", var(--font-noto-emoji, "Noto Color Emoji"), "Segoe UI Emoji", sans-serif;
 }
 
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
 @layer base {
   *,
   ::after,
@@ -43,6 +35,26 @@
   ::backdrop,
   ::file-selector-button {
     border-color: var(--color-gray-200, currentcolor);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="menuitem"],
+  [role="option"],
+  [role="tab"],
+  [role="treeitem"],
+  [role="link"],
+  summary,
+  select:not(:disabled),
+  label[for],
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  select:disabled {
+    cursor: not-allowed;
   }
 }
 
@@ -69,7 +81,6 @@ body {
   min-height: 100vh;
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -96,7 +107,6 @@ body {
   background: rgb(100 116 139);
 }
 
-/* Class tree item styling */
 .tree-item {
   @apply flex items-center gap-2 px-2 py-1 rounded-md cursor-pointer transition-colors;
 }
@@ -109,7 +119,6 @@ body {
   @apply bg-primary-100 dark:bg-primary-900/30;
 }
 
-/* Root-level tree item emphasis */
 .tree-item-root {
   @apply font-semibold border-l-2 border-transparent;
   background: rgb(248 250 252 / 0.5);
@@ -123,7 +132,6 @@ body {
   @apply border-primary-500;
 }
 
-/* Leaf dot for nodes without children */
 .tree-leaf-dot {
   @apply h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-slate-500 flex-shrink-0;
 }
@@ -132,17 +140,14 @@ body {
   @apply bg-white dark:bg-white;
 }
 
-/* Search match highlight */
 .tree-search-match mark {
   @apply bg-yellow-200 dark:bg-yellow-800/60 text-inherit rounded-xs px-0.5;
 }
 
-/* Keyboard focus ring for tree navigation */
 .tree-item-focused {
   @apply ring-2 ring-primary-500/50 ring-inset;
 }
 
-/* Drag-and-drop tree reparenting */
 .tree-item-dragging {
   @apply opacity-30;
 }
@@ -160,12 +165,23 @@ body {
   max-width: 260px;
 }
 
-/* Skip link for accessibility */
 .skip-link {
   @apply absolute -translate-y-full bg-primary-600 text-white px-4 py-2 z-200 focus:translate-y-0 transition-transform;
 }
 
-/* Reduced motion preference */
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tooltip-fade-in {
+  animation: tooltip-fade-in 200ms ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -177,7 +193,6 @@ body {
   }
 }
 
-/* High contrast preference */
 @media (prefers-contrast: more) {
   :root {
     --focus-ring-width: 3px;

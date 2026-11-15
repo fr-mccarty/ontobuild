@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { GitGraph } from "./GitGraph";
 import { CommitDetailView } from "./CommitDetailView";
 import { DEFAULT_GRAPH_CONFIG } from "@/lib/git-graph/types";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface RevisionHistoryPanelProps {
   projectId: string;
@@ -93,7 +94,6 @@ export function RevisionHistoryPanel({
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      // Today - show time
       return date.toLocaleTimeString(undefined, {
         hour: "2-digit",
         minute: "2-digit",
@@ -120,7 +120,6 @@ export function RevisionHistoryPanel({
         className
       )}
     >
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
         <div className="flex items-center gap-2">
           <History className="h-5 w-5 text-slate-600 dark:text-slate-400" />
@@ -134,7 +133,6 @@ export function RevisionHistoryPanel({
         </button>
       </div>
 
-      {/* Content */}
       <div className="h-[calc(100%-56px)]">
         {selectedCommit ? (
           <CommitDetailView
@@ -160,7 +158,6 @@ export function RevisionHistoryPanel({
               </div>
             ) : (
               <div className="flex">
-                {/* Git Graph */}
                 <div className="flex-shrink-0 border-r border-slate-100 dark:border-slate-700/50">
                   <GitGraph
                     commits={commits}
@@ -172,7 +169,6 @@ export function RevisionHistoryPanel({
                   />
                 </div>
 
-                {/* Commit List */}
                 <div className="min-w-0 flex-1">
                   {commits.map((commit) => (
                     <button
@@ -187,28 +183,23 @@ export function RevisionHistoryPanel({
                     >
                       <div className="flex h-full items-center px-3">
                         <div className="min-w-0 flex-1">
-                          {/* Commit message */}
                           <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                             {commit.message}
                           </p>
 
-                          {/* Branch ref badges */}
                           {(refs?.[commit.hash] ?? []).length > 0 && (
                             <div className="mt-0.5 flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap">
                               {(refs?.[commit.hash] ?? []).map((ref) => (
-                                <span
-                                  key={ref}
-                                  title={ref}
-                                  className="inline-flex max-w-[160px] items-center gap-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                                >
-                                  <GitBranch className="h-2.5 w-2.5 shrink-0" />
-                                  <span className="truncate">{ref}</span>
-                                </span>
+                                <Tooltip key={ref} content={ref}>
+                                  <span className="inline-flex max-w-[160px] items-center gap-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                    <GitBranch className="h-2.5 w-2.5 shrink-0" />
+                                    <span className="truncate">{ref}</span>
+                                  </span>
+                                </Tooltip>
                               ))}
                             </div>
                           )}
 
-                          {/* Merge badge */}
                           {commit.is_merge && commit.merged_branch && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
                               <GitMerge className="h-2.5 w-2.5" />
@@ -216,11 +207,12 @@ export function RevisionHistoryPanel({
                             </span>
                           )}
 
-                          {/* Metadata row */}
                           <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
-                            <span className="font-mono" title={commit.hash}>
-                              {commit.short_hash}
-                            </span>
+                            <Tooltip content={commit.hash}>
+                              <span className="font-mono">
+                                {commit.short_hash}
+                              </span>
+                            </Tooltip>
                             <span className="flex items-center gap-0.5">
                               <User className="h-3 w-3" />
                               <span className="max-w-[80px] truncate">
@@ -246,7 +238,6 @@ export function RevisionHistoryPanel({
   );
 }
 
-// Compact trigger button for the history panel
 interface HistoryButtonProps {
   onClick: () => void;
   isOpen: boolean;

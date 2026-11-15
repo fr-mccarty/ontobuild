@@ -2,8 +2,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import type { Project } from "@/lib/api/projects";
 
-// --- Mocks ---
-
 const mockUseProject = vi.fn();
 const mockDerivePermissions = vi.fn();
 
@@ -39,7 +37,6 @@ vi.mock("@/lib/hooks/useOntologyTree", () => ({
   }),
 }));
 
-// Mock the new React Query hooks used by useProjectViewer
 const mockUseOpenPRCount = vi.fn();
 const mockUseLintSummary = vi.fn();
 const mockUseNormalizationStatus = vi.fn();
@@ -103,7 +100,6 @@ describe("useProjectViewer", () => {
     });
     mockDerivePermissions.mockReturnValue(defaultPermissions());
 
-    // Default mock return values for React Query hooks
     mockUseOpenPRCount.mockReturnValue({ data: 3 });
     mockUseLintSummary.mockReturnValue({
       data: {
@@ -224,7 +220,6 @@ describe("useProjectViewer", () => {
       defaultPermissions({ hasValidAccess: true })
     );
 
-    // Unauthenticated session means hasValidAccess should be false
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
@@ -259,7 +254,6 @@ describe("useProjectViewer", () => {
     expect(result.current.lintSummary).not.toBeNull();
     expect(result.current.lintSummary?.total_issues).toBe(3);
 
-    // Verify hooks were called with correct args
     expect(mockUseOpenPRCount).toHaveBeenCalledWith("p1", "tok");
     expect(mockUseLintSummary).toHaveBeenCalledWith("p1", "tok");
   });
@@ -283,7 +277,6 @@ describe("useProjectViewer", () => {
     );
 
     expect(result.current.normalizationStatus).not.toBeNull();
-    // Verify the hook was called with enabled based on source_file_path
     expect(mockUseNormalizationStatus).toHaveBeenCalledWith(
       "p1",
       "tok",
@@ -311,7 +304,6 @@ describe("useProjectViewer", () => {
       })
     );
 
-    // Hook should be called with enabled: false (no source_file_path)
     expect(mockUseNormalizationStatus).toHaveBeenCalledWith(
       "p1",
       "tok",
@@ -376,7 +368,6 @@ describe("useProjectViewer", () => {
       error: "Not found",
       errorKind: "not-found",
     });
-    // Hooks return undefined data when project is null
     mockUseOpenPRCount.mockReturnValue({ data: undefined });
     mockUseLintSummary.mockReturnValue({ data: undefined });
     mockUseNormalizationStatus.mockReturnValue({ data: undefined });
@@ -394,8 +385,6 @@ describe("useProjectViewer", () => {
     expect(result.current.lintSummary).toBeNull();
     expect(result.current.normalizationStatus).toBeNull();
   });
-
-  // --- loadSourceContent ---
 
   it("loadSourceContent fetches and sets sourceContent", async () => {
     const project = makeProject();
@@ -480,13 +469,11 @@ describe("useProjectViewer", () => {
       })
     );
 
-    // First call loads content
     await act(async () => {
       await result.current.loadSourceContent();
     });
     expect(revisionsApi.getFileAtVersion).toHaveBeenCalledTimes(1);
 
-    // Second call should be a no-op (sourceContent is already set)
     await act(async () => {
       await result.current.loadSourceContent();
     });
@@ -502,7 +489,6 @@ describe("useProjectViewer", () => {
       errorKind: null,
     });
 
-    // Use a deferred promise so we can observe intermediate state
     let resolveLoad!: (value: RevisionFileResponse) => void;
     vi.mocked(revisionsApi.getFileAtVersion).mockImplementationOnce(
       () => new Promise((resolve) => { resolveLoad = resolve; })
@@ -517,19 +503,16 @@ describe("useProjectViewer", () => {
       })
     );
 
-    // Start preload (don't await yet)
     let loadPromise: Promise<void>;
     act(() => {
       loadPromise = result.current.loadSourceContent(true);
     });
 
-    // During loading: isPreloading should be true, isLoadingSource should be false
     await waitFor(() => {
       expect(result.current.isPreloading).toBe(true);
     });
     expect(result.current.isLoadingSource).toBe(false);
 
-    // Resolve the load
     await act(async () => {
       resolveLoad({ project_id: "p1", version: "main", filename: "ontology.ttl", content: "@prefix ex: <http://example.org/> .\nex:A a owl:Class ." });
       await loadPromise!;
@@ -566,12 +549,9 @@ describe("useProjectViewer", () => {
       await result.current.loadSourceContent(true);
     });
 
-    // Preload errors are silently ignored (sourceError stays null)
     expect(result.current.sourceError).toBeNull();
     expect(result.current.isPreloading).toBe(false);
   });
-
-  // --- selectedNodeFallback ---
 
   it("selectedNodeFallback returns null when selectedIri is null", () => {
     mockUseProject.mockReturnValue({
@@ -720,8 +700,6 @@ describe("useProjectViewer", () => {
     });
   });
 
-  // --- resetSourceState ---
-
   it("resetSourceState clears sourceContent, sourceError, and sourceIriIndex", async () => {
     const project = makeProject();
     mockUseProject.mockReturnValue({
@@ -740,18 +718,15 @@ describe("useProjectViewer", () => {
       })
     );
 
-    // Load source content first
     await act(async () => {
       await result.current.loadSourceContent();
     });
     expect(result.current.sourceContent).not.toBe("");
 
-    // Wait for IRI index to be built
     await waitFor(() => {
       expect(result.current.sourceIriIndex.size).toBeGreaterThan(0);
     });
 
-    // Now reset
     act(() => {
       result.current.resetSourceState();
     });
@@ -760,8 +735,6 @@ describe("useProjectViewer", () => {
     expect(result.current.sourceError).toBeNull();
     expect(result.current.sourceIriIndex.size).toBe(0);
   });
-
-  // --- IRI index building ---
 
   it("builds sourceIriIndex from sourceContent after loading", async () => {
     const project = makeProject();
@@ -781,26 +754,20 @@ describe("useProjectViewer", () => {
       })
     );
 
-    // Load source
     await act(async () => {
       await result.current.loadSourceContent();
     });
 
-    // Wait for indexing to complete
     await waitFor(() => {
       expect(result.current.isIndexing).toBe(false);
       expect(result.current.sourceIriIndex.size).toBeGreaterThan(0);
     });
 
-    // The mock content is "@prefix ex: <http://example.org/> .\nex:A a owl:Class ."
-    // Should produce an entry for http://example.org/A
     expect(result.current.sourceIriIndex.has("http://example.org/A")).toBe(true);
     const entry = result.current.sourceIriIndex.get("http://example.org/A");
     expect(entry).toBeDefined();
-    expect(entry!.line).toBe(2); // ex:A is on line 2
+    expect(entry!.line).toBe(2);
   });
-
-  // --- Background preload ---
 
   it("background preload fires after 2 seconds when hasOntology is true", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -823,15 +790,12 @@ describe("useProjectViewer", () => {
       })
     );
 
-    // Initially no source loaded via preload
     expect(revisionsApi.getFileAtVersion).not.toHaveBeenCalled();
 
-    // Advance past the 2s preload timer
     await act(async () => {
       vi.advanceTimersByTime(2100);
     });
 
-    // The preload should have triggered getFileAtVersion
     expect(revisionsApi.getFileAtVersion).toHaveBeenCalled();
 
     vi.useRealTimers();

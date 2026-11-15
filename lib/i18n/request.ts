@@ -26,7 +26,6 @@ function parseAcceptLanguage(header: string): string | null {
 }
 
 export default getRequestConfig(async () => {
-  // 1. Check cookie for persisted preference
   const cookieStore = await cookies();
   const cookieLocale = cookieStore.get(LOCALE_COOKIE)?.value;
   if (cookieLocale && (SUPPORTED_LOCALES as readonly string[]).includes(cookieLocale)) {
@@ -36,7 +35,6 @@ export default getRequestConfig(async () => {
     };
   }
 
-  // 2. Check Accept-Language header
   const headerStore = await headers();
   const acceptLanguage = headerStore.get("accept-language");
   if (acceptLanguage) {
@@ -49,7 +47,6 @@ export default getRequestConfig(async () => {
     }
   }
 
-  // 3. Fall back to default
   return {
     locale: DEFAULT_LOCALE,
     messages: (await import(`@/messages/${DEFAULT_LOCALE}.json`)).default,

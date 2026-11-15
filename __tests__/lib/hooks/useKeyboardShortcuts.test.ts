@@ -134,7 +134,6 @@ describe("useKeyboardShortcuts", () => {
 
     renderHook(() => useKeyboardShortcuts(shortcuts));
 
-    // Press 's' without Ctrl
     fireKeydown({ key: "s" });
 
     expect(action).not.toHaveBeenCalled();
@@ -177,11 +176,9 @@ describe("useKeyboardShortcuts", () => {
 
     renderHook(() => useKeyboardShortcuts(shortcuts));
 
-    // Without shift should not match
     fireKeydown({ key: "z", ctrlKey: true });
     expect(action).not.toHaveBeenCalled();
 
-    // With shift should match
     fireKeydown({ key: "z", ctrlKey: true, shiftKey: true });
     expect(action).toHaveBeenCalledTimes(1);
   });
@@ -223,7 +220,6 @@ describe("useKeyboardShortcuts", () => {
 
     renderHook(() => useKeyboardShortcuts(shortcuts));
 
-    // Create and focus an input
     const input = document.createElement("input");
     document.body.appendChild(input);
     input.focus();
@@ -279,7 +275,6 @@ describe("useKeyboardShortcuts", () => {
 
     renderHook(() => useKeyboardShortcuts(shortcuts));
 
-    // Create a fake Radix dialog element
     const dialog = document.createElement("div");
     dialog.setAttribute("data-state", "open");
     dialog.setAttribute("role", "dialog");
@@ -304,7 +299,6 @@ describe("formatShortcut", () => {
       action: () => {},
     };
 
-    // In jsdom, navigator.userAgent does not contain "Mac"
     const formatted = formatShortcut(def);
     expect(formatted).toBe("Ctrl+S");
   });

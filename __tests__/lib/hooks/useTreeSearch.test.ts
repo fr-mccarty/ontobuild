@@ -54,13 +54,13 @@ describe("useTreeSearch", () => {
     const { result } = renderHook(() => useTreeSearch(defaultOpts));
 
     act(() => {
-      result.current.toggleSearch(); // show
+      result.current.toggleSearch();
     });
     act(() => {
       result.current.setSearchQuery("test");
     });
     act(() => {
-      result.current.toggleSearch(); // hide
+      result.current.toggleSearch();
     });
 
     expect(result.current.showSearch).toBe(false);
@@ -97,10 +97,8 @@ describe("useTreeSearch", () => {
       result.current.setSearchQuery("Person");
     });
 
-    // Before debounce fires, isSearching should be true
     expect(result.current.isSearching).toBe(true);
 
-    // Wait for debounce (300ms) + async resolution
     await waitFor(() => {
       expect(result.current.isSearching).toBe(false);
       expect(result.current.searchResults).toEqual(mockSearchResponse.results);
@@ -119,7 +117,6 @@ describe("useTreeSearch", () => {
       result.current.setSearchQuery("   ");
     });
 
-    // Wait a bit to ensure no search fires
     await act(async () => {
       await new Promise((r) => setTimeout(r, 400));
     });

@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import React from "react";
+import { render as rtlRender, screen, fireEvent, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 
-// --- Mocks ---
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
+import React from "react";
 
 const mockSearchEntities = vi.fn().mockResolvedValue({ results: [], total: 0 });
 
@@ -30,8 +33,6 @@ import {
   RelationshipSection,
   type RelationshipGroup,
 } from "@/components/editor/standard/RelationshipSection";
-
-// --- Helpers ---
 
 const seeAlsoGroup: RelationshipGroup = {
   property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
@@ -62,8 +63,6 @@ const baseProps = {
   branch: "main",
 };
 
-// --- Tests ---
-
 describe("RelationshipSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -73,8 +72,6 @@ describe("RelationshipSection", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
-
-  // --- Read mode ---
 
   describe("read mode (isEditing=false)", () => {
     it("returns null when no groups have targets", () => {
@@ -148,8 +145,6 @@ describe("RelationshipSection", () => {
     });
   });
 
-  // --- Edit mode ---
-
   describe("edit mode (isEditing=true)", () => {
     it("renders groups including those with no targets", () => {
       render(
@@ -159,7 +154,6 @@ describe("RelationshipSection", () => {
           isEditing={true}
         />
       );
-      // Should render the add relationship button and the empty group
       expect(screen.getByText("Add relationship")).toBeDefined();
     });
 
@@ -172,7 +166,7 @@ describe("RelationshipSection", () => {
         />
       );
       expect(screen.getByText("Class B")).toBeDefined();
-      expect(screen.getByTitle("Remove")).toBeDefined();
+      expect(screen.getByLabelText("Remove")).toBeDefined();
     });
 
     it("calls onRemoveTarget and onSaveNeeded when delete clicked", () => {
@@ -187,7 +181,7 @@ describe("RelationshipSection", () => {
           onSaveNeeded={onSave}
         />
       );
-      fireEvent.click(screen.getByTitle("Remove"));
+      fireEvent.click(screen.getByLabelText("Remove"));
       expect(onRemove).toHaveBeenCalledWith(0, 0);
       expect(onSave).toHaveBeenCalled();
     });
@@ -239,11 +233,8 @@ describe("RelationshipSection", () => {
           isEditing={true}
         />
       );
-      // The property picker shows the current label in a button
       expect(screen.getByText("See Also")).toBeDefined();
     });
-
-    // --- Entity search integration ---
 
     it("calls searchEntities when typing in entity search", async () => {
       vi.useFakeTimers();
@@ -266,7 +257,6 @@ describe("RelationshipSection", () => {
       fireEvent.focus(input);
       fireEvent.change(input, { target: { value: "Class" } });
 
-      // Debounce timer
       vi.advanceTimersByTime(300);
       await vi.waitFor(() => {
         expect(mockSearchEntities).toHaveBeenCalledWith("proj-1", "Class", "token-123", "main");
@@ -306,7 +296,6 @@ describe("RelationshipSection", () => {
         expect(mockSearchEntities).toHaveBeenCalled();
       });
 
-      // Wait for results to render
       await vi.waitFor(() => {
         expect(screen.getByText("Class D")).toBeDefined();
       });
@@ -321,8 +310,6 @@ describe("RelationshipSection", () => {
       vi.useRealTimers();
     });
 
-    // --- Property picker ---
-
     it("opens property picker dropdown on click", () => {
       render(
         <RelationshipSection
@@ -332,11 +319,9 @@ describe("RelationshipSection", () => {
         />
       );
 
-      // Click the property picker button (contains "See Also" label)
       const pickerButton = screen.getByText("See Also").closest("button")!;
       fireEvent.click(pickerButton);
 
-      // Dropdown should show search input and built-in properties
       expect(screen.getByPlaceholderText("Search properties...")).toBeDefined();
       expect(screen.getByText("RDFS")).toBeDefined();
     });
@@ -355,7 +340,6 @@ describe("RelationshipSection", () => {
       const pickerButton = screen.getByText("See Also").closest("button")!;
       fireEvent.click(pickerButton);
 
-      // Click "Defined By" option
       fireEvent.click(screen.getByText("Defined By"));
       expect(onChangeProperty).toHaveBeenCalledWith(
         0,
@@ -383,7 +367,7 @@ describe("RelationshipSection", () => {
         />
       );
 
-      const removeButtons = screen.getAllByTitle("Remove");
+      const removeButtons = screen.getAllByLabelText("Remove");
       expect(removeButtons).toHaveLength(2);
       fireEvent.click(removeButtons[1]);
       expect(onRemove).toHaveBeenCalledWith(1, 0);

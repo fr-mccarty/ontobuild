@@ -1,9 +1,3 @@
-/**
- * Quality checks over an N3 Store:
- *  - consistency checks (port of ontokit-api services/consistency_service.py, 12 rules)
- *  - duplicate detection (port of services/duplicate_detection_service.py; the old
- *    pg_trgm similarity is reproduced in memory with the same trigram algorithm)
- */
 import type { Store, Term } from "n3";
 import { NS } from "./rdf";
 
@@ -89,7 +83,6 @@ function has(store: Store, s: string, p: string, o: string): boolean {
   return store.countQuads(s, p, o, null) > 0;
 }
 
-/** rdf_utils.get_entity_type */
 export function qualityEntityType(store: Store, iri: string): string {
   for (const [t, label] of TYPE_CHECKS) if (has(store, iri, RDF_TYPE, t)) return label;
   return "unknown";
@@ -130,7 +123,6 @@ function namedParents(store: Store, cls: string): string[] {
 }
 
 const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
-  // orphan_class
   (store) =>
     classes(store)
       .filter((c) => c !== OWL_THING)
@@ -142,7 +134,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
       )
       .map((c) => ci("orphan_class", "warning", c, "class", "Orphan class: no parent, no children, no instances")),
 
-  // cycle_detect
   (store) => {
     const out: ConsistencyIssue[] = [];
     const reported = new Set<string>();
@@ -175,7 +166,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
     return out;
   },
 
-  // unused_property
   (store) => {
     const out: ConsistencyIssue[] = [];
     for (const t of PROPERTY_TYPES) {
@@ -188,7 +178,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
     return out;
   },
 
-  // missing_label
   (store) =>
     declaredUris(store)
       .filter((u) => u !== OWL_THING)
@@ -196,7 +185,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
       .filter(([u, t]) => t !== "unknown" && !store.getObjects(u, RDFS_LABEL, null).some(isLiteral))
       .map(([u, t]) => ci("missing_label", "warning", u, t, "Entity has no rdfs:label")),
 
-  // missing_comment
   (store) =>
     declaredUris(store)
       .filter((u) => u !== OWL_THING)
@@ -204,7 +192,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
       .filter(([u, t]) => t !== "unknown" && !store.getObjects(u, RDFS_COMMENT, null).some(isLiteral))
       .map(([u, t]) => ci("missing_comment", "info", u, t, "Entity has no rdfs:comment")),
 
-  // orphan_individual
   (store) => {
     const out: ConsistencyIssue[] = [];
     const declared = new Set(classes(store));
@@ -221,7 +208,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
     return out;
   },
 
-  // empty_domain
   (store) => {
     const out: ConsistencyIssue[] = [];
     for (const t of [OWL_OBJECT_PROPERTY, OWL_DATATYPE_PROPERTY])
@@ -231,7 +217,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
     return out;
   },
 
-  // empty_range
   (store) => {
     const out: ConsistencyIssue[] = [];
     for (const t of [OWL_OBJECT_PROPERTY, OWL_DATATYPE_PROPERTY])
@@ -241,7 +226,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
     return out;
   },
 
-  // duplicate_label
   (store) => {
     const map = new Map<string, { etype: string; value: string; lang: string; iris: string[] }>();
     for (const u of declaredUris(store)) {
@@ -279,7 +263,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
     return out;
   },
 
-  // deprecated_parent
   (store) => {
     const out: ConsistencyIssue[] = [];
     for (const cls of classes(store))
@@ -293,7 +276,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
     return out;
   },
 
-  // dangling_ref
   (store) => {
     const known = new Set([...declaredUris(store), ...namedSubjects(store, null, null)]);
     const external: string[] = [NS.rdf, NS.rdfs, NS.owl, NS.xsd, NS.skos, NS.dcterms];
@@ -326,7 +308,6 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
     return out;
   },
 
-  // multi_root
   (store) => {
     const roots = classes(store).filter((c) => c !== OWL_THING && namedParents(store, c).length === 0);
     if (roots.length <= 5) return [];
@@ -355,11 +336,6 @@ export function runConsistencyCheck(store: Store, projectId: string, branch: str
   };
 }
 
-// ---------------------------------------------------------------------------
-// Duplicate detection (pg_trgm-compatible trigram similarity)
-// ---------------------------------------------------------------------------
-
-/** Trigram set as computed by PostgreSQL pg_trgm (lowercased words, padded "  w "). */
 export function trigrams(text: string): Set<string> {
   const out = new Set<string>();
   for (const word of text.toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
@@ -395,16 +371,11 @@ class DisjointSet {
   }
 }
 
-/**
- * Entities (classes, properties, individuals) with one rdfs:label each are compared
- * within their entity type; pairs with trigram similarity >= threshold are clustered.
- */
 export function findDuplicates(
   store: Store,
   entities: { iri: string; entity_type: string }[],
   threshold = 0.85,
 ): DuplicateDetectionResult {
-  // One label per entity: language-tagged labels first (alphabetical), untagged last.
   const labelled: { iri: string; label: string; type: string; tri: Set<string> }[] = [];
   for (const e of entities) {
     const labels = store
@@ -419,7 +390,6 @@ export function findDuplicates(
     labelled.push({ iri: e.iri, label: labels[0].value, type: e.entity_type, tri: trigrams(labels[0].value) });
   }
 
-  // Inverted index per type: trigram -> entity indexes
   const byType = new Map<string, number[]>();
   labelled.forEach((e, i) => {
     if (!byType.has(e.type)) byType.set(e.type, []);
@@ -484,7 +454,6 @@ const INDEX_TYPE_MAP: [string, string][] = [
   [OWL_NAMED_INDIVIDUAL, "individual"],
 ];
 
-/** Entities as the old ontology index saw them (iri + index entity_type), excluding owl:Thing. */
 export function indexedEntities(store: Store): { iri: string; entity_type: string }[] {
   const out = new Map<string, string>();
   for (const [t, type] of INDEX_TYPE_MAP)

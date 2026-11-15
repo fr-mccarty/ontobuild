@@ -3,6 +3,7 @@
 import { useRef, useCallback, useState, useEffect } from "react";
 import { Search, X, Plus, ChevronDown, ChevronsDown, ChevronRight, ChevronsRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const TIP_DISMISSED_KEY = "ontokit:expand-tip-dismissed";
 
@@ -44,7 +45,6 @@ export function EntityTreeToolbar({
   const internalRef = useRef<HTMLInputElement>(null);
   const inputRef = searchInputRef || internalRef;
 
-  // Dismissible tip
   const [showTip, setShowTip] = useState(false);
   useEffect(() => {
     try {
@@ -52,7 +52,6 @@ export function EntityTreeToolbar({
         setShowTip(true);
       }
     } catch {
-      // localStorage unavailable
     }
   }, []);
 
@@ -61,7 +60,6 @@ export function EntityTreeToolbar({
     try {
       localStorage.setItem(TIP_DISMISSED_KEY, "1");
     } catch {
-      // localStorage unavailable
     }
   }, []);
 
@@ -99,77 +97,91 @@ export function EntityTreeToolbar({
           </button>
         )}
 
-        {/* Expand split-button group */}
         {showExpandGroup && (
           <div className="flex rounded-md border border-slate-200 dark:border-slate-600">
-            <button
-              onClick={handleExpandOneLevel}
-              disabled={expandDisabled}
-              className={cn(btnBase, "rounded-l-md border-r border-slate-200 dark:border-slate-600", expandDisabled ? btnDisabled : btnEnabled)}
-              aria-label="Expand one level"
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Expand</span>
-            </button>
-            <button
-              onClick={onExpandAllFully}
-              disabled={expandDisabled}
-              className={cn(btnBase, "rounded-r-md px-1", expandDisabled ? btnDisabled : btnEnabled)}
-              aria-label="Expand all levels"
-            >
-              {isExpandingAll ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <ChevronsDown className="h-3.5 w-3.5" />
-              )}
-            </button>
+            <Tooltip side="bottom" content="Expand one level: opens every visible collapsed branch one level deeper">
+              <span className="flex">
+                <button
+                  onClick={handleExpandOneLevel}
+                  disabled={expandDisabled}
+                  className={cn(btnBase, "rounded-l-md border-r border-slate-200 dark:border-slate-600", expandDisabled ? btnDisabled : btnEnabled)}
+                  aria-label="Expand one level"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Expand</span>
+                </button>
+              </span>
+            </Tooltip>
+            <Tooltip side="bottom" content="Expand all levels: keeps opening branches until the whole tree is expanded (stops once 500 classes are showing)">
+              <span className="flex">
+                <button
+                  onClick={onExpandAllFully}
+                  disabled={expandDisabled}
+                  className={cn(btnBase, "rounded-r-md px-1", expandDisabled ? btnDisabled : btnEnabled)}
+                  aria-label="Expand all levels"
+                >
+                  {isExpandingAll ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ChevronsDown className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </span>
+            </Tooltip>
           </div>
         )}
 
-        {/* Collapse split-button group */}
         {showCollapseGroup && (
           <div className="flex rounded-md border border-slate-200 dark:border-slate-600">
-            <button
-              onClick={onCollapseAll}
-              disabled={collapseDisabled}
-              className={cn(btnBase, "rounded-l-md border-r border-slate-200 dark:border-slate-600", collapseDisabled ? btnDisabled : btnEnabled)}
-              aria-label="Collapse all"
-            >
-              <ChevronsRight className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Collapse</span>
-            </button>
-            <button
-              onClick={onCollapseOneLevel}
-              disabled={collapseDisabled}
-              className={cn(btnBase, "rounded-r-md px-1", collapseDisabled ? btnDisabled : btnEnabled)}
-              aria-label="Collapse one level"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+            <Tooltip side="bottom" content="Collapse all: closes every branch back to the top level">
+              <span className="flex">
+                <button
+                  onClick={onCollapseAll}
+                  disabled={collapseDisabled}
+                  className={cn(btnBase, "rounded-l-md border-r border-slate-200 dark:border-slate-600", collapseDisabled ? btnDisabled : btnEnabled)}
+                  aria-label="Collapse all"
+                >
+                  <ChevronsRight className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Collapse</span>
+                </button>
+              </span>
+            </Tooltip>
+            <Tooltip side="bottom" content="Collapse one level: closes only the deepest open branches">
+              <span className="flex">
+                <button
+                  onClick={onCollapseOneLevel}
+                  disabled={collapseDisabled}
+                  className={cn(btnBase, "rounded-r-md px-1", collapseDisabled ? btnDisabled : btnEnabled)}
+                  aria-label="Collapse one level"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            </Tooltip>
           </div>
         )}
 
-        <button
-          onClick={handleToggle}
-          className={cn(
-            "flex items-center gap-0.5 rounded-sm p-1 hover:bg-slate-100 dark:hover:bg-slate-700",
-            showSearch && "bg-slate-100 dark:bg-slate-700",
-          )}
-          title={showSearch ? "Close search" : "Search (Ctrl+K)"}
-          aria-label={showSearch ? "Close search" : "Search entities"}
-        >
-          {showSearch ? (
-            <X className="h-4 w-4 text-slate-500" />
-          ) : (
-            <>
-              <Search className="h-4 w-4 text-slate-500" />
-              <kbd className="hidden text-[9px] text-slate-400 sm:inline">K</kbd>
-            </>
-          )}
-        </button>
+        <Tooltip side="bottom" content={showSearch ? "Close search" : "Search (Ctrl+K)"}>
+          <button
+            onClick={handleToggle}
+            className={cn(
+              "flex items-center gap-0.5 rounded-sm p-1 hover:bg-slate-100 dark:hover:bg-slate-700",
+              showSearch && "bg-slate-100 dark:bg-slate-700",
+            )}
+            aria-label={showSearch ? "Close search" : "Search entities"}
+          >
+            {showSearch ? (
+              <X className="h-4 w-4 text-slate-500" />
+            ) : (
+              <>
+                <Search className="h-4 w-4 text-slate-500" />
+                <kbd className="hidden text-[9px] text-slate-400 sm:inline">K</kbd>
+              </>
+            )}
+          </button>
+        </Tooltip>
       </div>
 
-      {/* Dismissible tip */}
       {showTip && showExpandGroup && (
         <div className="mt-1.5 flex items-center gap-1.5 rounded-md bg-blue-50 px-2.5 py-1.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
           <span>Tip: click Expand to expand one level at a time</span>

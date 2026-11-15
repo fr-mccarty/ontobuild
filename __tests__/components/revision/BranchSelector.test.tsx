@@ -1,8 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, within, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, within, waitFor, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import userEvent from "@testing-library/user-event";
 
-// ---- BranchContext mock ----
 const mockSwitchBranch = vi.fn().mockResolvedValue(undefined);
 const mockCreateBranch = vi.fn().mockResolvedValue({ name: "feature/new", is_default: false });
 const mockDeleteBranch = vi.fn().mockResolvedValue(undefined);
@@ -110,7 +114,6 @@ describe("BranchSelector", () => {
 
   it("does not show dropdown initially", () => {
     render(<BranchSelector />);
-    // The branch list items are not visible before opening
     expect(screen.queryByRole("option")).toBeNull();
   });
 
@@ -121,7 +124,6 @@ describe("BranchSelector", () => {
     const trigger = screen.getByRole("button");
     await user.click(trigger);
 
-    // Branch list should now be visible
     const options = screen.getAllByRole("option");
     expect(options.length).toBe(2);
   });
@@ -191,7 +193,6 @@ describe("BranchSelector", () => {
     );
     await user.click(featureOption!);
 
-    // Dropdown should be closed after the async switchBranch resolves
     await waitFor(() => {
       expect(screen.queryByRole("option")).toBeNull();
     });
@@ -231,11 +232,8 @@ describe("BranchSelector", () => {
 
   it("does not show chevron when readOnly", () => {
     render(<BranchSelector readOnly />);
-    // ChevronDown is only rendered when !readOnly
-    // The non-readOnly version has 3 SVGs (GitBranch + ChevronDown), readOnly has 1 (GitBranch only)
     const button = screen.getByRole("button");
     const svgs = button.querySelectorAll("svg");
-    // GitBranch icon only (no ChevronDown)
     expect(svgs.length).toBe(1);
   });
 
@@ -315,7 +313,6 @@ describe("BranchSelector", () => {
     render(<BranchSelector />);
     await user.click(screen.getByRole("button"));
 
-    // feature/test should have a delete button (has_delete_permission=true, can_delete=true)
     const featureOption = screen.getAllByRole("option").find(
       (o) => within(o).queryByText("feature/test") !== null
     );
@@ -332,8 +329,6 @@ describe("BranchSelector", () => {
   });
 
   it("displays commits ahead count", () => {
-    // feature/test has commits_ahead: 2 but it's not currentBranch
-    // Set currentBranch to feature/test to see commits_ahead on trigger
     mockBranchState = {
       ...mockBranchState,
       currentBranch: "feature/test",

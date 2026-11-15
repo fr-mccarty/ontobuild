@@ -20,10 +20,6 @@ interface UseFilteredTreeReturn {
   truncated: boolean;
 }
 
-/**
- * Build a filtered tree that shows search-matched classes in their ancestor context.
- * Non-class results are excluded (handled separately as flat results).
- */
 export function useFilteredTree({
   searchResults,
   projectId,
@@ -64,7 +60,6 @@ export function useFilteredTree({
 
     (async () => {
       try {
-        // Fetch ancestors for each class result
         const ancestorPaths = await Promise.all(
           limitedResults.map(async (result) => {
             try {
@@ -91,7 +86,6 @@ export function useFilteredTree({
 
         if (buildId !== buildIdRef.current) return;
 
-        // Merge all ancestor paths into a unified tree
         const tree = mergePathsIntoTree(ancestorPaths);
 
         setFilteredNodes(tree);
@@ -118,24 +112,15 @@ export interface AncestorPath {
   ancestors: Array<{ iri: string; label: string; child_count: number }>;
 }
 
-/**
- * Merge multiple ancestor paths into a unified EntityTreeNode tree.
- * Matched nodes get `isSearchMatch: true`, all ancestors are `isExpanded: true`.
- */
 export function mergePathsIntoTree(paths: AncestorPath[]): EntityTreeNode[] {
-  // nodeMap: iri -> EntityTreeNode
   const nodeMap = new Map<string, EntityTreeNode>();
-  // childrenMap: parentIri -> Set<childIri>
   const childrenMap = new Map<string, Set<string>>();
-  // Track all IRIs that appear as children (have a parent in the tree)
   const hasParent = new Set<string>();
-  // matchIris: the actual search result IRIs
   const matchIris = new Set<string>();
 
   for (const path of paths) {
     matchIris.add(path.matchIri);
 
-    // Ancestors are ordered root-first (or just ancestor list)
     const fullPath = [
       ...path.ancestors.map((a) => ({ iri: a.iri, label: a.label, hasChildren: a.child_count > 0 })),
       { iri: path.matchIri, label: path.matchLabel, hasChildren: false },
@@ -174,7 +159,6 @@ export function mergePathsIntoTree(paths: AncestorPath[]): EntityTreeNode[] {
     }
   }
 
-  // Derive roots: any node that never appears as a child
   const rootIris = new Set<string>();
   for (const iri of nodeMap.keys()) {
     if (!hasParent.has(iri)) {
@@ -182,7 +166,6 @@ export function mergePathsIntoTree(paths: AncestorPath[]): EntityTreeNode[] {
     }
   }
 
-  // Build the tree from nodeMap + childrenMap
   const buildChildren = (parentIri: string): EntityTreeNode[] => {
     const childIris = childrenMap.get(parentIri);
     if (!childIris) return [];

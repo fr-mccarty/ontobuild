@@ -16,9 +16,7 @@ describe("ProjectForm", () => {
 
     expect(screen.getByLabelText(/Project Name/)).toBeDefined();
     expect(screen.getByLabelText("Description")).toBeDefined();
-    expect(screen.getByText("Visibility")).toBeDefined();
-    expect(screen.getByText("Private")).toBeDefined();
-    expect(screen.getByText("Public")).toBeDefined();
+    expect(screen.queryByText("Visibility")).toBeNull();
     expect(screen.getByRole("button", { name: "Create Project" })).toBeDefined();
   });
 
@@ -93,35 +91,17 @@ describe("ProjectForm", () => {
     });
   });
 
-  it("submits form data with public visibility", async () => {
+  it("keeps an existing project's visibility unchanged when editing", async () => {
     const user = userEvent.setup();
-    render(<ProjectForm onSubmit={mockOnSubmit} />);
-
-    await user.type(screen.getByLabelText(/Project Name/), "Public Project");
-    await user.click(screen.getByText("Public"));
-    await user.click(screen.getByRole("button", { name: "Create Project" }));
-
-    expect(mockOnSubmit).toHaveBeenCalledWith({
-      name: "Public Project",
-      description: undefined,
-      is_public: true,
-    });
-  });
-
-  it("toggles visibility between private and public", async () => {
-    const user = userEvent.setup();
-    render(<ProjectForm onSubmit={mockOnSubmit} />);
-
-    await user.type(screen.getByLabelText(/Project Name/), "Test");
-
-    // Start private, switch to public, back to private
-    await user.click(screen.getByText("Public"));
-    await user.click(screen.getByText("Private"));
-    await user.click(screen.getByRole("button", { name: "Create Project" }));
-
-    expect(mockOnSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ is_public: false })
+    render(
+      <ProjectForm
+        onSubmit={mockOnSubmit}
+        initialData={{ name: "Shared", description: "", is_public: true }}
+        submitLabel="Save"
+      />,
     );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({ is_public: true }));
   });
 
   it("displays error when onSubmit throws", async () => {
@@ -163,7 +143,6 @@ describe("ProjectForm", () => {
     const user = userEvent.setup();
     render(<ProjectForm onSubmit={mockOnSubmit} nameRequired={false} />);
 
-    // Submit button should be enabled even with empty name
     const submitBtn = screen.getByRole("button", { name: "Create Project" });
     expect((submitBtn as HTMLButtonElement).disabled).toBe(false);
 

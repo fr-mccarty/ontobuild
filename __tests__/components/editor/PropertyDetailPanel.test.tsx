@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render as rtlRender, screen, waitFor, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 
-// ── Configurable mock state (tests can override before render) ──
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
+import userEvent from "@testing-library/user-event";
 
 const mockExtractPropertyDetail = vi.fn();
 vi.mock("@/lib/ontology/entityDetailExtractors", () => ({
@@ -48,14 +51,13 @@ vi.mock("@/lib/hooks/useEntityAutoSave", () => ({
 
 vi.mock("@/lib/stores/editorModeStore", () => ({
   useEditorModeStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ editorMode: "standard", ...editorModeOverrides }),
+    selector({ ...editorModeOverrides }),
 }));
 
 vi.mock("@/lib/hooks/useIriLabels", () => ({
   useIriLabels: () => ({}),
 }));
 
-// Stub child components - capture props for callback testing
 vi.mock("@/components/editor/LanguageFlag", () => ({
   LanguageFlag: () => null,
 }));
@@ -107,8 +109,6 @@ vi.mock("@/components/editor/AutoSaveAffordanceBar", () => ({
 
 import { PropertyDetailPanel } from "@/components/editor/PropertyDetailPanel";
 
-// ── Helpers ──
-
 function makePropertyDetail(overrides: Record<string, unknown> = {}) {
   return {
     propertyType: "object" as const,
@@ -151,8 +151,6 @@ const DEFAULT_PROPS = {
   branch: "main",
 };
 
-// ── Tests ──
-
 describe("PropertyDetailPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -165,8 +163,6 @@ describe("PropertyDetailPanel", () => {
     capturedInlineAnnotationAdderProps = null;
     mockExtractPropertyDetail.mockReturnValue(makePropertyDetail());
   });
-
-  // ── Empty / placeholder state ──
 
   it("renders 'Select a property' placeholder when propertyIri is null", () => {
     render(
@@ -182,8 +178,6 @@ describe("PropertyDetailPanel", () => {
     ).toBeDefined();
   });
 
-  // ── Loading state ──
-
   it("shows a loading spinner when sourceContent is empty", () => {
     const { container } = render(
       <PropertyDetailPanel
@@ -195,8 +189,6 @@ describe("PropertyDetailPanel", () => {
     );
     expect(container.querySelector(".animate-spin")).not.toBeNull();
   });
-
-  // ── Not found state ──
 
   it("shows not-found message when extractPropertyDetail returns null", () => {
     mockExtractPropertyDetail.mockReturnValue(null);
@@ -219,8 +211,6 @@ describe("PropertyDetailPanel", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("hasParent")).toBeDefined();
   });
-
-  // ── Successful render ──
 
   it("renders property label and IRI", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
@@ -354,32 +344,26 @@ describe("PropertyDetailPanel", () => {
     expect(screen.queryByText("Disjoint Properties")).toBeNull();
   });
 
-  // ── Copy IRI ──
-
   it("renders Copy IRI button when onCopyIri is provided", () => {
     const onCopyIri = vi.fn();
     render(<PropertyDetailPanel {...DEFAULT_PROPS} onCopyIri={onCopyIri} />);
-    expect(screen.getByTitle("Copy IRI")).toBeDefined();
+    expect(screen.getByLabelText("Copy IRI")).toBeDefined();
   });
 
   it("calls onCopyIri when Copy IRI button is clicked", async () => {
     const user = userEvent.setup();
     const onCopyIri = vi.fn();
     render(<PropertyDetailPanel {...DEFAULT_PROPS} onCopyIri={onCopyIri} />);
-    await user.click(screen.getByTitle("Copy IRI"));
+    await user.click(screen.getByLabelText("Copy IRI"));
     expect(onCopyIri).toHaveBeenCalledWith(
       "http://example.org/ontology#hasParent"
     );
   });
 
-  // ── Read-only mode (canEdit=false) ──
-
   it("does not show edit button when canEdit is false", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} canEdit={false} />);
     expect(screen.queryByText("Edit Item")).toBeNull();
   });
-
-  // ── Edit mode (canEdit=true) ──
 
   it("auto-enters edit mode when canEdit is true and onUpdateProperty provided", async () => {
     const onUpdateProperty = vi.fn();
@@ -411,8 +395,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.queryByText("Edit Item")).toBeNull();
   });
 
-  // ── API call verification ──
-
   it("calls extractPropertyDetail with sourceContent and propertyIri", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
     expect(mockExtractPropertyDetail).toHaveBeenCalledWith(
@@ -431,18 +413,13 @@ describe("PropertyDetailPanel", () => {
     expect(mockExtractPropertyDetail).toHaveBeenCalledTimes(2);
   });
 
-  // ── Falls back to local name when no labels ──
-
   it("renders local name when property has no labels", () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({ labels: [] })
     );
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
-    // The header should still show "hasParent" from getLocalName
     expect(screen.getAllByText("hasParent").length).toBeGreaterThanOrEqual(1);
   });
-
-  // ── Relationships section ──
 
   it("renders relationships section when seeAlsoIris present", () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -464,8 +441,6 @@ describe("PropertyDetailPanel", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} canEdit={false} />);
     expect(screen.queryByText("Relationships")).toBeNull();
   });
-
-  // ── Edit mode: label editing ──
 
   it("renders editable label inputs in edit mode", async () => {
     const onUpdateProperty = vi.fn();
@@ -495,7 +470,6 @@ describe("PropertyDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    // The comment section title should be visible
     expect(screen.getByText("Comment(s)")).not.toBeNull();
   });
 
@@ -606,8 +580,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.getByText("Relationships")).not.toBeNull();
   });
 
-  // ── Label input interaction ──
-
   it("allows typing in a label input in edit mode", async () => {
     const user = userEvent.setup();
     const onUpdateProperty = vi.fn();
@@ -627,8 +599,6 @@ describe("PropertyDetailPanel", () => {
     expect((labelInput as HTMLInputElement).value).toBe("newLabel");
   });
 
-  // ── Characteristic toggle in edit mode ──
-
   it("toggles characteristic checkbox in edit mode", async () => {
     const onUpdateProperty = vi.fn();
     const { container } = render(
@@ -641,12 +611,10 @@ describe("PropertyDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    // Find the "Functional" checkbox (unchecked by default since not in characteristics)
     const functionalCheckbox = container.querySelector(
       'input[type="checkbox"]'
     ) as HTMLInputElement;
     expect(functionalCheckbox).not.toBeNull();
-    // Asymmetric should be checked (in the default characteristics)
     const checkboxes = container.querySelectorAll('input[type="checkbox"]');
     const asymmetricCheckbox = Array.from(checkboxes).find((cb) => {
       const label = cb.closest("label");
@@ -655,8 +623,6 @@ describe("PropertyDetailPanel", () => {
     expect(asymmetricCheckbox).not.toBeNull();
     expect(asymmetricCheckbox!.checked).toBe(true);
   });
-
-  // ── Cancel edit mode ──
 
   it("discards draft when cancel is invoked but stays in edit mode", async () => {
     const onUpdateProperty = vi.fn();
@@ -671,7 +637,6 @@ describe("PropertyDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
 
-    // Trigger cancel via the captured AutoSaveAffordanceBar callback
     expect(capturedAutoSaveBarProps).not.toBeNull();
     const onCancel = capturedAutoSaveBarProps!.onCancel as () => void;
     expect(onCancel).toBeDefined();
@@ -680,11 +645,8 @@ describe("PropertyDetailPanel", () => {
     await waitFor(() => {
       expect(mockDiscardDraft).toHaveBeenCalled();
     });
-    // Editor is always in edit mode — auto-save bar stays.
     expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
   });
-
-  // ── Auto-enter edit mode in editor context ──
 
   it("auto-enters edit mode when onUpdateProperty is provided", async () => {
     const onUpdateProperty = vi.fn();
@@ -699,8 +661,6 @@ describe("PropertyDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
   });
-
-  // ── Draft restoration ──
 
   it("auto-enters edit mode when restoredDraft is available", () => {
     autoSaveOverrides = {
@@ -735,19 +695,13 @@ describe("PropertyDetailPanel", () => {
     expect(mockClearRestoredDraft).toHaveBeenCalled();
   });
 
-  // ── flushToGit on unmount ──
-
   it("flushes pending draft to git on unmount", async () => {
-    // The parent layout remounts the panel on selection change via a key
-    // prop, so unmount is what carries pending edits to the backend.
     const { unmount } = render(
       <PropertyDetailPanel {...DEFAULT_PROPS} canEdit={false} />
     );
     unmount();
     expect(mockFlushToGit).toHaveBeenCalled();
   });
-
-  // ── Does not show characteristics for data properties ──
 
   it("does not render characteristics for data properties", () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -757,8 +711,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.queryByText("Characteristics")).toBeNull();
   });
 
-  // ── Does not render inverse-of for data properties ──
-
   it("does not render inverse-of for data properties", () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({ propertyType: "data", inverseOf: null })
@@ -766,8 +718,6 @@ describe("PropertyDetailPanel", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.queryByText("Inverse Of")).toBeNull();
   });
-
-  // ── Does not render inverse-of for annotation properties ──
 
   it("does not render inverse-of for annotation properties", () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -777,8 +727,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.queryByText("Inverse Of")).toBeNull();
   });
 
-  // ── Does not auto-enter edit mode when canEdit is false ──
-
   it("does not auto-enter edit mode when canEdit is false even with onUpdateProperty", () => {
     render(
       <PropertyDetailPanel {...DEFAULT_PROPS} canEdit={false} onUpdateProperty={vi.fn()} />
@@ -786,16 +734,12 @@ describe("PropertyDetailPanel", () => {
     expect(screen.queryByTestId("auto-save-bar")).toBeNull();
   });
 
-  // ── Does not auto-enter edit mode without onUpdateProperty ──
-
   it("does not show edit button when canEdit is true but onUpdateProperty is not provided", () => {
     render(
       <PropertyDetailPanel {...DEFAULT_PROPS} canEdit={true} />
     );
     expect(screen.queryByText("Edit Item")).toBeNull();
   });
-
-  // ── Language tag input in edit mode ──
 
   it("renders language tag pickers in edit mode", async () => {
     const onUpdateProperty = vi.fn();
@@ -812,8 +756,6 @@ describe("PropertyDetailPanel", () => {
     const langPickers = screen.getAllByLabelText("Language tag");
     expect(langPickers.length).toBeGreaterThanOrEqual(1);
   });
-
-  // ── triggerSave on blur of label input ──
 
   it("calls triggerSave on blur of label input", async () => {
     const user = userEvent.setup();
@@ -836,8 +778,6 @@ describe("PropertyDetailPanel", () => {
     });
   });
 
-  // ── isDefinedBy in relationships ──
-
   it("renders relationships section when isDefinedByIris present", () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({
@@ -847,8 +787,6 @@ describe("PropertyDetailPanel", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("Relationships")).not.toBeNull();
   });
-
-  // ── Parent properties section in edit mode ──
 
   it("renders parent properties section in edit mode", async () => {
     const onUpdateProperty = vi.fn();
@@ -864,8 +802,6 @@ describe("PropertyDetailPanel", () => {
     });
     expect(screen.getByText("Parent Properties")).not.toBeNull();
   });
-
-  // ── Does not enter edit mode on draft restoration when entityType mismatches ──
 
   it("does not restore draft when entityType does not match property", async () => {
     autoSaveOverrides = {
@@ -883,15 +819,11 @@ describe("PropertyDetailPanel", () => {
         onUpdateProperty={onUpdateProperty}
       />
     );
-    // Edit mode auto-enters (editor context), but the wrong-type draft should not be applied
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    // The "Wrong type" label from the class draft should not appear
     expect(screen.queryByDisplayValue("Wrong type")).toBeNull();
   });
-
-  // ── Remove label button in edit mode ──
 
   it("shows remove button when multiple labels exist in edit mode", async () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -913,11 +845,9 @@ describe("PropertyDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    const removeButtons = container.querySelectorAll('button[title="Remove"]');
+    const removeButtons = container.querySelectorAll('button[aria-label="Remove"]');
     expect(removeButtons.length).toBeGreaterThanOrEqual(1);
   });
-
-  // ── Language tag editing in edit mode ──
 
   it("allows editing language tag via picker", async () => {
     const user = userEvent.setup();
@@ -940,8 +870,6 @@ describe("PropertyDetailPanel", () => {
     expect(mockTriggerSave).toHaveBeenCalled();
   });
 
-  // ── Edit mode with no initial comments ──
-
   it("renders empty comment placeholder in edit mode when no comments", async () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({ comments: [] })
@@ -957,11 +885,8 @@ describe("PropertyDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    // Comment section should still render in edit mode
     expect(screen.getByText("Comment(s)")).not.toBeNull();
   });
-
-  // ── Edit mode with no initial definitions ──
 
   it("renders empty definition placeholder in edit mode when no definitions", async () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -980,8 +905,6 @@ describe("PropertyDetailPanel", () => {
     });
     expect(screen.getByText("Definition")).not.toBeNull();
   });
-
-  // ── Edit mode with empty domain/range ──
 
   it("renders domain search in edit mode even when empty", async () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1019,8 +942,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.getByText("Range")).not.toBeNull();
   });
 
-  // ── Edit mode with empty parent properties ──
-
   it("renders parent properties search in edit mode even when empty", async () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({ parentIris: [] })
@@ -1038,8 +959,6 @@ describe("PropertyDetailPanel", () => {
     });
     expect(screen.getByText("Parent Properties")).not.toBeNull();
   });
-
-  // ── Edit mode with inverse-of empty for object property ──
 
   it("renders inverse-of search in edit mode for object property with no inverse", async () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1059,8 +978,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.getByText("Inverse Of")).not.toBeNull();
   });
 
-  // ── Characteristics in edit mode for object property with no characteristics ──
-
   it("renders all characteristic checkboxes in edit mode when none selected", async () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({ characteristics: [] })
@@ -1077,16 +994,12 @@ describe("PropertyDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
     const checkboxes = container.querySelectorAll('input[type="checkbox"]');
-    // Should have 7 characteristic checkboxes
     expect(checkboxes.length).toBe(7);
-    // All unchecked
     const allUnchecked = Array.from(checkboxes).every(
       (cb) => !(cb as HTMLInputElement).checked
     );
     expect(allUnchecked).toBe(true);
   });
-
-  // ── Navigate to entity callback ──
 
   it("calls onNavigateToEntity when domain IRI link is clicked", async () => {
     const user = userEvent.setup();
@@ -1097,15 +1010,12 @@ describe("PropertyDetailPanel", () => {
         onNavigateToEntity={onNavigate}
       />
     );
-    // Domain section has IRI links in read-only mode
     const personLink = screen.getAllByText("Person")[0];
     await user.click(personLink);
     expect(onNavigate).toHaveBeenCalledWith(
       "http://example.org/ontology#Person"
     );
   });
-
-  // ── Multiple comments in read-only ──
 
   it("renders multiple comments in read-only mode", () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1121,8 +1031,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.getByText("Second comment")).not.toBeNull();
   });
 
-  // ── Multiple definitions in read-only ──
-
   it("renders multiple definitions in read-only mode", () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({
@@ -1137,8 +1045,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.getByText("Def two")).not.toBeNull();
   });
 
-  // ── Characteristic toggle interaction ──
-
   it("clicking a characteristic checkbox calls triggerSave via requestAnimationFrame", async () => {
     const user = userEvent.setup();
     const onUpdateProperty = vi.fn();
@@ -1152,20 +1058,15 @@ describe("PropertyDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    // Click the "Functional" checkbox
     const functionalLabel = screen.getByText("Functional");
     await user.click(functionalLabel);
-    // triggerSave is called via requestAnimationFrame in toggleCharacteristic
     await waitFor(() => {
       expect(mockTriggerSave).toHaveBeenCalled();
     });
   });
 
-  // ── IRI navigation in read-only domain/range ──
-
   it("renders parent property links in read-only mode", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
-    // hasRelative is a parent property
     expect(screen.getByText("hasRelative")).not.toBeNull();
   });
 
@@ -1173,8 +1074,6 @@ describe("PropertyDetailPanel", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("hasChild")).not.toBeNull();
   });
-
-  // ── Empty labels does not render labels section in read-only ──
 
   it("does not render labels section in read-only when no labels", () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1184,8 +1083,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.queryByText("Label(s)")).toBeNull();
   });
 
-  // ── Empty comments does not render comments section in read-only ──
-
   it("does not render comments section in read-only when no comments", () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({ comments: [] })
@@ -1194,8 +1091,6 @@ describe("PropertyDetailPanel", () => {
     expect(screen.queryByText("Comment(s)")).toBeNull();
   });
 
-  // ── Empty definitions does not render definitions section in read-only ──
-
   it("does not render definitions section in read-only when no definitions", () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({ definitions: [] })
@@ -1203,8 +1098,6 @@ describe("PropertyDetailPanel", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} canEdit={false} />);
     expect(screen.queryByText("Definition")).toBeNull();
   });
-
-  // ── Cancel edit mode via AutoSaveAffordanceBar ──
 
   it("invokes cancelEditMode via AutoSaveAffordanceBar onCancel", async () => {
     const onUpdateProperty = vi.fn();
@@ -1219,13 +1112,10 @@ describe("PropertyDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
     expect(capturedAutoSaveBarProps).not.toBeNull();
-    // Call the onCancel callback from AutoSaveAffordanceBar
     const onCancel = capturedAutoSaveBarProps!.onCancel as () => void;
     onCancel();
     expect(mockDiscardDraft).toHaveBeenCalled();
   });
-
-  // ── Manual save via AutoSaveAffordanceBar ──
 
   it("invokes flushDraftToGit via AutoSaveAffordanceBar onManualSave", async () => {
     const onUpdateProperty = vi.fn();
@@ -1246,8 +1136,6 @@ describe("PropertyDetailPanel", () => {
     expect(mockFlushToGit).toHaveBeenCalled();
   });
 
-  // ── Retry via AutoSaveAffordanceBar ──
-
   it("invokes flushToGit via AutoSaveAffordanceBar onRetry", async () => {
     const onUpdateProperty = vi.fn();
     render(
@@ -1266,8 +1154,6 @@ describe("PropertyDetailPanel", () => {
     expect(mockFlushToGit).toHaveBeenCalled();
   });
 
-  // ── AnnotationRow callbacks for comments ──
-
   it("passes comment callbacks to AnnotationRow", async () => {
     const onUpdateProperty = vi.fn();
     render(
@@ -1280,16 +1166,13 @@ describe("PropertyDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    // Find the AnnotationRow for comments (COMMENT_IRI)
     const commentRow = capturedAnnotationRowProps.find(
       (p) => p.propertyIri === "http://www.w3.org/2000/01/rdf-schema#comment"
     );
     expect(commentRow).not.toBeNull();
-    // Call onValueChange — updates state (re-renders AnnotationRow with new value)
     const onValueChange = commentRow!.onValueChange as (v: string) => void;
     onValueChange("Updated comment");
 
-    // Verify the updated value propagates to the re-rendered AnnotationRow
     await waitFor(() => {
       const updatedRow = capturedAnnotationRowProps.find(
         (p) => p.propertyIri === "http://www.w3.org/2000/01/rdf-schema#comment" && p.value === "Updated comment"
@@ -1297,7 +1180,6 @@ describe("PropertyDetailPanel", () => {
       expect(updatedRow).toBeDefined();
     });
 
-    // Call onLangChange — updates language tag
     const onLangChange = commentRow!.onLangChange as (l: string) => void;
     onLangChange("fr");
 
@@ -1308,8 +1190,6 @@ describe("PropertyDetailPanel", () => {
       expect(updatedRow).toBeDefined();
     });
   });
-
-  // ── AnnotationRow callbacks for definitions ──
 
   it("passes definition callbacks to AnnotationRow", async () => {
     const onUpdateProperty = vi.fn();
@@ -1338,8 +1218,6 @@ describe("PropertyDetailPanel", () => {
     });
   });
 
-  // ── AnnotationRow onBlur triggers save ──
-
   it("AnnotationRow onBlur triggers triggerSave", async () => {
     const onUpdateProperty = vi.fn();
     render(
@@ -1360,8 +1238,6 @@ describe("PropertyDetailPanel", () => {
     onBlur();
     expect(mockTriggerSave).toHaveBeenCalled();
   });
-
-  // ── AnnotationRow onRemove for comments ──
 
   it("passes onRemove to AnnotationRow for non-last comment rows", async () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1386,7 +1262,6 @@ describe("PropertyDetailPanel", () => {
     const commentRows = capturedAnnotationRowProps.filter(
       (p) => p.propertyIri === "http://www.w3.org/2000/01/rdf-schema#comment"
     );
-    // The first comment row should have onRemove defined
     const firstCommentRow = commentRows[0];
     expect(firstCommentRow).toBeDefined();
     expect(firstCommentRow!.onRemove).toBeDefined();
@@ -1396,8 +1271,6 @@ describe("PropertyDetailPanel", () => {
       expect(mockTriggerSave).toHaveBeenCalled();
     });
   });
-
-  // ── AnnotationRow onRemove for definitions ──
 
   it("passes onRemove to AnnotationRow for non-last definition rows", async () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1432,8 +1305,6 @@ describe("PropertyDetailPanel", () => {
     });
   });
 
-  // ── RelationshipSection callbacks ──
-
   it("passes relationship callbacks to RelationshipSection in edit mode", async () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({
@@ -1453,7 +1324,6 @@ describe("PropertyDetailPanel", () => {
     });
     expect(capturedRelationshipSectionProps).not.toBeNull();
 
-    // Test addTarget
     const onAddTarget = capturedRelationshipSectionProps!.onAddTarget as (groupIdx: number, target: { iri: string; label: string }) => void;
     onAddTarget(0, { iri: "http://example.org/ontology#newRelated", label: "newRelated" });
     await waitFor(() => {
@@ -1529,8 +1399,6 @@ describe("PropertyDetailPanel", () => {
     });
   });
 
-  // ── Custom annotation editing callbacks ──
-
   it("invokes updateAnnotationValue for custom annotations in edit mode", async () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({
@@ -1553,7 +1421,6 @@ describe("PropertyDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    // Find annotation row for the custom annotation
     const annRow = capturedAnnotationRowProps.find(
       (p) => p.propertyIri === "http://www.w3.org/2004/02/skos/core#prefLabel"
     );
@@ -1617,8 +1484,6 @@ describe("PropertyDetailPanel", () => {
     });
   });
 
-  // ── initEditState with seeAlso and isDefinedBy ──
-
   it("initializes edit state with seeAlso relationships", async () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({
@@ -1641,8 +1506,6 @@ describe("PropertyDetailPanel", () => {
     expect(capturedRelationshipSectionProps!.isEditing).toBe(true);
   });
 
-  // ── Remove label button interaction ──
-
   it("clicking remove label button triggers triggerSave", async () => {
     mockExtractPropertyDetail.mockReturnValue(
       makePropertyDetail({
@@ -1664,15 +1527,13 @@ describe("PropertyDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    const removeButtons = container.querySelectorAll('button[title="Remove"]');
+    const removeButtons = container.querySelectorAll('button[aria-label="Remove"]');
     expect(removeButtons.length).toBeGreaterThanOrEqual(1);
     await user.click(removeButtons[0]);
     await waitFor(() => {
       expect(mockTriggerSave).toHaveBeenCalled();
     });
   });
-
-  // ── Annotations read-only with resolved labels ──
 
   it("renders annotation property label from resolvedLabels", () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1688,8 +1549,6 @@ describe("PropertyDetailPanel", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("Pref Label Value")).not.toBeNull();
   });
-
-  // ── Manual save stays in edit mode when flushToGit fails ──
 
   it("stays in edit mode when flushDraftToGit flush fails", async () => {
     const onUpdateProperty = vi.fn();
@@ -1709,11 +1568,8 @@ describe("PropertyDetailPanel", () => {
     await onManualSave();
     expect(mockTriggerSave).toHaveBeenCalled();
     expect(mockFlushToGit).toHaveBeenCalled();
-    // Should still be in edit mode
     expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
   });
-
-  // ── InlineAnnotationAdder onAdd adds to existing annotation ──
 
   it("InlineAnnotationAdder adds value to existing annotation property", async () => {
     const PREF_LABEL_IRI = "http://www.w3.org/2004/02/skos/core#prefLabel";
@@ -1744,10 +1600,8 @@ describe("PropertyDetailPanel", () => {
     });
 
     const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string, lang: string) => void;
-    // Add to existing annotation
     onAdd(PREF_LABEL_IRI, "New Value", "fr");
 
-    // Verify new annotation row appears
     await waitFor(() => {
       const updatedRows = capturedAnnotationRowProps.filter(
         (p) => p.propertyIri === PREF_LABEL_IRI && p.value === "New Value"
@@ -1755,8 +1609,6 @@ describe("PropertyDetailPanel", () => {
       expect(updatedRows.length).toBeGreaterThanOrEqual(1);
     });
   });
-
-  // ── InlineAnnotationAdder onAdd creates new annotation property ──
 
   it("InlineAnnotationAdder creates new annotation property when not existing", async () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1789,8 +1641,6 @@ describe("PropertyDetailPanel", () => {
     });
   });
 
-  // ── InlineAnnotationAdder onSaveNeeded callback ──
-
   it("InlineAnnotationAdder onSaveNeeded calls triggerSave", async () => {
     const onUpdateProperty = vi.fn();
     render(
@@ -1812,8 +1662,6 @@ describe("PropertyDetailPanel", () => {
     onSaveNeeded();
     expect(mockTriggerSave).toHaveBeenCalled();
   });
-
-  // ── RelationshipSection onSaveNeeded callback ──
 
   it("RelationshipSection onSaveNeeded calls triggerSave", async () => {
     const onUpdateProperty = vi.fn();
@@ -1837,14 +1685,10 @@ describe("PropertyDetailPanel", () => {
     expect(mockTriggerSave).toHaveBeenCalled();
   });
 
-  // ── Labels section visible in read-only with labels ──
-
   it("renders labels section title in read-only when labels exist", () => {
     render(<PropertyDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("Label(s)")).not.toBeNull();
   });
-
-  // ── Edit mode with existing annotations shows custom annotation editing ──
 
   it("renders annotation language change callback in edit mode", async () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1872,7 +1716,6 @@ describe("PropertyDetailPanel", () => {
       (p) => p.propertyIri === "http://www.w3.org/2004/02/skos/core#prefLabel"
     );
     expect(annRow).not.toBeNull();
-    // Call onLangChange
     const onLangChange = annRow!.onLangChange as (l: string) => void;
     onLangChange("de");
     await waitFor(() => {
@@ -1882,8 +1725,6 @@ describe("PropertyDetailPanel", () => {
       expect(updatedRow).toBeDefined();
     });
   });
-
-  // ── Edit mode with no labels initializes empty placeholder ──
 
   it("initializes edit mode with empty label placeholder when no labels", async () => {
     mockExtractPropertyDetail.mockReturnValue(
@@ -1904,8 +1745,6 @@ describe("PropertyDetailPanel", () => {
     expect(labelInputs.length).toBeGreaterThanOrEqual(1);
     expect((labelInputs[0] as HTMLInputElement).value).toBe("");
   });
-
-  // ── Edit mode with isDefinedBy relationships ──
 
   it("initializes edit mode with isDefinedBy as separate relationship group", async () => {
     mockExtractPropertyDetail.mockReturnValue(

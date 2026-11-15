@@ -5,7 +5,6 @@ import { Search, X } from "lucide-react";
 import { cn, getLocalName } from "@/lib/utils";
 import { projectOntologyApi, type EntitySearchResult } from "@/lib/api/client";
 
-/** Entity type icon badge */
 const entityTypeIcons: Record<string, { letter: string; className: string }> = {
   class: { letter: "C", className: "bg-owl-class/10 border-owl-class/50 text-owl-class" },
   property: { letter: "P", className: "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-400" },
@@ -16,15 +15,10 @@ interface EntitySearchComboboxProps {
   projectId: string;
   accessToken?: string;
   branch?: string;
-  /** Filter to specific entity types (e.g., "class", "property", "individual") */
   entityTypes?: string;
-  /** IRIs to exclude from results */
   excludeIris?: string[];
-  /** Called when user selects an entity */
   onSelect: (result: EntitySearchResult) => void;
-  /** Called when the combobox is closed */
   onClose: () => void;
-  /** Placeholder text */
   placeholder?: string;
 }
 
@@ -58,7 +52,6 @@ export function EntitySearchCombobox({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  // Debounced search
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);

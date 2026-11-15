@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { Tooltip } from "@/components/ui/tooltip";
 
-// Wrap in TooltipProvider as Radix requires it
 function renderWithProvider(ui: React.ReactNode) {
   return render(
     <TooltipPrimitive.Provider>{ui}</TooltipPrimitive.Provider>
@@ -37,8 +36,6 @@ describe("Tooltip", () => {
       </Tooltip>
     );
     await userEvent.hover(screen.getByText("Hover target"));
-    // Radix tooltip may not fully render in jsdom; check if content appeared,
-    // otherwise verify trigger is still present and no crash occurred
     const tooltipContent = screen.queryByText("Visible now");
     if (tooltipContent) {
       expect(tooltipContent).not.toBeNull();
@@ -91,5 +88,16 @@ describe("Tooltip", () => {
     );
     const link = screen.getByText("Link trigger");
     expect(link.tagName).toBe("A");
+  });
+});
+
+describe("Tooltip without content", () => {
+  it("renders only the child when content is empty", () => {
+    render(
+      <Tooltip content={undefined}>
+        <button>Plain</button>
+      </Tooltip>,
+    );
+    expect(screen.getByText("Plain")).toBeDefined();
   });
 });

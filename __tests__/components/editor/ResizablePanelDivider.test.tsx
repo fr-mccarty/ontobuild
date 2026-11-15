@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 
 import { ResizablePanelDivider } from "@/components/editor/ResizablePanelDivider";
 
@@ -13,9 +18,11 @@ describe("ResizablePanelDivider", () => {
     vi.clearAllMocks();
   });
 
-  it("renders with drag-to-resize title", () => {
-    render(<ResizablePanelDivider {...defaultProps} />);
-    expect(screen.getByTitle("Drag to resize")).toBeDefined();
+  it("renders with drag-to-resize tooltip", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+    const { container } = render(<ResizablePanelDivider {...defaultProps} />);
+    fireEvent.focus(container.querySelector(".cursor-col-resize")!);
+    expect((await screen.findAllByText("Drag to resize")).length).toBeGreaterThan(0);
   });
 
   it("renders with cursor-col-resize class", () => {
@@ -25,8 +32,8 @@ describe("ResizablePanelDivider", () => {
   });
 
   it("calls onWidthChange during mouse drag", () => {
-    render(<ResizablePanelDivider {...defaultProps} />);
-    const divider = screen.getByTitle("Drag to resize");
+    const { container } = render(<ResizablePanelDivider {...defaultProps} />);
+    const divider = container.querySelector(".cursor-col-resize")!;
 
     fireEvent.mouseDown(divider, { clientX: 320 });
     fireEvent.mouseMove(document, { clientX: 400 });
@@ -35,8 +42,8 @@ describe("ResizablePanelDivider", () => {
   });
 
   it("clamps width to minWidth", () => {
-    render(<ResizablePanelDivider {...defaultProps} minWidth={200} />);
-    const divider = screen.getByTitle("Drag to resize");
+    const { container } = render(<ResizablePanelDivider {...defaultProps} minWidth={200} />);
+    const divider = container.querySelector(".cursor-col-resize")!;
 
     fireEvent.mouseDown(divider, { clientX: 320 });
     fireEvent.mouseMove(document, { clientX: 120 });
@@ -45,8 +52,8 @@ describe("ResizablePanelDivider", () => {
   });
 
   it("clamps width to maxWidth", () => {
-    render(<ResizablePanelDivider {...defaultProps} maxWidth={600} />);
-    const divider = screen.getByTitle("Drag to resize");
+    const { container } = render(<ResizablePanelDivider {...defaultProps} maxWidth={600} />);
+    const divider = container.querySelector(".cursor-col-resize")!;
 
     fireEvent.mouseDown(divider, { clientX: 320 });
     fireEvent.mouseMove(document, { clientX: 720 });
@@ -55,8 +62,8 @@ describe("ResizablePanelDivider", () => {
   });
 
   it("stops dragging on mouseup", () => {
-    render(<ResizablePanelDivider {...defaultProps} />);
-    const divider = screen.getByTitle("Drag to resize");
+    const { container } = render(<ResizablePanelDivider {...defaultProps} />);
+    const divider = container.querySelector(".cursor-col-resize")!;
 
     fireEvent.mouseDown(divider, { clientX: 320 });
     fireEvent.mouseUp(document);
@@ -67,8 +74,8 @@ describe("ResizablePanelDivider", () => {
   });
 
   it("sets cursor and userSelect during drag", () => {
-    render(<ResizablePanelDivider {...defaultProps} />);
-    const divider = screen.getByTitle("Drag to resize");
+    const { container } = render(<ResizablePanelDivider {...defaultProps} />);
+    const divider = container.querySelector(".cursor-col-resize")!;
 
     fireEvent.mouseDown(divider, { clientX: 320 });
     expect(document.body.style.cursor).toBe("col-resize");
@@ -80,8 +87,8 @@ describe("ResizablePanelDivider", () => {
   });
 
   it("uses default minWidth of 200 and maxWidth of 600", () => {
-    render(<ResizablePanelDivider width={300} onWidthChange={defaultProps.onWidthChange} />);
-    const divider = screen.getByTitle("Drag to resize");
+    const { container } = render(<ResizablePanelDivider width={300} onWidthChange={defaultProps.onWidthChange} />);
+    const divider = container.querySelector(".cursor-col-resize")!;
 
     fireEvent.mouseDown(divider, { clientX: 300 });
     fireEvent.mouseMove(document, { clientX: 0 });

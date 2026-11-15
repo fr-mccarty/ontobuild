@@ -58,7 +58,6 @@ export function IndividualList({
     return () => { cancelled = true; };
   }, [projectId, accessToken, branch]);
 
-  // Convert individuals to EntityTreeNode[] (flat list)
   const entityNodes = useMemo((): EntityTreeNode[] => {
     return individuals.map((ind) => ({
       iri: ind.iri,

@@ -26,8 +26,6 @@ describe("projectApi", () => {
     mockFetch.mockReset();
   });
 
-  // --- list ---
-
   describe("list", () => {
     it("calls GET /api/v1/projects with default params", async () => {
       const response = { items: [], total: 0, unfiltered_total: 0, skip: 0, limit: 20 };
@@ -43,22 +41,22 @@ describe("projectApi", () => {
       expect(url).toContain("limit=20");
     });
 
-    it("passes filter and search params", async () => {
+    it("passes paging and search params without a visibility filter", async () => {
       mockOk({ items: [], total: 0, unfiltered_total: 0, skip: 0, limit: 10 });
 
-      await projectApi.list(5, 10, "public", undefined, "test");
+      await projectApi.list(5, 10, undefined, "test");
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("skip=5");
       expect(url).toContain("limit=10");
-      expect(url).toContain("filter=public");
+      expect(url).not.toContain("filter=");
       expect(url).toContain("search=test");
     });
 
     it("passes Authorization header when token provided", async () => {
       mockOk({ items: [], total: 0, unfiltered_total: 0, skip: 0, limit: 20 });
 
-      await projectApi.list(0, 20, undefined, "my-token");
+      await projectApi.list(0, 20, "my-token");
 
       const [, options] = mockFetch.mock.calls[0];
       const headers = options.headers;
@@ -78,14 +76,13 @@ describe("projectApi", () => {
     it("omits search param when empty string", async () => {
       mockOk({ items: [], total: 0, unfiltered_total: 0, skip: 0, limit: 20 });
 
-      await projectApi.list(0, 20, undefined, undefined, "");
+      await projectApi.list(0, 20, undefined, "");
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).not.toContain("search=");
     });
 
     it("throws ApiError on failure after retrying", async () => {
-      // 500 errors trigger retries (up to 3 attempts), so mock all 3
       mockError(500, "Internal Server Error", "Server error");
       mockError(500, "Internal Server Error", "Server error");
       mockError(500, "Internal Server Error", "Server error");
@@ -94,8 +91,6 @@ describe("projectApi", () => {
       expect(mockFetch).toHaveBeenCalledTimes(3);
     });
   });
-
-  // --- get ---
 
   describe("get", () => {
     it("calls GET /api/v1/projects/:id", async () => {
@@ -121,8 +116,6 @@ describe("projectApi", () => {
     });
   });
 
-  // --- create ---
-
   describe("create", () => {
     it("calls POST /api/v1/projects with body and auth", async () => {
       const project = { id: "p1", name: "New" };
@@ -139,8 +132,6 @@ describe("projectApi", () => {
     });
   });
 
-  // --- update ---
-
   describe("update", () => {
     it("calls PATCH /api/v1/projects/:id", async () => {
       const updated = { id: "p1", name: "Updated" };
@@ -155,8 +146,6 @@ describe("projectApi", () => {
       expect(JSON.parse(options.body)).toEqual({ name: "Updated" });
     });
   });
-
-  // --- delete ---
 
   describe("delete", () => {
     it("calls DELETE /api/v1/projects/:id with auth", async () => {
@@ -173,8 +162,6 @@ describe("projectApi", () => {
       expect(options.headers.get("Authorization")).toBeNull();
     });
   });
-
-  // --- import (without progress) ---
 
   describe("import", () => {
     it("calls POST /api/v1/projects/import with FormData", async () => {

@@ -6,8 +6,6 @@ const eslintConfig = [
   ...nextTypescript,
   {
     rules: {
-      // TODO: address these new react-hooks rules from eslint-config-next 16
-      // See: https://react.dev/learn/you-might-not-need-an-effect
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/immutability": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
@@ -16,6 +14,20 @@ const eslintConfig = [
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+  {
+    files: ["app/**/*.tsx", "components/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            "JSXOpeningElement[name.name=/^([a-z]|Link$|Button$)/] > JSXAttribute[name.name='title']",
+          message:
+            "Native title tooltips are not allowed. Wrap the element in <Tooltip content=...> from @/components/ui/tooltip instead.",
         },
       ],
     },

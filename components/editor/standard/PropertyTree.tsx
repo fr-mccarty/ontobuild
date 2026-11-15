@@ -40,7 +40,6 @@ export function PropertyTree({
       setError(null);
 
       try {
-        // Search for all properties with a broad query
         const response = await projectOntologyApi.searchEntities(
           projectId,
           "*",
@@ -51,10 +50,6 @@ export function PropertyTree({
 
         if (cancelled) return;
 
-        // Group properties by their declared OWL subtype as exposed by the
-        // backend. Falls back to "Other" when property_kind is missing — that
-        // covers both unusual rdf:type combinations (e.g. plain rdf:Property)
-        // and older backends that don't yet populate the field.
         const objectProps: EntitySearchResult[] = [];
         const dataProps: EntitySearchResult[] = [];
         const annotationProps: EntitySearchResult[] = [];
@@ -106,7 +101,6 @@ export function PropertyTree({
     return () => { cancelled = true; };
   }, [projectId, accessToken, branch]);
 
-  // Convert PropertyGroup[] to EntityTreeNode[]
   const entityNodes = useMemo((): EntityTreeNode[] => {
     return groups.map((group) => ({
       iri: `__group__${group.type}`,

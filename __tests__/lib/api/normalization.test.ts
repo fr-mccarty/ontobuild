@@ -185,7 +185,6 @@ describe("normalizationApi", () => {
 
     it("throws ApiError on failure", async () => {
       mockError(500, "Internal Server Error", "Server error");
-      // The client retries 5xx errors, so we need to mock all 3 attempts
       mockError(500, "Internal Server Error", "Server error");
       mockError(500, "Internal Server Error", "Server error");
 

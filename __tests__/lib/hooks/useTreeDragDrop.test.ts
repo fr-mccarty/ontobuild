@@ -19,7 +19,6 @@ function makeNode(
   };
 }
 
-// Helper to build minimal dnd-kit events
 function makeDragStartEvent(id: string): DragStartEvent {
   return { active: { id } } as unknown as DragStartEvent;
 }
@@ -118,12 +117,10 @@ describe("useTreeDragDrop", () => {
   it("handleDragOver validates drop target - cannot drop on descendant", () => {
     const { result } = renderHook(() => useTreeDragDrop(BASE_OPTIONS));
 
-    // Drag A (parent of B which is parent of C)
     act(() => {
       result.current.handleDragStart(makeDragStartEvent("http://ex.org/A"));
     });
 
-    // Try to drop on B (descendant of A)
     act(() => {
       result.current.handleDragOver(makeDragOverEvent("http://ex.org/B"));
     });
@@ -134,12 +131,10 @@ describe("useTreeDragDrop", () => {
   it("handleDragOver validates drop target - cannot drop on current parent", () => {
     const { result } = renderHook(() => useTreeDragDrop(BASE_OPTIONS));
 
-    // B's parent is A
     act(() => {
       result.current.handleDragStart(makeDragStartEvent("http://ex.org/B"));
     });
 
-    // Drop on A (current parent) should be invalid
     act(() => {
       result.current.handleDragOver(makeDragOverEvent("http://ex.org/A"));
     });
@@ -150,12 +145,10 @@ describe("useTreeDragDrop", () => {
   it("handleDragOver marks valid drop target", () => {
     const { result } = renderHook(() => useTreeDragDrop(BASE_OPTIONS));
 
-    // Drag D
     act(() => {
       result.current.handleDragStart(makeDragStartEvent("http://ex.org/D"));
     });
 
-    // Drop on A (not self, not descendant, not current parent)
     act(() => {
       result.current.handleDragOver(makeDragOverEvent("http://ex.org/A"));
     });
@@ -170,7 +163,6 @@ describe("useTreeDragDrop", () => {
       useTreeDragDrop({ ...BASE_OPTIONS, onReparent }),
     );
 
-    // Drag D and drop on A
     act(() => {
       result.current.handleDragStart(makeDragStartEvent("http://ex.org/D"));
     });
@@ -181,7 +173,7 @@ describe("useTreeDragDrop", () => {
 
     expect(onReparent).toHaveBeenCalledWith(
       "http://ex.org/D",
-      [], // D is a root node, no current parent
+      [],
       ["http://ex.org/A"],
       "move",
     );
@@ -214,12 +206,10 @@ describe("useTreeDragDrop", () => {
       useTreeDragDrop({ ...BASE_OPTIONS, onReparent }),
     );
 
-    // Drag B
     act(() => {
       result.current.handleDragStart(makeDragStartEvent("http://ex.org/B"));
     });
 
-    // Drop on self (invalid)
     await act(async () => {
       await result.current.handleDragEnd(makeDragEndEvent("http://ex.org/B"));
     });
@@ -286,8 +276,8 @@ describe("useTreeDragDrop", () => {
 
     expect(onReparent).toHaveBeenCalledWith(
       "http://ex.org/D",
-      ["http://ex.org/A"], // new becomes old
-      [], // old becomes new
+      ["http://ex.org/A"],
+      [],
       "move",
     );
     expect(result.current.undoAction).toBeNull();
@@ -352,7 +342,6 @@ describe("useTreeDragDrop", () => {
       useTreeDragDrop({ ...BASE_OPTIONS, onReparent }),
     );
 
-    // Drag B (which has parent A)
     act(() => {
       result.current.handleDragStart(makeDragStartEvent("http://ex.org/B"));
     });
@@ -375,7 +364,6 @@ describe("useTreeDragDrop", () => {
       useTreeDragDrop({ ...BASE_OPTIONS, onReparent }),
     );
 
-    // Drag D (already a root node)
     act(() => {
       result.current.handleDragStart(makeDragStartEvent("http://ex.org/D"));
     });
@@ -384,7 +372,6 @@ describe("useTreeDragDrop", () => {
       await result.current.handleDragEnd(makeDragEndEvent("root-drop-zone"));
     });
 
-    // Should be a no-op
     expect(onReparent).not.toHaveBeenCalled();
   });
 

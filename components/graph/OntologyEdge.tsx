@@ -71,7 +71,6 @@ export const OntologyEdge = memo(function OntologyEdge({
 
   return (
     <>
-      {/* Invisible wider path for hover detection */}
       <path
         d={edgePath}
         fill="none"

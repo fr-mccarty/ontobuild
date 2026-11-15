@@ -75,7 +75,6 @@ describe("OntologyEdge", () => {
       </svg>
     );
     const edge = screen.getByTestId("base-edge-edge-1");
-    // jsdom converts hex to rgb
     expect(edge.style.stroke).toBe("rgb(239, 68, 68)");
   });
 
@@ -105,9 +104,7 @@ describe("OntologyEdge", () => {
       </svg>
     );
 
-    // The invisible hover path is the first <path> in the rendered output
     const paths = container.querySelectorAll("path");
-    // Find the transparent hover path (stroke="transparent")
     const hoverPath = Array.from(paths).find(
       (p) => p.getAttribute("stroke") === "transparent"
     );

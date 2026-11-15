@@ -19,10 +19,6 @@ interface DraggableTreeWrapperProps {
   onDragCancel: () => void;
 }
 
-/**
- * Pointer-tracking overlay that sticks to the cursor 1:1.
- * Bypasses DragOverlay's coordinate system entirely for reliable positioning.
- */
 function PointerOverlay({ label, mode }: { label: string; mode: DragMode }) {
   const [pos, setPos] = useState({ x: 0, y: 0 });
 
@@ -30,12 +26,10 @@ function PointerOverlay({ label, mode }: { label: string; mode: DragMode }) {
     const handler = (e: PointerEvent) => {
       setPos({ x: e.clientX, y: e.clientY });
     };
-    // Capture initial position immediately
     window.addEventListener("pointermove", handler);
     return () => window.removeEventListener("pointermove", handler);
   }, []);
 
-  // Don't render until we have a real position
   if (pos.x === 0 && pos.y === 0) return null;
 
   return createPortal(

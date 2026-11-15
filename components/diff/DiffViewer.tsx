@@ -149,7 +149,6 @@ export function DiffViewer({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {/* Summary */}
       <div className="flex items-center gap-4 text-sm text-slate-500">
         <span>{diff.files_changed} file{diff.files_changed !== 1 ? "s" : ""} changed</span>
         <span className="font-mono text-xs">
@@ -157,7 +156,6 @@ export function DiffViewer({
         </span>
       </div>
 
-      {/* File list */}
       <div className="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
         {diff.changes.map((change) => (
           <div
@@ -167,7 +165,6 @@ export function DiffViewer({
               expandedFiles.has(change.path) && "bg-slate-50 dark:bg-slate-700/30"
             )}
           >
-            {/* File header */}
             <button
               className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50"
               onClick={() => toggleFile(change.path)}
@@ -182,7 +179,6 @@ export function DiffViewer({
               {getChangeLabel(change.change_type)}
             </button>
 
-            {/* File content (placeholder for now) */}
             {expandedFiles.has(change.path) && (
               <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-900/50">
                 <p className="text-center text-sm text-slate-500">

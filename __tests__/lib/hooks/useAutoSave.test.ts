@@ -4,7 +4,6 @@ import { useAutoSave } from "@/lib/hooks/useAutoSave";
 import type { OWLClassDetail } from "@/lib/api/client";
 import type { AnyDraftEntry } from "@/lib/stores/draftStore";
 
-// Mock the draft store with stable function references
 const mockDrafts: Record<string, AnyDraftEntry> = {};
 
 const stableSetDraft = (key: string, data: AnyDraftEntry) => {
@@ -257,8 +256,6 @@ describe("useAutoSave", () => {
 
     expect(result.current.restoredDraft).not.toBeNull();
 
-    // Clear the store before calling clearRestoredDraft so the
-    // re-render effect doesn't re-read it
     delete mockDrafts[key];
 
     act(() => {

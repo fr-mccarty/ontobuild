@@ -1,11 +1,3 @@
-/**
- * The API: one Hono app mounted at /api/v1 and served by the Next catch-all route
- * app/api/v1/[[...path]]/route.ts.
- *
- * Each domain lives in server/routes/<domain>.ts and exports a Hono sub-app that is
- * registered below with `app.route("/", ...)` (sub-apps declare full paths such as
- * "/projects/:id/...").
- */
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -20,6 +12,7 @@ import ontology from "./routes/ontology";
 import lint from "./routes/lint";
 import quality from "./routes/quality";
 import normalization from "./routes/normalization";
+import { createAgentRoutes } from "./routes/agent";
 
 const app = new Hono().basePath("/api/v1");
 
@@ -45,8 +38,6 @@ app.get("/health", (c) => {
   return c.json({ status: "healthy" });
 });
 
-// pullRequests first: its global /projects/pull-requests/open-summary must win over /projects/:id/*
-// lint first: its global /projects/lint/{rules,levels} must win over /projects/:id/... patterns
 app.route("/", lint);
 app.route("/", quality);
 app.route("/", normalization);
@@ -55,8 +46,8 @@ app.route("/", projects);
 app.route("/", analytics);
 app.route("/", userSettings);
 app.route("/", ontology);
+app.route("/", createAgentRoutes(() => app));
 
-/** Minimal OpenAPI document generated from the registered routes (for /api-docs). */
 app.get("/openapi.json", (c) => {
   const paths: Record<string, Record<string, unknown>> = {};
   for (const r of app.routes) {

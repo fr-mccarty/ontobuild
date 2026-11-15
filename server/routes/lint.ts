@@ -1,15 +1,3 @@
-/**
- * Lint API — port of ontokit-api/ontokit/api/routes/lint.py.
- *
- * Lint runs execute in-process via server/jobs.ts (instead of ARQ). The old
- * `/projects/{id}/lint/ws` websocket is replaced by polling `/lint/status`
- * (the run row is created synchronously as "pending" when the run is triggered, so
- * the very next status poll already reports it).
- *
- * NOTE: the global `/projects/lint/rules` and `/projects/lint/levels` routes are
- * registered here and this module is mounted before routes/projects.ts so they win
- * over `/projects/:id`-style patterns.
- */
 import { Hono } from "hono";
 import * as git from "../git";
 import { all, fromJson, get, getDb, insert, newId, nowIso, run, toJson, transaction, update } from "../db";
@@ -25,10 +13,6 @@ import {
 } from "../linter";
 
 const r = new Hono();
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 interface LintRunRow {
   id: string;
@@ -63,7 +47,6 @@ interface LintConfigRow {
 }
 
 const g = globalThis as typeof globalThis & { __ontokitLintInit?: boolean };
-/** Runs left pending/running by a previous server process can never finish. */
 function init() {
   if (g.__ontokitLintInit) return;
   g.__ontokitLintInit = true;
@@ -107,7 +90,6 @@ function getConfigRow(projectId: string): LintConfigRow | undefined {
   return get<LintConfigRow>("SELECT * FROM project_lint_configs WHERE project_id = ?", projectId);
 }
 
-/** ProjectLintConfig.get_enabled_rule_ids: null = all rules. */
 export function enabledRuleIds(cfg: LintConfigRow | undefined): Set<string> | null {
   if (!cfg) return null;
   if (cfg.lint_level !== null && cfg.lint_level !== undefined) return new Set(getRulesForLevel(cfg.lint_level));
@@ -150,7 +132,6 @@ function serializeConfig(projectId: string, cfg: LintConfigRow | undefined) {
   };
 }
 
-/** Run the linter for a project (default branch) and persist the issues on `runId`. */
 async function executeLintRun(projectId: string, runId: string, branch: string) {
   update("lint_runs", { status: "running" }, { id: runId });
   try {
@@ -196,10 +177,6 @@ async function executeLintRun(projectId: string, runId: string, branch: string) 
   }
 }
 
-// ---------------------------------------------------------------------------
-// Global (non-project) routes — must be registered before /projects/:id routes
-// ---------------------------------------------------------------------------
-
 r.get("/projects/lint/levels", (c) =>
   c.json({
     levels: Object.entries(LINT_LEVEL_DEFINITIONS)
@@ -220,15 +197,10 @@ r.get("/projects/lint/rules", (c) =>
   }),
 );
 
-// ---------------------------------------------------------------------------
-// Project routes
-// ---------------------------------------------------------------------------
-
 r.post("/projects/:id/lint/run", async (c) => {
   init();
   const projectId = c.req.param("id");
   requireProject(projectId);
-  // Mirrors the old check: the worker loads the ontology from the git repository.
   if (!git.repoExists(projectId)) httpError(400, "Project has no ontology file to lint");
   const active = get(
     "SELECT id FROM lint_runs WHERE project_id = ? AND status IN ('pending','running') LIMIT 1",
@@ -236,7 +208,6 @@ r.post("/projects/:id/lint/run", async (c) => {
   );
   if (active) httpError(409, "A lint run is already in progress for this project");
 
-  // Like the old worker, lint runs on the default branch.
   const branch = await resolveBranch(projectId, null);
   const runId = newId();
   insert("lint_runs", { id: runId, project_id: projectId, status: "pending", branch, started_at: nowIso() });

@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import type { PullRequest } from "@/lib/api/pullRequests";
+import { render as rtlRender, screen, fireEvent, waitFor, act, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 
-// ---- mocks (must precede component import) ----
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
+import type { PullRequest } from "@/lib/api/pullRequests";
 
 vi.mock("@/lib/api/pullRequests", () => ({
   pullRequestsApi: {
@@ -83,8 +86,6 @@ import { PRActions } from "@/components/pr/PRActions";
 import { pullRequestsApi } from "@/lib/api/pullRequests";
 import { branchesApi } from "@/lib/api/revisions";
 
-// ---- helpers ----
-
 function makePR(overrides: Partial<PullRequest> = {}): PullRequest {
   return {
     id: "pr-1",
@@ -126,15 +127,11 @@ const defaultProps = {
   onUpdate: vi.fn(),
 };
 
-// ---- tests ----
-
 describe("PRActions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockBranchesApi.list.mockResolvedValue({ items: [], current_branch: "main" });
   });
-
-  // -- open PR: merge button visibility --
 
   it("shows merge button for owners when PR is open and can_merge", () => {
     render(
@@ -186,16 +183,12 @@ describe("PRActions", () => {
     expect(screen.getByText(/0 approvals/)).toBeDefined();
   });
 
-  // -- open PR: close button --
-
   it("shows close button for open PRs", () => {
     render(
       <PRActions {...defaultProps} pr={makePR()} userRole="editor" />
     );
     expect(screen.getByText("Close")).toBeDefined();
   });
-
-  // -- open PR: review form --
 
   it("shows review button for open PRs", () => {
     render(
@@ -230,7 +223,6 @@ describe("PRActions", () => {
     fireEvent.click(screen.getByText("Review"));
     expect(screen.queryByText("Approve")).toBeNull();
     expect(screen.queryByText("Request Changes")).toBeNull();
-    // Comment button should still be visible
     expect(screen.getByText("Comment")).toBeDefined();
   });
 
@@ -244,8 +236,6 @@ describe("PRActions", () => {
     fireEvent.click(screen.getByText("Cancel"));
     expect(screen.queryByText("Submit Review")).toBeNull();
   });
-
-  // -- merge action via confirm dialog --
 
   it("opens merge confirm dialog and calls merge on confirm", async () => {
     const mergedPR = makePR({ status: "merged", merged_at: "2025-06-10T10:00:00Z" });
@@ -262,14 +252,12 @@ describe("PRActions", () => {
       />
     );
 
-    // Click merge to open dialog
     fireEvent.click(screen.getByText("Merge"));
     await waitFor(() => {
       expect(screen.getByTestId("confirm-dialog")).toBeDefined();
       expect(screen.getByTestId("dialog-title").textContent).toBe("Merge Pull Request");
     });
 
-    // Confirm the merge
     await act(async () => {
       fireEvent.click(screen.getByTestId("dialog-confirm"));
     });
@@ -284,8 +272,6 @@ describe("PRActions", () => {
       expect(onUpdate).toHaveBeenCalledWith(mergedPR);
     });
   });
-
-  // -- close action --
 
   it("opens close confirm dialog and calls close on confirm", async () => {
     const closedPR = makePR({ status: "closed" });
@@ -310,8 +296,6 @@ describe("PRActions", () => {
       expect(onUpdate).toHaveBeenCalledWith(closedPR);
     });
   });
-
-  // -- closed PR: reopen --
 
   it("shows reopen button for owners on closed PRs", () => {
     render(
@@ -372,8 +356,6 @@ describe("PRActions", () => {
     });
   });
 
-  // -- merged PR --
-
   it("shows merged state with 'Continue to Editor' link", async () => {
     render(
       <PRActions
@@ -386,7 +368,7 @@ describe("PRActions", () => {
       expect(screen.getByText("Continue to Editor")).toBeDefined();
     });
     const link = screen.getByText("Continue to Editor").closest("a");
-    expect(link?.getAttribute("href")).toBe("/projects/proj-1/editor?branch=main");
+    expect(link?.getAttribute("href")).toBe("/projects/proj-1?branch=main");
   });
 
   it("shows merged message referencing target branch", async () => {
@@ -404,7 +386,6 @@ describe("PRActions", () => {
   });
 
   it("shows 'Checking branch...' while source branch existence is loading", () => {
-    // Make branchesApi.list never resolve
     mockBranchesApi.list.mockReturnValue(new Promise(() => {}));
 
     render(
@@ -494,8 +475,6 @@ describe("PRActions", () => {
     });
   });
 
-  // -- review submission --
-
   it("submits an approval review", async () => {
     const updatedPR = makePR({ approval_count: 1 });
     mockPrApi.createReview.mockResolvedValue({
@@ -509,14 +488,11 @@ describe("PRActions", () => {
       <PRActions {...defaultProps} pr={makePR()} userRole="owner" onUpdate={onUpdate} />
     );
 
-    // Open review form
     fireEvent.click(screen.getByText("Review"));
 
-    // Type a review body
     const textarea = screen.getByPlaceholderText("Leave a comment (optional)");
     fireEvent.change(textarea, { target: { value: "LGTM" } });
 
-    // Click approve
     await act(async () => {
       fireEvent.click(screen.getByText("Approve"));
     });
@@ -586,8 +562,6 @@ describe("PRActions", () => {
       );
     });
   });
-
-  // -- error display --
 
   it("displays error when review submission fails", async () => {
     mockPrApi.createReview.mockRejectedValue(new Error("Server error"));

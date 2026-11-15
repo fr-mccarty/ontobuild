@@ -15,7 +15,6 @@ export default function PropertiesPage() {
       </p>
 
       <div className="space-y-8">
-        {/* rdf:Property */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             The Base: <code className="bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded text-xl">rdf:Property</code>
@@ -48,7 +47,6 @@ ex:hasMember a rdf:Property ;
           </div>
         </section>
 
-        {/* OWL Object Property */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             <code className="bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded text-xl">owl:ObjectProperty</code>
@@ -73,7 +71,6 @@ ex:Alice ex:hasParent ex:Bob .   # both must be IRIs / individuals`}</pre>
           </div>
         </section>
 
-        {/* OWL Datatype Property */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             <code className="bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded text-xl">owl:DatatypeProperty</code>
@@ -101,7 +98,6 @@ ex:Alice ex:hasAge "34"^^xsd:nonNegativeInteger .`}</pre>
           </div>
         </section>
 
-        {/* OWL Annotation Property */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             <code className="bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded text-xl">owl:AnnotationProperty</code>
@@ -131,7 +127,6 @@ ex:MyOntology ex:hasMaintainer "Jane Doe" .  # not used in inference`}</pre>
           </div>
         </section>
 
-        {/* Property Characteristics */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Characteristic Axioms
@@ -198,7 +193,6 @@ ex:MyOntology ex:hasMaintainer "Jane Doe" .  # not used in inference`}</pre>
           </div>
         </section>
 
-        {/* Property Relationships */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Relationships Between Properties
@@ -274,7 +268,6 @@ ex:hasGrandparent owl:propertyChainAxiom ( ex:hasParent ex:hasParent ) .`}</pre>
           </div>
         </section>
 
-        {/* Domain and Range */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Domain and Range
@@ -297,7 +290,6 @@ ex:hasGrandparent owl:propertyChainAxiom ( ex:hasParent ex:hasParent ) .`}</pre>
           </div>
         </section>
 
-        {/* Choosing the Right Kind */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Choosing the Right Kind
@@ -325,7 +317,6 @@ ex:hasGrandparent owl:propertyChainAxiom ( ex:hasParent ex:hasParent ) .`}</pre>
           </div>
         </section>
 
-        {/* References */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             References

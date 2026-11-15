@@ -9,7 +9,6 @@ interface ParentClassPickerProps {
   projectId: string;
   accessToken?: string;
   branch?: string;
-  /** IRIs already selected as parents (to exclude from results) */
   excludeIris: string[];
   onSelect: (iri: string, label: string) => void;
   onClose: () => void;
@@ -29,12 +28,10 @@ export function ParentClassPicker({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -45,7 +42,6 @@ export function ParentClassPicker({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  // Debounced search
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -62,7 +58,6 @@ export function ParentClassPicker({
           branch,
           "class",
         );
-        // Filter out already-selected parents
         const excludeSet = new Set(excludeIris);
         setResults(response.results.filter((r) => !excludeSet.has(r.iri)));
       } catch {

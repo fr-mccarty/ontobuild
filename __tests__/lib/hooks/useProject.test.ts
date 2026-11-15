@@ -6,7 +6,6 @@ import { derivePermissions, useProject } from "@/lib/hooks/useProject";
 import { ApiError } from "@/lib/api/client";
 import type { Project } from "@/lib/api/projects";
 
-// Mock the projectApi module
 vi.mock("@/lib/api/projects", () => ({
   projectApi: {
     get: vi.fn(),
@@ -38,9 +37,6 @@ function makeProject(overrides: Partial<Project> = {}): Project {
   };
 }
 
-// ---------------------------------------------------------------------------
-// derivePermissions
-// ---------------------------------------------------------------------------
 describe("derivePermissions", () => {
   it("returns all false/falsy when project is null", () => {
     const perms = derivePermissions(null);
@@ -108,16 +104,13 @@ describe("derivePermissions", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// useProject hook
-// ---------------------------------------------------------------------------
 describe("useProject", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("returns loading state initially", () => {
-    mockedGet.mockReturnValue(new Promise(() => {})); // never resolves
+    mockedGet.mockReturnValue(new Promise(() => {}));
     const { result } = renderHook(() => useProject("proj-1", "token"), {
       wrapper: createWrapper(),
     });
@@ -186,7 +179,6 @@ describe("useProject", () => {
       wrapper,
     });
 
-    // The hook retries non-ApiError errors up to 3 times (with retryDelay: 0 for speed)
     await waitFor(() => expect(result.current.isLoading).toBe(false), { timeout: 5000 });
 
     expect(result.current.errorKind).toBe("generic");
@@ -206,7 +198,6 @@ describe("useProject", () => {
       wrapper,
     });
 
-    // The hook retries non-ApiError errors up to 3 times (with retryDelay: 0 for speed)
     await waitFor(() => expect(result.current.isLoading).toBe(false), { timeout: 5000 });
 
     expect(result.current.errorKind).toBe("generic");
@@ -218,7 +209,6 @@ describe("useProject", () => {
       wrapper: createWrapper(),
     });
 
-    // Wait a tick to confirm no fetch happened
     await new Promise((r) => setTimeout(r, 50));
 
     expect(mockedGet).not.toHaveBeenCalled();

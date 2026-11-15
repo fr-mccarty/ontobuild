@@ -4,7 +4,6 @@ import React from "react";
 
 import { useSelectionStore } from "@/lib/stores/selectionStore";
 
-// Provide localStorage polyfill
 vi.hoisted(() => {
   if (!globalThis.localStorage || typeof globalThis.localStorage.setItem !== "function") {
     const store = new Map<string, string>();
@@ -18,8 +17,6 @@ vi.hoisted(() => {
     };
   }
 });
-
-// --- Mocks ---
 
 vi.mock("next/dynamic", () => ({
   __esModule: true,
@@ -192,8 +189,6 @@ vi.mock("@/components/ui/ScreenReaderAnnouncer", () => ({
 import { StandardEditorLayout, type StandardEditorLayoutProps } from "@/components/editor/standard/StandardEditorLayout";
 import type { ClassTreeNode } from "@/lib/ontology/types";
 
-// --- Helper ---
-
 function defaultProps(overrides: Partial<StandardEditorLayoutProps> = {}): StandardEditorLayoutProps {
   return {
     projectId: "proj-1",
@@ -232,8 +227,6 @@ const sampleNodes: ClassTreeNode[] = [
   },
 ];
 
-// --- Tests ---
-
 describe("StandardEditorLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -264,40 +257,33 @@ describe("StandardEditorLayout", () => {
     expect(screen.getByTestId("panel-divider")).toBeDefined();
   });
 
-  // --- Loading state ---
   it("shows loading spinner when tree is loading and no nodes", () => {
     render(<StandardEditorLayout {...defaultProps({ isTreeLoading: true, nodes: [] })} />);
-    // The spinner is an empty div with animate-spin class
     const spinner = document.querySelector(".animate-spin");
     expect(spinner).not.toBeNull();
   });
 
-  // --- Error state ---
   it("shows error message when treeError is set", () => {
     render(<StandardEditorLayout {...defaultProps({ treeError: "Something went wrong" })} />);
     expect(screen.getByText("Something went wrong")).toBeDefined();
   });
 
-  // --- Empty state ---
   it("shows empty message when no classes found", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: [], isTreeLoading: false })} />);
     expect(screen.getByText("No classes found in this ontology")).toBeDefined();
   });
 
-  // --- Tree rendering ---
   it("renders class tree when nodes exist", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     expect(screen.getByTestId("class-tree")).toBeDefined();
     expect(screen.getByTestId("draggable-wrapper")).toBeDefined();
   });
 
-  // --- Detail panel: class ---
   it("renders ClassDetailPanel when classes tab is active (default)", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     expect(screen.getByTestId("class-detail-panel")).toBeDefined();
   });
 
-  // --- Tab switching: properties ---
   it("shows PropertyTree and PropertyDetailPanel when properties tab selected", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     fireEvent.click(screen.getByText("Properties"));
@@ -305,7 +291,6 @@ describe("StandardEditorLayout", () => {
     expect(screen.getByTestId("property-detail-panel")).toBeDefined();
   });
 
-  // --- Tab switching: individuals ---
   it("shows IndividualList and IndividualDetailPanel when individuals tab selected", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     fireEvent.click(screen.getByText("Individuals"));
@@ -313,7 +298,6 @@ describe("StandardEditorLayout", () => {
     expect(screen.getByTestId("individual-detail-panel")).toBeDefined();
   });
 
-  // --- Tab switching back to classes ---
   it("switches back to classes tab", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     fireEvent.click(screen.getByText("Properties"));
@@ -323,7 +307,6 @@ describe("StandardEditorLayout", () => {
     expect(screen.getByTestId("class-detail-panel")).toBeDefined();
   });
 
-  // --- Graph view toggle ---
   it("shows Graph button when a class is selected", () => {
     render(
       <StandardEditorLayout
@@ -356,27 +339,22 @@ describe("StandardEditorLayout", () => {
     expect(screen.getByTestId("class-detail-panel")).toBeDefined();
   });
 
-  // --- Read-only vs editable ---
   it("renders without graph button when no class selected", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes, selectedIri: null })} />);
     expect(screen.queryByText("Graph")).toBeNull();
   });
 
-  // --- Does not crash with minimal props ---
   it("renders with minimal props", () => {
     render(<StandardEditorLayout {...defaultProps()} />);
-    // Should not crash
     expect(screen.getByTestId("entity-tab-bar")).toBeDefined();
   });
 
-  // --- canEdit prop forwarding ---
   it("does not show tree when properties tab is active", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     fireEvent.click(screen.getByText("Properties"));
     expect(screen.queryByTestId("class-tree")).toBeNull();
   });
 
-  // --- Toolbar prop forwarding based on active tab ---
   it("passes expand/collapse callbacks to toolbar on classes tab", () => {
     const expandOneLevel = vi.fn().mockResolvedValue(undefined);
     const expandAllFully = vi.fn().mockResolvedValue(undefined);
@@ -436,8 +414,6 @@ describe("StandardEditorLayout", () => {
     expect(_toolbarProps.canAdd).toBe(false);
   });
 
-  // --- ClassDetailPanel prop forwarding ---
-
   it("forwards detailRefreshKey to ClassDetailPanel", () => {
     render(
       <StandardEditorLayout
@@ -447,7 +423,6 @@ describe("StandardEditorLayout", () => {
     expect(_classDetailProps.refreshKey).toBe(42);
   });
 
-  // --- PropertyDetailPanel prop forwarding ---
   it("forwards sourceContent and callbacks to PropertyDetailPanel", () => {
     const onUpdateProperty = vi.fn();
     const onCopyIri = vi.fn();
@@ -471,7 +446,6 @@ describe("StandardEditorLayout", () => {
     expect(_propertyDetailProps.refreshKey).toBe(7);
   });
 
-  // --- IndividualDetailPanel prop forwarding ---
   it("forwards sourceContent and callbacks to IndividualDetailPanel", () => {
     const onUpdateIndividual = vi.fn();
     const onCopyIri = vi.fn();
@@ -505,7 +479,6 @@ describe("StandardEditorLayout", () => {
     expect(_propertyDetailProps.sourceContent).toBe("");
   });
 
-  // --- PropertyTree selection ---
   it("forwards projectId and branch to PropertyTree", () => {
     render(
       <StandardEditorLayout
@@ -518,7 +491,6 @@ describe("StandardEditorLayout", () => {
     expect(_propertyTreeProps.accessToken).toBe("token-123");
   });
 
-  // --- IndividualList props ---
   it("forwards projectId and branch to IndividualList", () => {
     render(
       <StandardEditorLayout
@@ -531,7 +503,6 @@ describe("StandardEditorLayout", () => {
     expect(_individualListProps.accessToken).toBe("token-123");
   });
 
-  // --- PropertyTree selection callback updates detail panel ---
   it("passes selectedPropertyIri=null initially to PropertyTree", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     fireEvent.click(screen.getByText("Properties"));
@@ -539,7 +510,6 @@ describe("StandardEditorLayout", () => {
     expect(_propertyDetailProps.propertyIri).toBeNull();
   });
 
-  // --- IndividualList selection callback updates detail panel ---
   it("passes selectedIndividualIri=null initially to IndividualList", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     fireEvent.click(screen.getByText("Individuals"));
@@ -547,7 +517,6 @@ describe("StandardEditorLayout", () => {
     expect(_individualDetailProps.individualIri).toBeNull();
   });
 
-  // --- ClassTree prop forwarding ---
   it("passes onDelete to ClassTree when canEdit is true", () => {
     const onDeleteClass = vi.fn();
     render(
@@ -601,7 +570,6 @@ describe("StandardEditorLayout", () => {
     expect(_classTreeProps.draftIris).toBeInstanceOf(Set);
   });
 
-  // --- Drag-and-drop disabled during search ---
   it("passes dragState to ClassTree when search is not active", () => {
     render(
       <StandardEditorLayout
@@ -611,7 +579,6 @@ describe("StandardEditorLayout", () => {
     expect(_classTreeProps.dragState).toBeDefined();
   });
 
-  // --- useTreeDragDrop receives correct canEdit ---
   it("passes canEdit to useTreeDragDrop", () => {
     render(
       <StandardEditorLayout
@@ -622,7 +589,6 @@ describe("StandardEditorLayout", () => {
     expect(_lastDragDropOptions!.canEdit).toBe(true);
   });
 
-  // --- Loading with existing nodes shows tree, not spinner ---
   it("shows tree when loading but nodes already exist", () => {
     render(
       <StandardEditorLayout
@@ -633,7 +599,6 @@ describe("StandardEditorLayout", () => {
     expect(document.querySelector(".animate-spin")).toBeNull();
   });
 
-  // --- Undo toast on undoAction ---
   it("fires addToast when undoAction is set", () => {
     const clearUndoFn = vi.fn();
     _useTreeDragDropOverride = {
@@ -703,17 +668,13 @@ describe("StandardEditorLayout", () => {
     );
   });
 
-  // --- Reparent error triggers rollback and error toast ---
   it("calls rollbackReparent and toast.error when onReparentClass rejects", async () => {
     const reparentError = new Error("Server error");
     const onReparentClass = vi.fn().mockRejectedValue(reparentError);
     const reparentOptimistic = vi.fn().mockReturnValue({ previousNodes: sampleNodes });
     const rollbackReparent = vi.fn();
 
-    // We need to capture the onReparent callback passed to useTreeDragDrop
-    // and call it to exercise the handleDndReparent path
-    _useTreeDragDropOverride = null; // use default but we need to capture
-    // Re-render to capture the onReparent from _lastDragDropOptions
+    _useTreeDragDropOverride = null;
     render(
       <StandardEditorLayout
         {...defaultProps({
@@ -772,7 +733,6 @@ describe("StandardEditorLayout", () => {
       mode: string,
     ) => Promise<void>;
 
-    // Should not throw
     await capturedOnReparent(
       "http://example.org/ClassA",
       ["http://example.org/OldParent"],
@@ -815,10 +775,8 @@ describe("StandardEditorLayout", () => {
     expect(rollbackReparent).not.toHaveBeenCalled();
   });
 
-  // --- Graph view navigateToClass callback ---
   it("hides graph and navigates when OntologyGraph onNavigateToClass fires", () => {
     const navigateToNode = vi.fn().mockResolvedValue(undefined);
-    // We need the OntologyGraph mock to expose onNavigateToClass
     render(
       <StandardEditorLayout
         {...defaultProps({
@@ -828,17 +786,13 @@ describe("StandardEditorLayout", () => {
         })}
       />
     );
-    // Switch to graph
     fireEvent.click(screen.getByText("Graph"));
     expect(screen.getByTestId("ontology-graph")).toBeDefined();
 
-    // Click Back to Details
     fireEvent.click(screen.getByText("Back to Details"));
-    // Should show class detail panel again
     expect(screen.getByTestId("class-detail-panel")).toBeDefined();
   });
 
-  // --- ClassDetailPanel onNavigateToClass callback ---
   it("passes onNavigateToClass to ClassDetailPanel", () => {
     const navigateToNode = vi.fn().mockResolvedValue(undefined);
     render(
@@ -847,12 +801,10 @@ describe("StandardEditorLayout", () => {
       />
     );
     expect(_classDetailProps.onNavigateToClass).toBeDefined();
-    // Invoke it to ensure navigateToNode is called
     (_classDetailProps.onNavigateToClass as (iri: string) => void)("http://example.org/Target");
     expect(navigateToNode).toHaveBeenCalledWith("http://example.org/Target");
   });
 
-  // --- PropertyDetailPanel onNavigateToEntity ---
   it("passes onNavigateToEntity to PropertyDetailPanel", () => {
     const navigateToNode = vi.fn().mockResolvedValue(undefined);
     render(
@@ -866,7 +818,6 @@ describe("StandardEditorLayout", () => {
     expect(navigateToNode).toHaveBeenCalledWith("http://example.org/Prop");
   });
 
-  // --- IndividualDetailPanel onNavigateToEntity ---
   it("passes onNavigateToEntity to IndividualDetailPanel", () => {
     const navigateToNode = vi.fn().mockResolvedValue(undefined);
     render(
@@ -880,7 +831,6 @@ describe("StandardEditorLayout", () => {
     expect(navigateToNode).toHaveBeenCalledWith("http://example.org/Ind");
   });
 
-  // --- treePanelWidth ---
   it("sets initial tree panel width to 320px", () => {
     const { container } = render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     const treePanel = container.querySelector("[style]");
@@ -888,19 +838,16 @@ describe("StandardEditorLayout", () => {
     expect(treePanel!.getAttribute("style")).toContain("width: 320px");
   });
 
-  // --- ClassTree searchResults not passed when search is hidden ---
   it("does not pass searchResults to ClassTree when search is hidden", () => {
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
     expect(_classTreeProps.searchResults).toBeUndefined();
   });
 
-  // --- activeBranch default ---
   it("works with undefined activeBranch", () => {
     render(<StandardEditorLayout {...defaultProps({ activeBranch: undefined })} />);
     expect(screen.getByTestId("entity-tab-bar")).toBeDefined();
   });
 
-  // --- ClassDetailPanel headerActions absent when no selectedIri ---
   it("does not pass headerActions to ClassDetailPanel when selectedIri is null", () => {
     render(
       <StandardEditorLayout
@@ -910,7 +857,6 @@ describe("StandardEditorLayout", () => {
     expect(_classDetailProps.headerActions).toBeUndefined();
   });
 
-  // --- ClassDetailPanel headerActions present when selectedIri set ---
   it("passes headerActions to ClassDetailPanel when selectedIri is set", () => {
     render(
       <StandardEditorLayout
@@ -920,7 +866,6 @@ describe("StandardEditorLayout", () => {
     expect(_classDetailProps.headerActions).toBeDefined();
   });
 
-  // --- Non-Error thrown during reparent ---
   it("shows 'Unknown error' toast when reparent throws non-Error", async () => {
     const onReparentClass = vi.fn().mockRejectedValue("string error");
     const reparentOptimistic = vi.fn().mockReturnValue({ previousNodes: [] });
@@ -981,14 +926,12 @@ describe("StandardEditorLayout", () => {
     it("switches to properties tab when type is property", () => {
       const ref = { current: null } as React.RefObject<((iri: string, type?: string) => void) | null>;
       render(<StandardEditorLayout {...defaultProps({ entityNavigationRef: ref, nodes: sampleNodes })} />);
-      // Initially on classes tab
       expect(screen.getByTestId("class-tree")).toBeDefined();
 
       act(() => {
         ref.current!("http://example.org/hasFoo", "property");
       });
 
-      // Property tree + detail panel should now mount, class tree gone
       expect(screen.getByTestId("property-tree")).toBeDefined();
       expect(screen.getByTestId("property-detail-panel")).toBeDefined();
       expect(screen.queryByTestId("class-tree")).toBeNull();
@@ -1039,9 +982,6 @@ describe("StandardEditorLayout", () => {
     });
 
     it("preserves the selection store on unmount so side-page Back-to-project links can read it", () => {
-      // Regression: editor used to clear the store on unmount, racing with
-      // side-page navigation — by the time settings/PRs/etc rendered, the
-      // store was empty and useProjectHomeHref dropped the selection.
       const { unmount } = render(
         <StandardEditorLayout
           {...defaultProps({ selectedIri: "http://example.org/Foo" })}

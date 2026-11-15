@@ -130,7 +130,6 @@ describe("Dialog", () => {
     expect(screen.getByText("Closeable")).toBeDefined();
     const closeBtn = screen.getByRole("button", { name: /close/i });
     await userEvent.click(closeBtn);
-    // Wait for dialog content to be removed from DOM
     await waitFor(() => {
       expect(screen.queryByText("Closeable")).toBeNull();
     });

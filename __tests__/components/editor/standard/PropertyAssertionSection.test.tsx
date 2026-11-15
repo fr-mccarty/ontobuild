@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent, waitFor, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import { PropertyAssertionSection } from "@/components/editor/standard/PropertyAssertionSection";
 import type { PropertyAssertion } from "@/lib/ontology/entityDetailExtractors";
 import { projectOntologyApi } from "@/lib/api/client";
@@ -16,6 +21,7 @@ vi.mock("@/lib/utils", () => ({
     return iri.split("/").pop() || iri;
   },
   langToFlag: (lang: string) => (lang === "en" ? "\u{1F1EC}\u{1F1E7}" : null),
+  cn: (...classes: unknown[]) => classes.filter(Boolean).join(" "),
 }));
 
 vi.mock("@/components/editor/LanguageFlag", () => ({
@@ -158,7 +164,7 @@ describe("PropertyAssertionSection", () => {
       />
     );
 
-    const removeBtn = screen.getByTitle("Remove");
+    const removeBtn = screen.getByLabelText("Remove");
     fireEvent.click(removeBtn);
     expect(onRemove).toHaveBeenCalledWith(0);
     expect(onSaveNeeded).toHaveBeenCalled();
@@ -180,7 +186,7 @@ describe("PropertyAssertionSection", () => {
       />
     );
 
-    expect(screen.queryByTitle("Remove")).toBeNull();
+    expect(screen.queryByLabelText("Remove")).toBeNull();
   });
 
   it("renders adder row when editing with onAdd", () => {
@@ -249,7 +255,7 @@ describe("PropertyAssertionSection", () => {
       />
     );
 
-    expect(screen.queryByTitle("Remove")).toBeNull();
+    expect(screen.queryByLabelText("Remove")).toBeNull();
   });
 
   it("renders multiple assertions", () => {
@@ -295,7 +301,8 @@ describe("PropertyAssertionSection", () => {
     expect(screen.queryByTestId("lang-flag-en")).toBeNull();
   });
 
-  it("shows property IRI as title attribute on property label", () => {
+  it("shows property IRI in a tooltip on property label", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     const assertions: PropertyAssertion[] = [
       {
         propertyIri: "http://example.org/ontology#hasPart",
@@ -310,10 +317,12 @@ describe("PropertyAssertionSection", () => {
       />
     );
 
-    expect(screen.getByTitle("http://example.org/ontology#hasPart")).not.toBeNull();
+    fireEvent.focus(screen.getByText("hasPart"));
+    expect((await screen.findAllByText("http://example.org/ontology#hasPart")).length).toBeGreaterThan(0);
   });
 
-  it("shows target IRI as title attribute on object navigation button", () => {
+  it("shows target IRI in a tooltip on object navigation button", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     const assertions: PropertyAssertion[] = [
       {
         propertyIri: "http://example.org/ontology#hasPart",
@@ -328,21 +337,19 @@ describe("PropertyAssertionSection", () => {
       />
     );
 
-    expect(screen.getByTitle("http://example.org/ontology#Wheel")).not.toBeNull();
+    fireEvent.focus(screen.getByRole("button", { name: "Wheel" }));
+    expect((await screen.findAllByText("http://example.org/ontology#Wheel")).length).toBeGreaterThan(0);
   });
 
-  // Helper to trigger a property search and wait for results to appear
   async function triggerPropSearch(query: string) {
     const propInput = screen.getByPlaceholderText("Select property...");
     fireEvent.focus(propInput);
     fireEvent.change(propInput, { target: { value: query } });
-    // Wait for 300ms debounce + API resolution
     await waitFor(() => {
       expect(searchMock).toHaveBeenCalled();
     });
   }
 
-  // Helper to select a property from search results
   async function selectProperty(
     label: string,
     iri: string,
@@ -419,13 +426,11 @@ describe("PropertyAssertionSection", () => {
       fireEvent.focus(propInput);
       fireEvent.change(propInput, { target: { value: "has" } });
 
-      // Wait for spinner to appear (after 300ms debounce triggers the search)
       await waitFor(() => {
         const spinner = container.querySelector(".animate-spin");
         expect(spinner).not.toBeNull();
       });
 
-      // Resolve the pending promise to clean up
       if (resolveSearch) {
         resolveSearch({ results: [], total: 0 });
       }
@@ -460,7 +465,6 @@ describe("PropertyAssertionSection", () => {
 
       await selectProperty("has part", "http://example.org/ontology#hasPart");
 
-      // The selected property label should be visible as a button
       expect(screen.getByText("has part")).not.toBeNull();
     });
 
@@ -475,7 +479,6 @@ describe("PropertyAssertionSection", () => {
 
       await selectProperty("has part", "http://example.org/ontology#hasPart");
 
-      // Click the property button to deselect
       fireEvent.click(screen.getByText("has part"));
 
       await waitFor(() => {
@@ -548,7 +551,6 @@ describe("PropertyAssertionSection", () => {
         expect(screen.getByText("has part")).not.toBeNull();
       });
 
-      // Clear the input
       const propInput = screen.getByPlaceholderText("Select property...");
       fireEvent.change(propInput, { target: { value: "" } });
 
@@ -719,7 +721,6 @@ describe("PropertyAssertionSection", () => {
 
       fireEvent.click(screen.getByText("Wheel"));
 
-      // After adding, the property input should reappear
       await waitFor(() => {
         expect(screen.getByPlaceholderText("Select property...")).not.toBeNull();
       });
@@ -862,7 +863,7 @@ describe("PropertyAssertionSection", () => {
       await selectPropertyForData();
 
       const valueInput = screen.getByPlaceholderText("Enter value...");
-      const langInput = screen.getByTitle("Language tag");
+      const langInput = screen.getByLabelText("Language tag");
 
       fireEvent.change(langInput, { target: { value: "fr" } });
       fireEvent.change(valueInput, { target: { value: "Bonjour" } });
@@ -890,7 +891,7 @@ describe("PropertyAssertionSection", () => {
       await selectPropertyForData();
 
       const valueInput = screen.getByPlaceholderText("Enter value...");
-      const langInput = screen.getByTitle("Language tag");
+      const langInput = screen.getByLabelText("Language tag");
 
       fireEvent.change(langInput, { target: { value: "" } });
       fireEvent.change(valueInput, { target: { value: "42" } });
@@ -921,7 +922,6 @@ describe("PropertyAssertionSection", () => {
       fireEvent.change(valueInput, { target: { value: "test" } });
       fireEvent.keyDown(valueInput, { key: "Enter" });
 
-      // After adding, property input should reappear
       await waitFor(() => {
         expect(screen.getByPlaceholderText("Select property...")).not.toBeNull();
       });
@@ -937,7 +937,6 @@ describe("PropertyAssertionSection", () => {
         />
       );
 
-      // Default language is "en"
       expect(screen.getByTestId("lang-flag-en")).not.toBeNull();
     });
 
@@ -965,7 +964,7 @@ describe("PropertyAssertionSection", () => {
         />
       );
 
-      const langInput = screen.getByTitle("Language tag");
+      const langInput = screen.getByLabelText("Language tag");
       expect((langInput as HTMLInputElement).disabled).toBe(true);
     });
   });
@@ -996,7 +995,6 @@ describe("PropertyAssertionSection", () => {
         expect(screen.getByText("has part")).not.toBeNull();
       });
 
-      // Click outside the property container
       fireEvent.mouseDown(screen.getByTestId("outside"));
 
       await waitFor(() => {
@@ -1018,17 +1016,13 @@ describe("PropertyAssertionSection", () => {
 
       await selectProperty("label", "http://example.org/ontology#label", "lab");
 
-      // Clear mock call count after property selection
       searchMock.mockClear();
 
-      // The data value input does not trigger entity search
       const valueInput = screen.getByPlaceholderText("Enter value...");
       fireEvent.change(valueInput, { target: { value: "some value" } });
 
-      // Wait a bit to ensure no search is triggered
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // searchEntities should not be called for data type values
       expect(searchMock).not.toHaveBeenCalled();
     });
   });

@@ -1,25 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-// Mock next/link to render a plain <a> tag
 vi.mock("next/link", () => ({
   __esModule: true,
   default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: unknown }) => (
     <a href={href} {...props}>{children}</a>
   ),
-}));
-
-// Test-controlled session and preferEditMode mocks.
-let mockSessionAccessToken: string | undefined;
-let mockPreferEditMode = false;
-
-vi.mock("@/lib/localUser", () => ({
-  useSession: () => ({ data: mockSessionAccessToken ? { accessToken: mockSessionAccessToken } : null }),
-}));
-
-vi.mock("@/lib/stores/editorModeStore", () => ({
-  useEditorModeStore: <T,>(selector: (s: { preferEditMode: boolean }) => T) =>
-    selector({ preferEditMode: mockPreferEditMode }),
 }));
 
 import { ProjectCard } from "@/components/projects/project-card";
@@ -40,12 +26,6 @@ function makeProject(overrides: Partial<Project> = {}): Project {
 }
 
 describe("ProjectCard", () => {
-  beforeEach(() => {
-    mockSessionAccessToken = undefined;
-    mockPreferEditMode = false;
-  });
-
-  // ── Basic rendering ─────────────────────────────────────────────
   it("renders the project name", () => {
     render(<ProjectCard project={makeProject()} />);
     expect(screen.getByText("Test Ontology")).toBeDefined();
@@ -61,60 +41,17 @@ describe("ProjectCard", () => {
     expect(screen.queryByText("A test project for ontology editing")).toBeNull();
   });
 
-  // ── Link ────────────────────────────────────────────────────────
-  it("links to the viewer when preferEditMode is off", () => {
-    mockPreferEditMode = false;
+  it("links to the project editor", () => {
     render(<ProjectCard project={makeProject({ user_role: "owner" })} />);
     const link = screen.getByRole("link", { name: /Open project Test Ontology/ });
     expect(link.getAttribute("href")).toBe("/projects/proj-123");
   });
 
-  it("links straight to the editor when preferEditMode is on AND user has edit rights", () => {
-    mockPreferEditMode = true;
-    render(<ProjectCard project={makeProject({ user_role: "owner" })} />);
-    const link = screen.getByRole("link", { name: /Open project Test Ontology/ });
-    expect(link.getAttribute("href")).toBe("/projects/proj-123/editor");
-  });
-
-  it.each(["admin", "editor"] as const)(
-    "links to the editor when preferEditMode is on for %s role",
-    (role) => {
-      mockPreferEditMode = true;
-      render(<ProjectCard project={makeProject({ user_role: role })} />);
-      const link = screen.getByRole("link", { name: /Open project Test Ontology/ });
-      expect(link.getAttribute("href")).toBe("/projects/proj-123/editor");
-    },
-  );
-
-  it("falls back to the viewer when preferEditMode is on but user has only viewer role", () => {
-    mockPreferEditMode = true;
-    render(<ProjectCard project={makeProject({ user_role: "viewer" })} />);
-    const link = screen.getByRole("link", { name: /Open project Test Ontology/ });
-    expect(link.getAttribute("href")).toBe("/projects/proj-123");
-  });
-
-  it("links to the viewer when preferEditMode is on but visitor is unauthenticated", () => {
-    mockPreferEditMode = true;
-    mockSessionAccessToken = undefined;
-    render(<ProjectCard project={makeProject({ is_public: true, user_role: undefined })} />);
-    const link = screen.getByRole("link", { name: /Open project Test Ontology/ });
-    expect(link.getAttribute("href")).toBe("/projects/proj-123");
-  });
-
-  // ── Public / Private indicator ──────────────────────────────────
-  it("shows 'Public project' indicator for public projects", () => {
+  it("shows no public or private indicator", () => {
     render(<ProjectCard project={makeProject({ is_public: true })} />);
-    expect(screen.getByTitle("Public project")).toBeDefined();
+    expect(screen.queryByTitle("Public project")).toBeNull();
+    expect(screen.queryByTitle("Private project")).toBeNull();
   });
-
-  it("shows 'Private project' indicator for private projects", () => {
-    render(<ProjectCard project={makeProject({ is_public: false })} />);
-    expect(screen.getByTitle("Private project")).toBeDefined();
-  });
-
-  // ── Member count ────────────────────────────────────────────────
-
-  // ── Role badge ──────────────────────────────────────────────────
 
   it("does not show role badge when user_role is absent", () => {
     render(<ProjectCard project={makeProject({ user_role: undefined })} />);
@@ -124,7 +61,6 @@ describe("ProjectCard", () => {
     expect(screen.queryByText("Viewer")).toBeNull();
   });
 
-  // ── Exemplar badge ──────────────────────────────────────────────
   it("shows Exemplar badge when is_exemplar is true", () => {
     render(<ProjectCard project={makeProject({ is_exemplar: true })} />);
     expect(screen.getByText("Exemplar")).toBeDefined();
@@ -135,7 +71,6 @@ describe("ProjectCard", () => {
     expect(screen.queryByText("Exemplar")).toBeNull();
   });
 
-  // ── Updated date ────────────────────────────────────────────────
   it("shows the updated_at date when present", () => {
     render(<ProjectCard project={makeProject({
       updated_at: "2025-03-20T12:00:00Z",
@@ -155,7 +90,6 @@ describe("ProjectCard", () => {
     expect(dateText).toContain("2023");
   });
 
-  // ── Custom className ────────────────────────────────────────────
   it("merges custom className onto the card", () => {
     render(<ProjectCard project={makeProject()} className="extra-class" />);
     const link = screen.getByRole("link");

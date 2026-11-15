@@ -6,9 +6,7 @@ import {
   detectPatternFromIriIndex,
   generateEntityIri,
 } from "@/lib/ontology/iriGeneration";
-import type { IriPosition } from "@/lib/editor/indexWorker";
-
-// ── uuidToBase62 ────────────────────────────────────────────────────
+import type { IriPosition } from "@/lib/ontology/iriGeneration";
 
 describe("uuidToBase62", () => {
   it("produces a deterministic result for the same UUID", () => {
@@ -35,7 +33,6 @@ describe("uuidToBase62", () => {
 
   it("is approximately 23 characters long", () => {
     const result = uuidToBase62("ffffffff-ffff-ffff-ffff-ffffffffffff");
-    // 128 bits in base62 → ceil(128 / log2(62)) ≈ 22 chars + "R" prefix
     expect(result.length).toBeGreaterThanOrEqual(20);
     expect(result.length).toBeLessThanOrEqual(25);
   });
@@ -45,8 +42,6 @@ describe("uuidToBase62", () => {
     expect(result).toBe("R0");
   });
 });
-
-// ── labelToLocalName ─────────────────────────────────────────────────
 
 describe("labelToLocalName", () => {
   it("converts multi-word labels to PascalCase", () => {
@@ -73,8 +68,6 @@ describe("labelToLocalName", () => {
     expect(labelToLocalName("thing (version 2)")).toBe("ThingVersion2");
   });
 });
-
-// ── detectIriPattern ─────────────────────────────────────────────────
 
 describe("detectIriPattern", () => {
   it("detects UUID pattern when majority are long alphanumeric", () => {
@@ -116,8 +109,6 @@ describe("detectIriPattern", () => {
   });
 });
 
-// ── detectPatternFromIriIndex ────────────────────────────────────────
-
 describe("detectPatternFromIriIndex", () => {
   it("filters to internal namespaces", () => {
     const index = new Map<string, IriPosition>([
@@ -136,8 +127,6 @@ describe("detectPatternFromIriIndex", () => {
     expect(result.confidence).toBe(0);
   });
 });
-
-// ── generateEntityIri ────────────────────────────────────────────────
 
 describe("generateEntityIri", () => {
   it("generates a UUID-based IRI", () => {

@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 import { Header } from "@/components/layout/header";
 
-// Mock next/link
+const render = (ui: ReactElement) => rtlRender(<TooltipPrimitive.Provider>{ui}</TooltipPrimitive.Provider>);
+
 vi.mock("next/link", () => ({
   __esModule: true,
   default: ({ children, href, ...props }: Record<string, unknown>) => (
@@ -12,13 +15,11 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// Mock next/navigation
 let mockPathname = "/";
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname,
 }));
 
-// Mock child components
 vi.mock("@/components/editor/ThemeToggle", () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,
 }));
@@ -51,7 +52,7 @@ describe("Header", () => {
 
   it("renders Settings link and ThemeToggle", () => {
     render(<Header />);
-    expect(screen.getByLabelText("Settings").getAttribute("href")).toBe("/settings");
+    expect(screen.getByLabelText("User settings").getAttribute("href")).toBe("/settings");
     expect(screen.getByTestId("theme-toggle")).toBeDefined();
   });
 

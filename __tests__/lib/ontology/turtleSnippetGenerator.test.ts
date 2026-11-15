@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { generateTurtleSnippet } from "@/lib/ontology/turtleSnippetGenerator";
 
 describe("generateTurtleSnippet", () => {
-  // ── Entity types ─────────────────────────────────────────────────
 
   it("generates a class snippet", () => {
     const snippet = generateTurtleSnippet({
@@ -52,8 +51,6 @@ describe("generateTurtleSnippet", () => {
     expect(snippet).toContain("a owl:NamedIndividual");
   });
 
-  // ── Parent relationships ─────────────────────────────────────────
-
   it("adds rdfs:subClassOf for a class with parent", () => {
     const snippet = generateTurtleSnippet({
       iri: "http://example.org/ont#Dog",
@@ -82,10 +79,8 @@ describe("generateTurtleSnippet", () => {
       entityType: "individual",
       parentIri: "http://example.org/ont#Dog",
     });
-    expect(snippet).toContain("rdf:type");
+    expect(snippet).toMatch(/\n\s+a \S+ \.\n$/);
   });
-
-  // ── Prefix usage ─────────────────────────────────────────────────
 
   it("uses prefixed names when prefix and namespace are available", () => {
     const snippet = generateTurtleSnippet({
@@ -132,8 +127,6 @@ describe("generateTurtleSnippet", () => {
     expect(snippet).toContain("<http://other.org/ont#Animal>");
   });
 
-  // ── Label escaping ───────────────────────────────────────────────
-
   it("escapes double quotes in labels", () => {
     const snippet = generateTurtleSnippet({
       iri: "http://example.org/ont#Test",
@@ -151,8 +144,6 @@ describe("generateTurtleSnippet", () => {
     });
     expect(snippet).toContain('rdfs:label "path\\\\to\\\\thing"@en');
   });
-
-  // ── Structure ────────────────────────────────────────────────────
 
   it("starts with a blank line for separation", () => {
     const snippet = generateTurtleSnippet({

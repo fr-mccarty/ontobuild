@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-// Mock dnd-kit
 let mockIsOver = false;
 vi.mock("@dnd-kit/core", () => ({
   useDroppable: () => ({

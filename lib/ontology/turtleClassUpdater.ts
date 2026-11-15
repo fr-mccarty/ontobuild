@@ -1,10 +1,3 @@
-/**
- * Turtle source manipulation utility for class updates.
- *
- * Instead of calling a non-existent REST endpoint, this utility modifies the
- * Turtle source text directly so it can be saved via the source save endpoint.
- */
-
 import type { LocalizedString, AnnotationUpdate } from "@/lib/api/client";
 import {
   parseDeclarations,
@@ -14,8 +7,6 @@ import {
   literal,
   isIriValue,
 } from "@/lib/ontology/turtleUtils";
-
-// ── Types ─────────────────────────────────────────────────────────────
 
 export interface TurtleClassUpdateData {
   labels: LocalizedString[];
@@ -27,11 +18,6 @@ export interface TurtleClassUpdateData {
   disjoint_iris?: string[];
 }
 
-// ── Block generator ───────────────────────────────────────────────────
-
-/**
- * Generate a complete Turtle block for a class.
- */
 function genBlock(
   iri: string,
   data: TurtleClassUpdateData,
@@ -97,17 +83,6 @@ function genBlock(
   return lines.join("\n");
 }
 
-// ── Public API ────────────────────────────────────────────────────────
-
-/**
- * Update a class definition in Turtle source text.
- *
- * Finds the class block by IRI (handling full IRIs, prefixed names, and
- * relative IRIs via @base), generates a replacement block with all
- * provided properties, and returns the modified source.
- *
- * @throws Error if the class block cannot be found in the source
- */
 export function updateClassInTurtle(
   source: string,
   classIri: string,

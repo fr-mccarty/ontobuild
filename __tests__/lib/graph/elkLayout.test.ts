@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-// Define the mock fn at module scope so it's available when the factory runs
 const mockLayout = vi.fn();
 
 vi.mock("elkjs/lib/elk.bundled.js", () => ({

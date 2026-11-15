@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { PullRequest } from "@/lib/api/pullRequests";
 
-// Mock pullRequestsApi
 const mockCreate = vi.fn();
 
 vi.mock("@/lib/api/pullRequests", () => ({
@@ -23,7 +22,6 @@ vi.mock("lucide-react", () => ({
   ArrowRight: () => <span data-testid="icon-arrow-right" />,
 }));
 
-// Mock BranchContext
 const mockUseBranch = vi.fn();
 vi.mock("@/lib/context/BranchContext", () => ({
   useBranch: () => mockUseBranch(),
@@ -97,16 +95,13 @@ describe("PRCreateModal", () => {
     render(<PRCreateModal {...defaultProps} />);
     expect(screen.getByText("From")).toBeDefined();
     expect(screen.getByText("Into")).toBeDefined();
-    // Branch options should be rendered
     const options = screen.getAllByRole("option");
-    // 3 branches x 2 selects = 6 options
     expect(options.length).toBe(6);
   });
 
   it("calls onClose when backdrop is clicked", () => {
     const onClose = vi.fn();
     render(<PRCreateModal {...defaultProps} onClose={onClose} />);
-    // The backdrop is the first fixed div
     const backdrop = document.querySelector(".fixed.inset-0");
     fireEvent.click(backdrop!);
     expect(onClose).toHaveBeenCalled();
@@ -115,7 +110,6 @@ describe("PRCreateModal", () => {
   it("calls onClose when X button is clicked", () => {
     const onClose = vi.fn();
     render(<PRCreateModal {...defaultProps} onClose={onClose} />);
-    // The X button is inside the header
     const closeBtn = screen.getByTestId("icon-x").parentElement!;
     fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalled();
@@ -130,14 +124,12 @@ describe("PRCreateModal", () => {
 
   it("does not submit when title is empty (native validation)", () => {
     render(<PRCreateModal {...defaultProps} />);
-    // The title input has `required`, so native form validation prevents submission
     fireEvent.click(screen.getByRole("button", { name: "Create Pull Request" }));
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it("shows title required error when whitespace-only title bypasses native validation", async () => {
     render(<PRCreateModal {...defaultProps} />);
-    // Fill with whitespace to bypass the `required` attribute
     const titleInput = screen.getByLabelText("Title");
     fireEvent.change(titleInput, { target: { value: "   " } });
     fireEvent.click(screen.getByRole("button", { name: "Create Pull Request" }));
@@ -212,7 +204,6 @@ describe("PRCreateModal", () => {
   });
 
   it("shows Creating... text while submitting", async () => {
-    // Make create hang to observe loading state
     mockCreate.mockReturnValue(new Promise(() => {}));
     render(<PRCreateModal {...defaultProps} />);
 
@@ -300,7 +291,6 @@ describe("PRCreateModal", () => {
     render(<PRCreateModal {...defaultProps} />);
 
     const selects = screen.getAllByRole("combobox");
-    // First select is source, second is target
     fireEvent.change(selects[0], { target: { value: "dev" } });
     fireEvent.change(selects[1], { target: { value: "feature/test" } });
 

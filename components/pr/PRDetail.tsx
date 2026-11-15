@@ -74,7 +74,6 @@ export function PRDetail({
       const prData = await pullRequestsApi.get(projectId, prNumber, accessToken);
       setPR(prData);
 
-      // Load reviews and comments
       const [reviewsData, commentsData] = await Promise.all([
         pullRequestsApi.listReviews(projectId, prNumber, accessToken),
         pullRequestsApi.listComments(projectId, prNumber, accessToken),
@@ -94,7 +93,6 @@ export function PRDetail({
     loadPR();
   }, [loadPR]);
 
-  // Load commits when switching to commits tab
   const loadCommits = useCallback(async () => {
     if (!projectId || !prNumber || commits.length > 0) return;
 
@@ -109,7 +107,6 @@ export function PRDetail({
     }
   }, [projectId, prNumber, accessToken, commits.length]);
 
-  // Load diff when switching to files tab
   const loadDiff = useCallback(async () => {
     if (!projectId || !prNumber || fileChanges.length > 0) return;
 
@@ -122,7 +119,6 @@ export function PRDetail({
         deletions: diffData.total_deletions,
         filesChanged: diffData.files_changed,
       });
-      // Expand all files by default
       setExpandedFiles(new Set(diffData.files.map((f) => f.path)));
     } catch (err) {
       console.error("Failed to load diff:", err);
@@ -131,7 +127,6 @@ export function PRDetail({
     }
   }, [projectId, prNumber, accessToken, fileChanges.length]);
 
-  // Load data when tab changes
   useEffect(() => {
     if (activeTab === "commits") {
       loadCommits();
@@ -152,7 +147,6 @@ export function PRDetail({
         accessToken
       );
       setNewComment("");
-      // Reload comments
       const commentsData = await pullRequestsApi.listComments(
         projectId,
         prNumber,
@@ -239,7 +233,6 @@ export function PRDetail({
 
   return (
     <div className={cn("space-y-6", className)}>
-      {/* Header */}
       <div className="flex items-start gap-4">
         {getStatusIcon()}
         <div className="flex-1">
@@ -249,7 +242,6 @@ export function PRDetail({
             {getStatusBadge()}
           </div>
 
-          {/* Branch info */}
           <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
             <GitBranch className="h-4 w-4" />
             <span className="font-mono">{pr.source_branch}</span>
@@ -257,7 +249,6 @@ export function PRDetail({
             <span className="font-mono">{pr.target_branch}</span>
           </div>
 
-          {/* Meta info */}
           <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-500">
             <span className="flex items-center gap-1">
               <User className="h-4 w-4" />
@@ -273,7 +264,6 @@ export function PRDetail({
         </div>
       </div>
 
-      {/* Description */}
       {pr.description && (
         <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
           <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">
@@ -282,7 +272,6 @@ export function PRDetail({
         </div>
       )}
 
-      {/* Actions */}
       {accessToken && (
         <PRActions
           projectId={projectId}
@@ -293,7 +282,6 @@ export function PRDetail({
         />
       )}
 
-      {/* Tabs */}
       <div className="border-b border-slate-200 dark:border-slate-700">
         <div className="flex gap-4">
           <button
@@ -345,11 +333,9 @@ export function PRDetail({
         </div>
       </div>
 
-      {/* Tab Content */}
       <div>
         {activeTab === "conversation" && (
           <div className="space-y-6">
-            {/* Reviews */}
             {reviews.length > 0 && (
               <div className="space-y-3">
                 <h3 className="font-medium text-slate-900 dark:text-slate-100">
@@ -414,7 +400,6 @@ export function PRDetail({
               </div>
             )}
 
-            {/* Comments */}
             <div className="space-y-3">
               <h3 className="font-medium text-slate-900 dark:text-slate-100">
                 Comments
@@ -428,7 +413,6 @@ export function PRDetail({
                 onCommentsChange={handleCommentsChange}
               />
 
-              {/* Add comment form */}
               {accessToken && (
                 <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
                   <textarea
@@ -508,7 +492,6 @@ export function PRDetail({
               </div>
             ) : (
               <>
-                {/* Stats summary */}
                 {diffStats && (
                   <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
                     <span className="text-slate-600 dark:text-slate-400">
@@ -523,7 +506,6 @@ export function PRDetail({
                   </div>
                 )}
 
-                {/* File list */}
                 <div className="space-y-2">
                   {fileChanges.map((file) => {
                     const isExpanded = expandedFiles.has(file.path);
@@ -544,7 +526,6 @@ export function PRDetail({
                         key={file.path}
                         className="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 overflow-hidden"
                       >
-                        {/* File header */}
                         <button
                           onClick={toggleExpanded}
                           className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50"
@@ -600,7 +581,6 @@ export function PRDetail({
                           </div>
                         </button>
 
-                        {/* Diff content */}
                         {isExpanded && file.patch && (
                           <div className="border-t border-slate-200 dark:border-slate-700 overflow-x-auto">
                             <pre className="text-xs leading-relaxed">

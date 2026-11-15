@@ -1,7 +1,3 @@
-/**
- * Shared Turtle source fixture used across ontology test suites.
- */
-
 export const TURTLE_FIXTURE = `\
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -39,9 +35,6 @@ ex:fido a owl:NamedIndividual, ex:Dog ;
     ex:hasAge "5"^^xsd:integer .
 `;
 
-/**
- * Minimal Turtle source with @base declaration.
- */
 export const TURTLE_WITH_BASE = `\
 @base <http://example.org/ont#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -51,9 +44,6 @@ export const TURTLE_WITH_BASE = `\
     rdfs:label "Animal"@en .
 `;
 
-/**
- * Turtle with PREFIX (SPARQL-style) declarations.
- */
 export const TURTLE_SPARQL_PREFIX = `\
 PREFIX ex: <http://example.org/ont#>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
@@ -63,9 +53,6 @@ ex:Cat a owl:Class ;
     rdfs:label "Cat"@en .
 `;
 
-/**
- * Turtle with default (empty) prefix.
- */
 export const TURTLE_DEFAULT_PREFIX = `\
 @prefix : <http://example.org/ont#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -75,9 +62,6 @@ export const TURTLE_DEFAULT_PREFIX = `\
     rdfs:label "Bird"@en .
 `;
 
-/**
- * Turtle with nested blank nodes and multi-value predicates.
- */
 export const TURTLE_COMPLEX = `\
 @prefix ex: <http://example.org/ont#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -98,9 +82,6 @@ ex:isPartOf a owl:ObjectProperty, owl:TransitiveProperty ;
     owl:inverseOf ex:hasPart .
 `;
 
-/**
- * Turtle source with a deprecated property and multiple characteristics.
- */
 export const TURTLE_PROPERTY_RICH = `\
 @prefix ex: <http://example.org/ont#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -121,9 +102,6 @@ ex:hasFriend a owl:ObjectProperty, owl:SymmetricProperty ;
     owl:deprecated true .
 `;
 
-/**
- * Turtle source with an individual that has multiple types and property assertions.
- */
 export const TURTLE_INDIVIDUAL_RICH = `\
 @prefix ex: <http://example.org/ont#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -144,9 +122,6 @@ ex:john a owl:NamedIndividual, ex:Person, ex:Employee ;
     rdfs:isDefinedBy <http://example.org/ont> .
 `;
 
-/**
- * Turtle with long (triple-quoted) strings and comments.
- */
 export const TURTLE_LONG_STRINGS = `\
 @prefix ex: <http://example.org/ont#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .

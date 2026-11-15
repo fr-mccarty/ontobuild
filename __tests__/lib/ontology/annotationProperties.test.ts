@@ -12,8 +12,6 @@ import {
   RELATIONSHIP_PROPERTY_IRIS,
 } from "@/lib/ontology/annotationProperties";
 
-// ── getAnnotationPropertyInfo ──────────────────────────────────────────
-
 describe("getAnnotationPropertyInfo", () => {
   it("returns displayLabel and curie for a known SKOS property", () => {
     const info = getAnnotationPropertyInfo(
@@ -64,8 +62,6 @@ describe("getAnnotationPropertyInfo", () => {
   });
 });
 
-// ── getAnnotationPropertyLabel (deprecated) ────────────────────────────
-
 describe("getAnnotationPropertyLabel", () => {
   it("returns the display label for a known property", () => {
     expect(
@@ -81,8 +77,6 @@ describe("getAnnotationPropertyLabel", () => {
     ).toBe("unknownProp");
   });
 });
-
-// ── getAnnotationPropertiesByVocabulary ─────────────────────────────────
 
 describe("getAnnotationPropertiesByVocabulary", () => {
   it("groups properties by vocabulary", () => {
@@ -125,8 +119,6 @@ describe("getAnnotationPropertiesByVocabulary", () => {
     }
   });
 });
-
-// ── Exported constants ─────────────────────────────────────────────────
 
 describe("exported constants", () => {
   it("LABEL_IRI is the rdfs:label IRI", () => {

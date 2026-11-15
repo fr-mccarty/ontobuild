@@ -13,27 +13,11 @@ import type { AnnotationUpdate } from "@/lib/api/client";
 import type { LocalizedString } from "@/lib/api/client";
 
 interface AnnotationEditorProps {
-  /** Current annotation values, grouped by property IRI */
   annotations: AnnotationUpdate[];
-  /** Called when annotations change */
   onChange: (annotations: AnnotationUpdate[]) => void;
-  /**
-   * Filter which properties to show (whitelist).
-   * - If provided, only show annotations with matching property IRIs.
-   * - If undefined, show all annotations (subject to excludeProperties).
-   */
   propertyFilter?: string[];
-  /**
-   * Properties to exclude from display (blacklist).
-   * Applied after propertyFilter. Useful for hiding properties shown in their own section.
-   */
   excludeProperties?: string[];
-  /**
-   * Properties to exclude from the "add" picker
-   * (e.g., rdfs:label and rdfs:comment if handled separately)
-   */
   excludeFromPicker?: string[];
-  /** Show the property label chip on each row (default true) */
   showPropertyLabels?: boolean;
 }
 
@@ -49,7 +33,6 @@ export function AnnotationEditor({
 
   const excludeSet = excludeProperties ? new Set(excludeProperties) : null;
 
-  // Flatten annotations into a list of (property_iri, valueIndex, value) for rendering
   const flatRows: { propertyIri: string; annotationIdx: number; valueIdx: number; value: LocalizedString }[] = [];
   for (let ai = 0; ai < annotations.length; ai++) {
     const ann = annotations[ai];
@@ -89,7 +72,6 @@ export function AnnotationEditor({
           const newValues = a.values.filter((_, vi) => vi !== valueIdx);
           return { ...a, values: newValues };
         })
-        // Remove annotation entries with no values
         .filter((a) => a.values.length > 0);
       onChange(updated);
     },
@@ -98,7 +80,6 @@ export function AnnotationEditor({
 
   const addAnnotationValue = useCallback(
     (propertyIri: string) => {
-      // Check if property already exists in annotations
       const existingIdx = annotations.findIndex((a) => a.property_iri === propertyIri);
       if (existingIdx >= 0) {
         const updated = annotations.map((a, i) => {
@@ -147,8 +128,6 @@ export function AnnotationEditor({
     </div>
   );
 }
-
-// ── Property Picker (inline dropdown) ──
 
 export interface AnnotationPropertyPickerProps {
   onSelect: (propertyIri: string) => void;

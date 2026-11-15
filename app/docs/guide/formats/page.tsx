@@ -12,7 +12,6 @@ export default function FormatsPage() {
       </p>
 
       <div className="space-y-8">
-        {/* RDF Data Model */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             The RDF Data Model
@@ -32,7 +31,6 @@ export default function FormatsPage() {
           </div>
         </section>
 
-        {/* Turtle */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Turtle
@@ -59,7 +57,6 @@ ex:Dog a owl:Class ;
           </div>
         </section>
 
-        {/* RDF/XML */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             RDF/XML
@@ -85,7 +82,6 @@ ex:Dog a owl:Class ;
           </div>
         </section>
 
-        {/* N-Triples */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             N-Triples
@@ -106,7 +102,6 @@ ex:Dog a owl:Class ;
           </div>
         </section>
 
-        {/* JSON-LD */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             JSON-LD
@@ -143,7 +138,6 @@ ex:Dog a owl:Class ;
           </div>
         </section>
 
-        {/* N3 */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Notation3 (N3)
@@ -157,7 +151,6 @@ ex:Dog a owl:Class ;
           </div>
         </section>
 
-        {/* Comparison Table */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Format Comparison
@@ -208,7 +201,6 @@ ex:Dog a owl:Class ;
           </div>
         </section>
 
-        {/* W3C Specs */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             W3C Specifications

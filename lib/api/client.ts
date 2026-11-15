@@ -1,17 +1,10 @@
-/**
- * API client for OntoKit backend
- */
-
-// Same-origin by default: the API is served by this Next app under /api/v1.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
-/** Build an absolute URL for an API endpoint (works with a relative API_BASE). */
 function buildUrl(endpoint: string): URL {
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
   return new URL(`${API_BASE}${endpoint}`, origin);
 }
 
-/** No authentication: drop any Authorization header callers still pass. */
 function stripAuth(headers: Headers): Headers {
   headers.delete("Authorization");
   return headers;
@@ -38,7 +31,6 @@ async function request<T>(
 ): Promise<T> {
   const { params, ...fetchOptions } = options;
 
-  // Build URL with query params
   const url = buildUrl(endpoint);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -48,13 +40,11 @@ async function request<T>(
     });
   }
 
-  // Default headers
   const headers = stripAuth(new Headers(fetchOptions.headers));
   if (!headers.has("Content-Type") && fetchOptions.body) {
     headers.set("Content-Type", "application/json");
   }
 
-  // Retry loop for 5xx errors (max 2 retries with exponential backoff)
   for (let attempt = 0; attempt <= 2; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -71,7 +61,6 @@ async function request<T>(
         throw new ApiError(response.status, response.statusText, message);
       }
 
-      // Handle empty responses
       const text = await response.text();
       if (!text) {
         return undefined as T;
@@ -89,14 +78,9 @@ async function request<T>(
     }
   }
 
-  // This should never be reached due to the throw in the catch block,
-  // but TypeScript needs it for type safety
   throw new Error("Unexpected: retry loop exited without returning or throwing");
 }
 
-/**
- * Upload a file using multipart/form-data
- */
 async function uploadFile<T>(
   endpoint: string,
   formData: FormData,
@@ -104,7 +88,6 @@ async function uploadFile<T>(
 ): Promise<T> {
   const { params, ...fetchOptions } = options;
 
-  // Build URL with query params
   const url = buildUrl(endpoint);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -114,7 +97,6 @@ async function uploadFile<T>(
     });
   }
 
-  // Don't set Content-Type - browser will set it with boundary for FormData
   const headers = stripAuth(new Headers(fetchOptions.headers));
   headers.delete("Content-Type");
 
@@ -150,9 +132,6 @@ interface UploadWithProgressOptions {
   onProgress?: (progress: UploadProgress) => void;
 }
 
-/**
- * Upload a file with progress tracking using XMLHttpRequest
- */
 function uploadFileWithProgress<T>(
   endpoint: string,
   formData: FormData,
@@ -162,10 +141,8 @@ function uploadFileWithProgress<T>(
     const xhr = new XMLHttpRequest();
     const url = buildUrl(endpoint).toString();
 
-    // 5-minute timeout for large file uploads + server-side processing
     xhr.timeout = 300000;
 
-    // Track upload progress
     xhr.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable && options.onProgress) {
         options.onProgress({
@@ -177,7 +154,6 @@ function uploadFileWithProgress<T>(
       }
     });
 
-    // When upload completes, switch to processing phase
     xhr.upload.addEventListener("load", () => {
       if (options.onProgress) {
         options.onProgress({
@@ -203,15 +179,11 @@ function uploadFileWithProgress<T>(
     });
 
     xhr.addEventListener("error", async () => {
-      // XHR "error" fires for both true network failures and CORS-blocked
-      // server errors (e.g. a 500 without CORS headers). Probe the API root
-      // to distinguish the two cases so the user gets an actionable message.
       let serverReachable = false;
       try {
         await fetch(buildUrl("/api/v1/health").toString(), { method: "GET" });
         serverReachable = true;
       } catch {
-        // probe failed — server truly unreachable
       }
 
       reject(
@@ -241,7 +213,6 @@ function uploadFileWithProgress<T>(
 
     xhr.open("POST", url);
 
-    // Set headers (except Content-Type which is auto-set for FormData)
     if (options.headers) {
       Object.entries(options.headers).forEach(([key, value]) => {
         if (key.toLowerCase() !== "content-type" && key.toLowerCase() !== "authorization") {
@@ -292,7 +263,6 @@ export const api = {
   ) => uploadFileWithProgress<T>(endpoint, formData, options),
 };
 
-// Type-safe API methods for specific endpoints
 export const ontologyApi = {
   list: (skip = 0, limit = 20) =>
     api.get<OntologyListResponse>("/api/v1/ontologies", { params: { skip, limit } }),
@@ -336,7 +306,6 @@ export const classApi = {
     api.delete(`/api/v1/ontologies/${ontologyId}/classes/${encodeURIComponent(classIri)}`),
 };
 
-// Types
 export interface Ontology {
   id: string;
   iri: string;
@@ -409,7 +378,6 @@ export interface CommitHistory {
   timestamp: string;
 }
 
-// Project ontology tree types
 export interface OWLClassTreeNode {
   iri: string;
   label: string;
@@ -434,30 +402,24 @@ export interface OWLClassDetail {
   comments: LocalizedString[];
   deprecated: boolean;
   parent_iris: string[];
-  parent_labels: Record<string, string>;  // Map of IRI to resolved label
+  parent_labels: Record<string, string>;
   equivalent_iris: string[] | null;
   disjoint_iris: string[] | null;
   child_count: number;
   instance_count: number | null;
+  instances?: { iri: string; label: string }[];
   is_defined: boolean;
   source_ontology?: string;
-  annotations: AnnotationProperty[];  // DC, SKOS, and other annotation properties
+  annotations: AnnotationProperty[];
 }
 
-// Project ontology tree API
 export const projectOntologyApi = {
-  /**
-   * Get the root classes of the ontology tree
-   */
   getRootClasses: (projectId: string, token?: string, branch?: string) =>
     api.get<OWLClassTreeResponse>(`/api/v1/projects/${projectId}/ontology/tree`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       params: { branch },
     }),
 
-  /**
-   * Get children of a specific class
-   */
   getClassChildren: (projectId: string, classIri: string, token?: string, branch?: string) =>
     api.get<OWLClassTreeResponse>(
       `/api/v1/projects/${projectId}/ontology/tree/${encodeURIComponent(classIri)}/children`,
@@ -467,9 +429,6 @@ export const projectOntologyApi = {
       }
     ),
 
-  /**
-   * Get ancestor path from root to a specific class
-   */
   getClassAncestors: (projectId: string, classIri: string, token?: string, branch?: string) =>
     api.get<OWLClassTreeResponse>(
       `/api/v1/projects/${projectId}/ontology/tree/${encodeURIComponent(classIri)}/ancestors`,
@@ -479,9 +438,6 @@ export const projectOntologyApi = {
       }
     ),
 
-  /**
-   * Get details of a specific class
-   */
   getClassDetail: (projectId: string, classIri: string, token?: string, branch?: string) =>
     api.get<OWLClassDetail>(
       `/api/v1/projects/${projectId}/ontology/classes/${encodeURIComponent(classIri)}`,
@@ -491,9 +447,6 @@ export const projectOntologyApi = {
       }
     ),
 
-  /**
-   * Search for entities in the ontology
-   */
   searchEntities: (
     projectId: string,
     query: string,
@@ -509,9 +462,6 @@ export const projectOntologyApi = {
       }
     ),
 
-  /**
-   * Update a class in the ontology (labels, comments, parent classes)
-   */
   updateClass: (
     projectId: string,
     classIri: string,
@@ -529,9 +479,6 @@ export const projectOntologyApi = {
       }
     ),
 
-  /**
-   * Delete a class from the ontology
-   */
   deleteClass: (
     projectId: string,
     classIri: string,
@@ -544,11 +491,6 @@ export const projectOntologyApi = {
       params: { commit_message: commitMessage, branch },
     }),
 
-  /**
-   * Trigger a reindex of the ontology's PostgreSQL search index.
-   * Only available to project owners and admins.
-   * Returns 202 Accepted when the reindex job is queued.
-   */
   reindex: (projectId: string, token: string, branch?: string) =>
     api.post<ReindexResponse>(
       `/api/v1/projects/${projectId}/ontology/reindex`,
@@ -559,9 +501,6 @@ export const projectOntologyApi = {
       }
     ),
 
-  /**
-   * Get the current index status for a project branch.
-   */
   getIndexStatus: (projectId: string, token?: string, branch?: string) =>
     api.get<IndexStatusResponse>(
       `/api/v1/projects/${projectId}/ontology/index-status`,
@@ -571,9 +510,6 @@ export const projectOntologyApi = {
       }
     ),
 
-  /**
-   * Save ontology source content
-   */
   saveSource: (
     projectId: string,
     content: string,
@@ -591,40 +527,28 @@ export const projectOntologyApi = {
     ),
 };
 
-// Re-export quality / analytics APIs for convenience
 export { qualityApi } from "./quality";
 export { analyticsApi } from "./analytics";
 
-// Annotation update — a single annotation property with its values
 export interface AnnotationUpdate {
   property_iri: string;
   values: LocalizedString[];
 }
 
-// Class update payload for structured editing
 export interface ClassUpdatePayload {
   labels: LocalizedString[];
   comments: LocalizedString[];
   parent_iris: string[];
   annotations?: AnnotationUpdate[];
-  // Preserved fields (not edited by form, but needed for Turtle source generation)
   deprecated?: boolean;
   equivalent_iris?: string[];
   disjoint_iris?: string[];
 }
 
-// Entity search types
 export interface EntitySearchResult {
   iri: string;
   label: string;
   entity_type: "class" | "property" | "individual";
-  /**
-   * OWL property subtype, populated only when entity_type === "property".
-   * Null/undefined for class / individual results, and also for properties
-   * whose rdf:type resolves to none of OWL.{Object,Datatype,Annotation}Property
-   * (defensive fallback). Lets clients group properties without IRI-substring
-   * guessing — see ontokit-api#117.
-   */
   property_kind?: "object" | "data" | "annotation" | null;
   deprecated: boolean;
 }
@@ -634,7 +558,6 @@ export interface EntitySearchResponse {
   total: number;
 }
 
-// Ontology index types
 export interface ReindexResponse {
   status: "accepted";
   branch: string;
@@ -652,7 +575,6 @@ export interface IndexStatusResponse {
   indexed_at: string | null;
 }
 
-// Source content types
 export interface SourceContentSaveResponse {
   success: boolean;
   commit_hash: string;

@@ -38,8 +38,6 @@ describe("lintApi", () => {
     mockFetch.mockReset();
   });
 
-  // --- triggerLint ---
-
   describe("triggerLint", () => {
     it("calls POST /api/v1/projects/:id/lint/run with auth", async () => {
       const response = { job_id: "j1", status: "queued", message: "Lint started" };
@@ -66,8 +64,6 @@ describe("lintApi", () => {
       }
     });
   });
-
-  // --- getStatus ---
 
   describe("getStatus", () => {
     it("calls GET /api/v1/projects/:id/lint/status", async () => {
@@ -99,8 +95,6 @@ describe("lintApi", () => {
     });
   });
 
-  // --- listRuns ---
-
   describe("listRuns", () => {
     it("calls GET /api/v1/projects/:id/lint/runs with pagination", async () => {
       mockOk({ items: [], total: 0, skip: 5, limit: 10 });
@@ -123,8 +117,6 @@ describe("lintApi", () => {
     });
   });
 
-  // --- getRun ---
-
   describe("getRun", () => {
     it("calls GET /api/v1/projects/:id/lint/runs/:runId", async () => {
       const run = { id: "r1", project_id: "p1", status: "completed", issues: [] };
@@ -146,8 +138,6 @@ describe("lintApi", () => {
       expect(options.headers.has("Authorization")).toBe(false);
     });
   });
-
-  // --- getIssues ---
 
   describe("getIssues", () => {
     it("calls GET /api/v1/projects/:id/lint/issues with filters", async () => {
@@ -187,8 +177,6 @@ describe("lintApi", () => {
     });
   });
 
-  // --- dismissIssue ---
-
   describe("dismissIssue", () => {
     it("calls DELETE /api/v1/projects/:id/lint/issues/:issueId", async () => {
       mockEmpty();
@@ -201,8 +189,6 @@ describe("lintApi", () => {
       expect(options.headers.get("Authorization")).toBeNull();
     });
   });
-
-  // --- getRules ---
 
   describe("getRules", () => {
     it("calls GET /api/v1/projects/lint/rules without auth", async () => {
@@ -221,8 +207,6 @@ describe("lintApi", () => {
       expect(options.method).toBe("GET");
     });
   });
-
-  // --- getLintConfig ---
 
   describe("getLintConfig", () => {
     it("calls GET /api/v1/projects/:id/lint/config with auth", async () => {
@@ -247,8 +231,6 @@ describe("lintApi", () => {
       expect(options.headers.has("Authorization")).toBe(false);
     });
   });
-
-  // --- updateLintConfig ---
 
   describe("updateLintConfig", () => {
     it("calls PUT /api/v1/projects/:id/lint/config with config body", async () => {
@@ -292,8 +274,6 @@ describe("lintApi", () => {
     });
   });
 
-  // --- getLevels ---
-
   describe("getLevels", () => {
     it("calls GET /api/v1/projects/lint/levels", async () => {
       const levels = {
@@ -313,8 +293,6 @@ describe("lintApi", () => {
     });
   });
 
-  // --- clearResults ---
-
   describe("clearResults", () => {
     it("calls DELETE /api/v1/projects/:id/lint/results with auth", async () => {
       mockEmpty();
@@ -328,8 +306,6 @@ describe("lintApi", () => {
     });
   });
 });
-
-// --- Polling helpers (replace the old lint WebSocket) ---
 
 const runSummary = (status: "pending" | "running" | "completed" | "failed" | null) => ({
   project_id: "p1",

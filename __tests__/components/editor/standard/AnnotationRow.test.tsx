@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import React from "react";
+import { render as rtlRender, screen, fireEvent, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 
-// ── Mocks ──────────────────────────────────────────────────────────
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
+import React from "react";
 
 vi.mock("@/lib/ontology/annotationProperties", () => ({
   getAnnotationPropertyInfo: vi.fn((iri: string) => {
@@ -40,8 +43,6 @@ vi.mock("@/components/editor/LanguagePicker", () => ({
 }));
 
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
-
-// ── Tests ──────────────────────────────────────────────────────────
 
 describe("AnnotationRow", () => {
   const defaultProps = {
@@ -81,10 +82,12 @@ describe("AnnotationRow", () => {
     expect(screen.queryByText("Label")).toBeNull();
   });
 
-  it("displays the curie as title attribute on the property chip", () => {
+  it("displays the curie in a tooltip on the property chip", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     render(<AnnotationRow {...defaultProps} />);
     const chip = screen.getByText("Label");
-    expect(chip.getAttribute("title")).toBe("rdfs:label");
+    fireEvent.focus(chip);
+    expect((await screen.findAllByText("rdfs:label")).length).toBeGreaterThan(0);
   });
 
   it("renders the language picker with correct value", () => {
@@ -137,7 +140,6 @@ describe("AnnotationRow", () => {
   it("renders placeholder spacer when onRemove is not provided", () => {
     const { container } = render(<AnnotationRow {...defaultProps} />);
     expect(screen.queryByLabelText("Remove Label annotation")).toBeNull();
-    // Should have a spacer div instead
     const spacers = container.querySelectorAll(".h-3\\.5.w-3\\.5");
     expect(spacers.length).toBeGreaterThan(0);
   });

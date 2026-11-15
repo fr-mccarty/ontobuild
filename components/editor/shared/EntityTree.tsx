@@ -14,21 +14,14 @@ interface EntityTreeProps {
   onAddChild?: (parentIri: string) => void;
   onCopyIri?: (iri: string) => void;
   onDelete?: (iri: string, label: string) => void;
-  onViewInSource?: (iri: string) => void;
   draftIris?: Set<string>;
   searchQuery?: string;
   enableKeyboardNav?: boolean;
-  /** Drag state for drag-and-drop reparenting. Undefined = drag disabled. */
   dragState?: DragState;
-  /** Called when drag hovers over a node (for auto-expand) */
   onDragEnterNode?: (iri: string) => void;
-  /** Called when drag leaves a node */
   onDragLeaveNode?: () => void;
 }
 
-/**
- * Flatten visible nodes (expanded only) into an ordered list of IRIs for keyboard navigation.
- */
 function flattenVisible(nodes: EntityTreeNode[]): string[] {
   const result: string[] = [];
   for (const node of nodes) {
@@ -40,9 +33,6 @@ function flattenVisible(nodes: EntityTreeNode[]): string[] {
   return result;
 }
 
-/**
- * Find a node by IRI in the tree.
- */
 function findNode(
   nodes: EntityTreeNode[],
   iri: string,
@@ -57,9 +47,6 @@ function findNode(
   return null;
 }
 
-/**
- * Find the parent IRI of a given node.
- */
 function findParentIri(
   nodes: EntityTreeNode[],
   targetIri: string,
@@ -84,7 +71,6 @@ export function EntityTree({
   onAddChild,
   onCopyIri,
   onDelete,
-  onViewInSource,
   draftIris,
   searchQuery,
   enableKeyboardNav = false,
@@ -204,7 +190,6 @@ export function EntityTree({
           onAddChild={onAddChild}
           onCopyIri={onCopyIri}
           onDelete={onDelete}
-          onViewInSource={onViewInSource}
           draftIris={draftIris}
           dragState={dragState}
           onDragEnterNode={onDragEnterNode}

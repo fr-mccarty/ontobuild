@@ -1,10 +1,3 @@
-/**
- * Shared Monaco Editor mock for component tests.
- *
- * Usage in test files:
- *   vi.mock("@monaco-editor/react", () => monacoMock);
- *   vi.mock("@/lib/editor/languages/turtle", () => ({ registerTurtleLanguage: vi.fn() }));
- */
 import { vi } from "vitest";
 import React from "react";
 
@@ -32,7 +25,6 @@ export const monacoMock = {
   },
 };
 
-/** Minimal mock for the Monaco instance passed to onMount / beforeMount */
 export function createMockMonacoInstance() {
   return {
     editor: {

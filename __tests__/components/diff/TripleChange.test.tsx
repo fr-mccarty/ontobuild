@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import {
   TripleChange,
   SemanticDiff,
 } from "@/components/diff/TripleChange";
 import type { TripleChange as TripleChangeType } from "@/lib/api/revisions";
 
-// Mock lucide-react
 vi.mock("lucide-react", () => ({
   Plus: (props: Record<string, unknown>) => <span data-testid="plus-icon" {...props} />,
   Minus: (props: Record<string, unknown>) => <span data-testid="minus-icon" {...props} />,
@@ -52,9 +56,11 @@ describe("TripleChange", () => {
     expect(screen.getByText("rdfs:label")).toBeDefined();
   });
 
-  it("renders literal objects with title attribute", () => {
+  it("renders literal objects with full-value tooltip", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     render(<TripleChange change={removedTriple} />);
-    expect(screen.getByTitle("Old Class")).toBeDefined();
+    fireEvent.focus(screen.getByText(/Old Class/));
+    expect((await screen.findAllByText("Old Class")).length).toBeGreaterThan(0);
   });
 
   it("renders IRI objects with angle brackets", () => {

@@ -1,6 +1,3 @@
-/**
- * Hands every /api/v1/* request to the Hono app in server/app.ts.
- */
 import app from "@/server/app";
 
 export const runtime = "nodejs";

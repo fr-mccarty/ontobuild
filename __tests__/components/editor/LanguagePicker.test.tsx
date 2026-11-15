@@ -1,8 +1,12 @@
 import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent, waitFor, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import userEvent from "@testing-library/user-event";
 
-// cmdk uses ResizeObserver and scrollIntoView which jsdom doesn't provide
 const _origResizeObserver = global.ResizeObserver;
 const _origScrollIntoView = Element.prototype.scrollIntoView;
 
@@ -21,7 +25,6 @@ afterAll(() => {
   vi.restoreAllMocks();
 });
 
-// langToFlag needs the utils module
 vi.mock("@/lib/utils", async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
@@ -54,7 +57,6 @@ describe("LanguagePicker", () => {
     await waitFor(() => {
       expect(btn.getAttribute("aria-expanded")).toBe("true");
     });
-    // Should render the search input
     expect(screen.getByPlaceholderText("Search languages...")).toBeDefined();
   });
 
@@ -76,14 +78,12 @@ describe("LanguagePicker", () => {
       expect(screen.getByText("French")).toBeDefined();
     });
 
-    // Click the French option
     const frenchItem = screen.getByText("French").closest("[cmdk-item]");
     if (frenchItem) {
       fireEvent.click(frenchItem);
     }
 
     expect(onChange).toHaveBeenCalledWith("fr");
-    // Verify the menu closed
     const btn = screen.getByLabelText("Language tag");
     await waitFor(() => {
       expect(btn.getAttribute("aria-expanded")).toBe("false");
@@ -130,10 +130,11 @@ describe("LanguagePicker", () => {
     });
   });
 
-  it("displays flag emoji for known language codes", () => {
+  it("shows only the language code (no flag) on the trigger", () => {
     render(<LanguagePicker value="en" onChange={vi.fn()} />);
     const btn = screen.getByLabelText("Language tag");
-    expect(btn.textContent).toContain("\u{1F1FA}\u{1F1F8}");
+    expect(btn.textContent).toContain("en");
+    expect(btn.textContent).not.toContain("\u{1F1FA}\u{1F1F8}");
   });
 
   it("shows 'lang' placeholder when value is empty", () => {
@@ -151,7 +152,6 @@ describe("LanguagePicker", () => {
     });
     const controlsId = btn.getAttribute("aria-controls");
     expect(controlsId).toBeTruthy();
-    // Verify a listbox element with the matching id exists
     const list = screen.getByRole("listbox");
     expect(list.getAttribute("id")).toBe(controlsId);
   });
@@ -169,7 +169,6 @@ describe("LanguagePicker", () => {
     const frenchItem = screen.getByText("French").closest("[cmdk-item]");
     if (frenchItem) fireEvent.click(frenchItem);
 
-    // Wait for requestAnimationFrame focus restore
     await waitFor(() => {
       expect(document.activeElement).toBe(btn);
     });

@@ -2,8 +2,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
-// ── Mocks ──────────────────────────────────────────────────────────
-
 const mockSearchEntities = vi.fn();
 
 vi.mock("@/lib/api/client", () => ({
@@ -39,8 +37,6 @@ vi.mock("@/components/editor/shared/EntityTree", () => ({
 
 import { IndividualList } from "@/components/editor/standard/IndividualList";
 
-// ── Tests ──────────────────────────────────────────────────────────
-
 describe("IndividualList", () => {
   const defaultProps = {
     projectId: "proj-1",
@@ -55,7 +51,7 @@ describe("IndividualList", () => {
   });
 
   it("shows loading spinner initially", () => {
-    mockSearchEntities.mockReturnValue(new Promise(() => {})); // never resolves
+    mockSearchEntities.mockReturnValue(new Promise(() => {}));
     const { container } = render(<IndividualList {...defaultProps} />);
     const spinner = container.querySelector(".animate-spin");
     expect(spinner).not.toBeNull();

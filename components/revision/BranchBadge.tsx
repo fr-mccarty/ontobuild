@@ -3,6 +3,7 @@
 import { useBranch } from "@/lib/context/BranchContext";
 import { cn } from "@/lib/utils";
 import { GitBranch, ArrowUp, AlertCircle } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface BranchBadgeProps {
   className?: string;
@@ -43,13 +44,12 @@ export function BranchBadge({
       )}
 
       {commitsBehind > 0 && (
-        <span
-          className="flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-500"
-          title={`${commitsBehind} commit${commitsBehind > 1 ? "s" : ""} behind ${defaultBranch}`}
-        >
-          <AlertCircle className="h-3 w-3" />
-          {commitsBehind} behind
-        </span>
+        <Tooltip content={`${commitsBehind} commit${commitsBehind > 1 ? "s" : ""} behind ${defaultBranch}`}>
+          <span className="flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-500">
+            <AlertCircle className="h-3 w-3" />
+            {commitsBehind} behind
+          </span>
+        </Tooltip>
       )}
     </div>
   );

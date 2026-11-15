@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Plus, Trash2, GripVertical, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
-// Common label properties
 const LABEL_PROPERTIES = [
   { value: "rdfs:label", label: "rdfs:label" },
   { value: "skos:prefLabel", label: "skos:prefLabel" },
@@ -14,7 +14,6 @@ const LABEL_PROPERTIES = [
   { value: "dc:title", label: "dc:title" },
 ];
 
-// Common languages
 const LANGUAGES = [
   { value: "", label: "Any language" },
   { value: "en", label: "English (en)" },
@@ -72,7 +71,6 @@ export function LabelPreferences({
 
   return (
     <div className="space-y-4">
-      {/* Info box */}
       <div className="flex items-start gap-3 rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
         <div className="text-sm text-blue-700 dark:text-blue-300">
@@ -87,7 +85,6 @@ export function LabelPreferences({
         </div>
       </div>
 
-      {/* Current preferences list */}
       {preferences.length > 0 && (
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -105,24 +102,32 @@ export function LabelPreferences({
                   )}
                 >
                   <div className="flex flex-col gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleMoveUp(index)}
-                      disabled={disabled || index === 0}
-                      className="text-slate-400 hover:text-slate-600 disabled:opacity-30 dark:hover:text-slate-300"
-                      title="Move up"
-                    >
-                      <GripVertical className="h-3 w-3 rotate-90" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveDown(index)}
-                      disabled={disabled || index === preferences.length - 1}
-                      className="text-slate-400 hover:text-slate-600 disabled:opacity-30 dark:hover:text-slate-300"
-                      title="Move down"
-                    >
-                      <GripVertical className="h-3 w-3 -rotate-90" />
-                    </button>
+                    <Tooltip content="Move up">
+                      <span className="inline-flex">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveUp(index)}
+                          disabled={disabled || index === 0}
+                          className="text-slate-400 hover:text-slate-600 disabled:opacity-30 dark:hover:text-slate-300"
+                          aria-label="Move up"
+                        >
+                          <GripVertical className="h-3 w-3 rotate-90" />
+                        </button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip content="Move down">
+                      <span className="inline-flex">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveDown(index)}
+                          disabled={disabled || index === preferences.length - 1}
+                          className="text-slate-400 hover:text-slate-600 disabled:opacity-30 dark:hover:text-slate-300"
+                          aria-label="Move down"
+                        >
+                          <GripVertical className="h-3 w-3 -rotate-90" />
+                        </button>
+                      </span>
+                    </Tooltip>
                   </div>
                   <span className="flex-1 font-mono text-sm text-slate-700 dark:text-slate-300">
                     <span className="text-primary-600 dark:text-primary-400">{prop}</span>
@@ -135,15 +140,19 @@ export function LabelPreferences({
                   <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-600 dark:text-slate-400">
                     #{index + 1}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(index)}
-                    disabled={disabled}
-                    className="text-red-500 hover:text-red-700 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
-                    title="Remove"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <Tooltip content="Remove">
+                    <span className="inline-flex">
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(index)}
+                        disabled={disabled}
+                        className="text-red-500 hover:text-red-700 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                        aria-label="Remove"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </span>
+                  </Tooltip>
                 </li>
               );
             })}
@@ -157,7 +166,6 @@ export function LabelPreferences({
         </p>
       )}
 
-      {/* Add new preference */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
           Add preference

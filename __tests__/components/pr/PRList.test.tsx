@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import type { PullRequest, PRListResponse } from "@/lib/api/pullRequests";
 
-// Mock pullRequestsApi
 const mockList = vi.fn();
 
 vi.mock("@/lib/api/pullRequests", () => ({
@@ -21,7 +20,6 @@ vi.mock("lucide-react", () => ({
   GitPullRequest: () => <span data-testid="icon-git-pr" />,
 }));
 
-// Mock PRListItem
 vi.mock("@/components/pr/PRListItem", () => ({
   PRListItem: ({ pr, projectId }: { pr: PullRequest; projectId: string }) => (
     <div data-testid={`pr-item-${pr.id}`}>
@@ -65,7 +63,6 @@ describe("PRList", () => {
   });
 
   it("shows loading spinner initially", () => {
-    // Never resolve to keep loading state
     mockList.mockReturnValue(new Promise(() => {}));
     const { container } = render(
       <PRList projectId="proj-1" accessToken="token-123" />
@@ -127,7 +124,6 @@ describe("PRList", () => {
       expect(screen.getByText("No pull requests")).toBeDefined();
     });
 
-    // Switch to merged tab
     mockList.mockResolvedValueOnce(makeListResponse([], 0));
     await act(async () => {
       fireEvent.click(screen.getByText("Merged"));

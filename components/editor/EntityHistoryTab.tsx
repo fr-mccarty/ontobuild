@@ -15,6 +15,7 @@ import {
 import { useEntityHistory } from "@/lib/hooks/useEntityHistory";
 import { cn } from "@/lib/utils";
 import type { ChangeEventType } from "@/lib/api/analytics";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const EVENT_ICONS: Record<ChangeEventType, React.ReactNode> = {
   create: <Plus className="h-3.5 w-3.5 text-green-500" />,
@@ -109,7 +110,6 @@ export function EntityHistoryTab({
         )}
         {isExpanded && events.length > 0 && (
           <div className="relative space-y-0">
-            {/* Timeline line */}
             <div className="absolute left-[7px] top-2 bottom-2 w-px bg-slate-200 dark:bg-slate-700" />
 
             {events.map((event) => {
@@ -137,14 +137,15 @@ export function EntityHistoryTab({
                         ({event.changed_fields.join(", ")})
                       </span>
                     )}
-                    <span
-                      className={cn(
-                        "ml-1.5 text-[10px] text-slate-400 dark:text-slate-500"
-                      )}
-                      title={new Date(event.created_at).toLocaleString()}
-                    >
-                      {formatRelativeTime(event.created_at)}
-                    </span>
+                    <Tooltip content={new Date(event.created_at).toLocaleString()}>
+                      <span
+                        className={cn(
+                          "ml-1.5 text-[10px] text-slate-400 dark:text-slate-500"
+                        )}
+                      >
+                        {formatRelativeTime(event.created_at)}
+                      </span>
+                    </Tooltip>
                   </div>
                 </div>
               );

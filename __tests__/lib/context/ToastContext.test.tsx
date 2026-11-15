@@ -18,7 +18,6 @@ describe("ToastContext", () => {
   });
 
   it("throws when useToast is used outside ToastProvider", () => {
-    // Suppress console.error for the expected error
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => renderHook(() => useToast())).toThrow(
       "useToast must be used within a ToastProvider"

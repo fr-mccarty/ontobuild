@@ -1,11 +1,3 @@
-/**
- * SQLite access via node:sqlite (built into Node 24).
- *
- * - One DatabaseSync per process, cached on globalThis so Next dev HMR does not reopen it.
- * - On first open, every `server/schema/*.sql` file is executed (alphabetical order), so
- *   schema files must be idempotent (CREATE TABLE IF NOT EXISTS ...).
- * - Booleans are stored as 0/1, JSON as TEXT (use toJson/fromJson), timestamps as ISO strings.
- */
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
@@ -36,40 +28,33 @@ function applySchema(db: DatabaseSync) {
   }
 }
 
-/** The shared database connection. */
 export function getDb(): DatabaseSync {
   if (!g.__ontokitDb) g.__ontokitDb = open();
   return g.__ontokitDb;
 }
 
-/** Re-run all schema files (e.g. after adding a schema file during dev). */
 export function reloadSchema() {
   applySchema(getDb());
 }
 
-/** Values accepted as SQL params: booleans become 0/1, undefined becomes NULL. */
 export type Param = SQLInputValue | boolean | undefined;
 
 function norm(params: Param[]): SQLInputValue[] {
   return params.map((p) => (p === undefined ? null : typeof p === "boolean" ? (p ? 1 : 0) : p));
 }
 
-/** All rows. */
 export function all<T = Record<string, unknown>>(sql: string, ...params: Param[]): T[] {
   return getDb().prepare(sql).all(...norm(params)) as T[];
 }
 
-/** First row or undefined. */
 export function get<T = Record<string, unknown>>(sql: string, ...params: Param[]): T | undefined {
   return getDb().prepare(sql).get(...norm(params)) as T | undefined;
 }
 
-/** Execute a statement; returns `{changes, lastInsertRowid}`. */
 export function run(sql: string, ...params: Param[]) {
   return getDb().prepare(sql).run(...norm(params));
 }
 
-/** Run `fn` inside a transaction (synchronous). Nested calls use savepoints. */
 let txDepth = 0;
 export function transaction<T>(fn: () => T): T {
   const db = getDb();
@@ -88,7 +73,6 @@ export function transaction<T>(fn: () => T): T {
   }
 }
 
-/** Insert a row from an object (keys = column names). */
 export function insert(table: string, row: Record<string, Param>) {
   const cols = Object.keys(row);
   return run(
@@ -97,7 +81,6 @@ export function insert(table: string, row: Record<string, Param>) {
   );
 }
 
-/** Update columns of rows matching `where` (object of column = value). */
 export function update(table: string, set: Record<string, Param>, where: Record<string, Param>) {
   const sc = Object.keys(set);
   const wc = Object.keys(where);
@@ -109,7 +92,6 @@ export function update(table: string, set: Record<string, Param>, where: Record<
   );
 }
 
-/** JSON column helpers. */
 export function toJson(value: unknown): string | null {
   return value === undefined || value === null ? null : JSON.stringify(value);
 }
@@ -122,17 +104,14 @@ export function fromJson<T>(text: unknown, fallback: T): T {
   }
 }
 
-/** SQLite integer -> boolean. */
 export function bool(v: unknown): boolean {
   return v === 1 || v === 1n || v === true || v === "1";
 }
 
-/** Current time as ISO-8601 UTC string. */
 export function nowIso(): string {
   return new Date().toISOString();
 }
 
-/** New UUID string id. */
 export function newId(): string {
   return crypto.randomUUID();
 }

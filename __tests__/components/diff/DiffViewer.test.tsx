@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { DiffViewer } from "@/components/diff/DiffViewer";
 import type { RevisionDiffResponse } from "@/lib/api/revisions";
 
-// Mock revisionsApi
 const mockGetDiff = vi.fn();
 vi.mock("@/lib/api/revisions", () => ({
   revisionsApi: {
@@ -12,7 +11,6 @@ vi.mock("@/lib/api/revisions", () => ({
   },
 }));
 
-// Mock lucide-react
 vi.mock("lucide-react", () => ({
   FileCode: (props: Record<string, unknown>) => <span data-testid="file-code" {...props} />,
   FilePlus: (props: Record<string, unknown>) => <span data-testid="file-plus" {...props} />,
@@ -51,7 +49,7 @@ const baseDiff: RevisionDiffResponse = {
 
 describe("DiffViewer", () => {
   it("shows loading spinner initially", () => {
-    mockGetDiff.mockReturnValue(new Promise(() => {})); // never resolves
+    mockGetDiff.mockReturnValue(new Promise(() => {}));
     const { container } = render(
       <DiffViewer projectId="p1" fromVersion="abc12345" />,
     );
@@ -108,13 +106,11 @@ describe("DiffViewer", () => {
       expect(screen.getByText("ontology.ttl")).toBeDefined();
     });
 
-    // Click file button to expand
     await user.click(screen.getByText("ontology.ttl").closest("button")!);
     expect(
       screen.getByText("Detailed diff view coming soon"),
     ).toBeDefined();
 
-    // Click again to collapse
     await user.click(screen.getByText("ontology.ttl").closest("button")!);
     expect(
       screen.queryByText("Detailed diff view coming soon"),

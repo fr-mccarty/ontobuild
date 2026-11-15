@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { ToastContainer } from "@/components/ui/toast-container";
 import type { Toast } from "@/lib/context/ToastContext";
 
-// Mock ToastContext
 const mockRemoveToast = vi.fn();
 let mockToasts: Toast[] = [];
 
@@ -15,7 +14,6 @@ vi.mock("@/lib/context/ToastContext", () => ({
   }),
 }));
 
-// Mock lucide-react icons
 vi.mock("lucide-react", () => ({
   X: (props: Record<string, unknown>) => <span data-testid="x-icon" {...props} />,
   CheckCircle2: (props: Record<string, unknown>) => (
@@ -85,7 +83,6 @@ describe("ToastContainer", () => {
     expect(dismissBtn).toBeDefined();
 
     await user.click(dismissBtn);
-    // removeToast is called after a 150ms timeout
     await vi.waitFor(() => {
       expect(mockRemoveToast).toHaveBeenCalledWith("t1");
     });

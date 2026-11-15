@@ -1,28 +1,12 @@
-/**
- * Lint API client for ontology health checking
- */
-
 import { api } from "./client";
 
-// Types
 export type LintIssueType = "error" | "warning" | "info";
 export type LintRunStatus = "pending" | "running" | "completed" | "failed";
 export type SubjectType = "class" | "property" | "individual" | "other";
-/** Numeric preset levels exposed by the backend's `/lint/levels` endpoint. */
 export type LintLevel = 1 | 2 | 3 | 4 | 5;
 
-/**
- * Known fields the backend populates inside `LintIssue.details`.
- *
- * Add fields here when introducing a new lint rule that emits structured
- * payload data. The index signature keeps the type forward-compatible with
- * unknown rules, but consumers should validate at runtime before reading
- * unknown keys.
- */
 export interface LintIssueDetails {
-  /** Other entity IRIs that share the offending property (duplicate-label, etc.) */
   duplicate_iris?: string[];
-  /** Conflicting label values (label-per-language) */
   labels?: string[];
   [key: string]: unknown;
 }
@@ -107,15 +91,6 @@ export interface LintLevelsResponse {
   levels: LintLevelInfo[];
 }
 
-/**
- * Lint configuration payload. The two modes are mutually exclusive — the
- * backend's `enforce_xor` validator rejects requests that set both fields.
- * Modeling this as a discriminated union prevents the bad combination from
- * compiling.
- *
- * - **preset**: `{ lint_level: 1..5 }` — backend computes effective_rules.
- * - **custom**: `{ lint_level: null, enabled_rules: [...] }` — explicit rules.
- */
 export type LintConfig =
   | { lint_level: LintLevel; enabled_rules?: never }
   | { lint_level: null; enabled_rules: string[] };
@@ -128,13 +103,7 @@ export interface LintConfigResponse {
   updated_at: string | null;
 }
 
-// API functions
 export const lintApi = {
-  /**
-   * Trigger a new lint run for a project. The run executes in the background;
-   * poll `getStatus` (see `waitForLintRun`) until `last_run` is no longer
-   * pending/running.
-   */
   triggerLint: (projectId: string, token: string) =>
     api.post<LintTriggerResponse>(
       `/api/v1/projects/${projectId}/lint/run`,
@@ -144,17 +113,11 @@ export const lintApi = {
       }
     ),
 
-  /**
-   * Get the current lint status and summary for a project
-   */
   getStatus: (projectId: string, token?: string) =>
     api.get<LintSummary>(`/api/v1/projects/${projectId}/lint/status`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     }),
 
-  /**
-   * List all lint runs for a project
-   */
   listRuns: (
     projectId: string,
     token?: string,
@@ -165,9 +128,6 @@ export const lintApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     }),
 
-  /**
-   * Get details of a specific lint run including all issues
-   */
   getRun: (projectId: string, runId: string, token?: string) =>
     api.get<LintRunDetail>(
       `/api/v1/projects/${projectId}/lint/runs/${runId}`,
@@ -176,9 +136,6 @@ export const lintApi = {
       }
     ),
 
-  /**
-   * Get lint issues for a project
-   */
   getIssues: (
     projectId: string,
     token?: string,
@@ -199,35 +156,20 @@ export const lintApi = {
       }
     ),
 
-  /**
-   * Dismiss/resolve a lint issue
-   */
   dismissIssue: (projectId: string, issueId: string, token: string) =>
     api.delete(`/api/v1/projects/${projectId}/lint/issues/${issueId}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  /**
-   * Get the list of available lint rules
-   */
   getRules: () => api.get<LintRulesResponse>("/api/v1/projects/lint/rules"),
 
-  /**
-   * Get lint level definitions (which rules are in each level)
-   */
   getLevels: () => api.get<LintLevelsResponse>("/api/v1/projects/lint/levels"),
 
-  /**
-   * Get lint configuration for a project
-   */
   getLintConfig: (projectId: string, token?: string) =>
     api.get<LintConfigResponse>(`/api/v1/projects/${projectId}/lint/config`, {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     }),
 
-  /**
-   * Update lint configuration for a project
-   */
   updateLintConfig: (projectId: string, config: LintConfig, token?: string) =>
     api.put<LintConfigResponse>(
       `/api/v1/projects/${projectId}/lint/config`,
@@ -237,26 +179,17 @@ export const lintApi = {
       }
     ),
 
-  /**
-   * Clear all lint results (runs and issues) for a project
-   */
   clearResults: (projectId: string, token: string) =>
     api.delete(`/api/v1/projects/${projectId}/lint/results`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 };
 
-/** True while a lint run is queued or executing. */
 export function isLintRunActive(summary: LintSummary | null | undefined): boolean {
   const status = summary?.last_run?.status;
   return status === "pending" || status === "running";
 }
 
-/**
- * Poll the lint status endpoint until the latest run finishes (completed/failed).
- * Replaces the old `/lint/ws` websocket. Resolves with the final summary, or null
- * if cancelled via `signal`.
- */
 export async function waitForLintRun(
   projectId: string,
   options: { token?: string; intervalMs?: number; signal?: AbortSignal } = {}

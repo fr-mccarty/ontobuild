@@ -4,8 +4,6 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import type { AnnotationUpdate } from "@/lib/api/client";
 
-// ── Mocks ──────────────────────────────────────────────────────────
-
 vi.mock("@/lib/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
@@ -14,7 +12,6 @@ vi.mock("@/components/editor/LanguageFlag", () => ({
   LanguageFlag: ({ lang }: { lang: string }) => <span data-testid="lang-flag">{lang}</span>,
 }));
 
-// Mock AnnotationRow as a simple controlled component
 vi.mock("@/components/editor/standard/AnnotationRow", () => ({
   AnnotationRow: ({
     propertyIri,
@@ -51,8 +48,6 @@ vi.mock("@/components/editor/standard/AnnotationRow", () => ({
   ),
 }));
 
-// Shared objects so reference equality works in the picker's .includes() check.
-// vi.hoisted runs before vi.mock hoisting, making these available in the factory.
 const {
   mockRdfsLabel,
   mockRdfsComment,
@@ -94,10 +89,7 @@ vi.mock("@/lib/ontology/annotationProperties", () => ({
   getAnnotationPropertyInfo: vi.fn((iri: string) => ({ curie: iri, label: iri })),
 }));
 
-// Import after mocks
 import { AnnotationEditor, AnnotationPropertyPicker } from "@/components/editor/standard/AnnotationEditor";
-
-// ── Fixtures ───────────────────────────────────────────────────────
 
 const rdfsLabel = "http://www.w3.org/2000/01/rdf-schema#label";
 const rdfsComment = "http://www.w3.org/2000/01/rdf-schema#comment";
@@ -116,8 +108,6 @@ const sampleAnnotations: AnnotationUpdate[] = [
   },
 ];
 
-// ── Tests ──────────────────────────────────────────────────────────
-
 describe("AnnotationEditor", () => {
   const onChange = vi.fn();
 
@@ -125,12 +115,9 @@ describe("AnnotationEditor", () => {
     vi.clearAllMocks();
   });
 
-  // --- Rendering rows ---
-
   it("renders a row for each annotation value", () => {
     render(<AnnotationEditor annotations={sampleAnnotations} onChange={onChange} />);
     const rows = screen.getAllByTestId("annotation-row");
-    // 2 values for rdfs:label + 1 for rdfs:comment = 3
     expect(rows.length).toBe(3);
   });
 
@@ -165,8 +152,6 @@ describe("AnnotationEditor", () => {
     expect(screen.getByText("Add annotation")).toBeDefined();
   });
 
-  // --- Property filter ---
-
   it("filters annotations by propertyFilter whitelist", () => {
     render(
       <AnnotationEditor
@@ -176,11 +161,8 @@ describe("AnnotationEditor", () => {
       />
     );
     const rows = screen.getAllByTestId("annotation-row");
-    // Only rdfs:label values (2)
     expect(rows.length).toBe(2);
   });
-
-  // --- Exclude properties ---
 
   it("excludes annotations by excludeProperties blacklist", () => {
     render(
@@ -191,11 +173,8 @@ describe("AnnotationEditor", () => {
       />
     );
     const rows = screen.getAllByTestId("annotation-row");
-    // Only rdfs:comment values (1)
     expect(rows.length).toBe(1);
   });
-
-  // --- Updating values ---
 
   it("calls onChange when a value is updated", () => {
     render(<AnnotationEditor annotations={sampleAnnotations} onChange={onChange} />);
@@ -204,7 +183,6 @@ describe("AnnotationEditor", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     const updated = onChange.mock.calls[0][0] as AnnotationUpdate[];
     expect(updated[0].values[0].value).toBe("Updated Class");
-    // Other values should be unchanged
     expect(updated[0].values[1].value).toBe("Ma Classe");
     expect(updated[1].values[0].value).toBe("A description");
   });
@@ -218,16 +196,12 @@ describe("AnnotationEditor", () => {
     expect(updated[0].values[1].lang).toBe("de");
   });
 
-  // --- Removing values ---
-
   it("calls onChange with value removed when remove is clicked", () => {
     render(<AnnotationEditor annotations={sampleAnnotations} onChange={onChange} />);
     const removeButtons = screen.getAllByTestId("row-remove");
-    // Remove the second value of rdfs:label ("Ma Classe")
     fireEvent.click(removeButtons[1]);
     expect(onChange).toHaveBeenCalledTimes(1);
     const updated = onChange.mock.calls[0][0] as AnnotationUpdate[];
-    // rdfs:label should now have 1 value
     expect(updated[0].values.length).toBe(1);
     expect(updated[0].values[0].value).toBe("My Class");
   });
@@ -235,16 +209,12 @@ describe("AnnotationEditor", () => {
   it("removes the annotation entry entirely when last value is removed", () => {
     render(<AnnotationEditor annotations={sampleAnnotations} onChange={onChange} />);
     const removeButtons = screen.getAllByTestId("row-remove");
-    // Remove the only value of rdfs:comment (index 2)
     fireEvent.click(removeButtons[2]);
     expect(onChange).toHaveBeenCalledTimes(1);
     const updated = onChange.mock.calls[0][0] as AnnotationUpdate[];
-    // Only rdfs:label should remain
     expect(updated.length).toBe(1);
     expect(updated[0].property_iri).toBe(rdfsLabel);
   });
-
-  // --- Add annotation picker ---
 
   it("shows picker when 'Add annotation' button is clicked", () => {
     render(<AnnotationEditor annotations={[]} onChange={onChange} />);
@@ -255,7 +225,6 @@ describe("AnnotationEditor", () => {
   it("adds a new annotation when a property is selected from picker", () => {
     render(<AnnotationEditor annotations={[]} onChange={onChange} />);
     fireEvent.click(screen.getByText("Add annotation"));
-    // Click on a property in the picker
     fireEvent.click(screen.getByText("Label"));
     expect(onChange).toHaveBeenCalledTimes(1);
     const updated = onChange.mock.calls[0][0] as AnnotationUpdate[];
@@ -267,11 +236,9 @@ describe("AnnotationEditor", () => {
   it("appends a value to existing property when selected from picker", () => {
     render(<AnnotationEditor annotations={sampleAnnotations} onChange={onChange} />);
     fireEvent.click(screen.getByText("Add annotation"));
-    // Select rdfs:label which already exists
     fireEvent.click(screen.getByText("Label"));
     expect(onChange).toHaveBeenCalledTimes(1);
     const updated = onChange.mock.calls[0][0] as AnnotationUpdate[];
-    // rdfs:label should now have 3 values
     expect(updated[0].values.length).toBe(3);
     expect(updated[0].values[2]).toEqual({ value: "", lang: "en" });
   });
@@ -281,12 +248,9 @@ describe("AnnotationEditor", () => {
     fireEvent.click(screen.getByText("Add annotation"));
     expect(screen.getByPlaceholderText("Search annotation properties...")).toBeDefined();
     fireEvent.click(screen.getByText("Label"));
-    // Picker should be hidden after selection
     expect(screen.queryByPlaceholderText("Search annotation properties...")).toBeNull();
   });
 });
-
-// ── AnnotationPropertyPicker tests ─────────────────────────────────
 
 describe("AnnotationPropertyPicker", () => {
   const onSelect = vi.fn();
@@ -317,7 +281,6 @@ describe("AnnotationPropertyPicker", () => {
     render(<AnnotationPropertyPicker onSelect={onSelect} onClose={onClose} />);
     const input = screen.getByPlaceholderText("Search annotation properties...");
     await user.type(input, "pref");
-    // Only "Preferred Label" should remain
     expect(screen.getByText("Preferred Label")).toBeDefined();
     expect(screen.queryByText("Label")).toBeNull();
     expect(screen.queryByText("Comment")).toBeNull();
@@ -349,17 +312,13 @@ describe("AnnotationPropertyPicker", () => {
     const { container } = render(
       <AnnotationPropertyPicker onSelect={onSelect} onClose={onClose} />
     );
-    // The X button is the last button in the search header
     const buttons = container.querySelectorAll("button");
-    // First buttons are the property items, the close button is in the header
-    // Find the button that is inside the search bar area
     const closeButton = Array.from(buttons).find(
       (btn) => btn.closest(".flex.items-center.gap-2") !== null
     );
     if (closeButton) {
       fireEvent.click(closeButton);
     } else {
-      // fallback: click the first button that is not a property
       fireEvent.click(buttons[0]);
     }
     expect(onClose).toHaveBeenCalled();
@@ -375,7 +334,6 @@ describe("AnnotationPropertyPicker", () => {
     );
     expect(screen.queryByText("Label")).toBeNull();
     expect(screen.queryByText("Comment")).toBeNull();
-    // SKOS properties should still be shown
     expect(screen.getByText("Preferred Label")).toBeDefined();
     expect(screen.getByText("Definition")).toBeDefined();
   });

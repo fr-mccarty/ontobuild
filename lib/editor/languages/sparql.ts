@@ -1,17 +1,7 @@
-/**
- * SPARQL Language Support for Monaco Editor
- *
- * Adapted from stardog-rdf-grammars TextMate definitions.
- * Provides syntax highlighting, tokenization, and language configuration.
- */
-
-// Monaco language ID
 export const SPARQL_LANGUAGE_ID = 'sparql';
 
-// File extensions
 export const SPARQL_EXTENSIONS = ['.rq', '.sparql', '.sq'];
 
-// Monaco language configuration
 export const sparqlLanguageConfiguration = {
   comments: {
     lineComment: '#',
@@ -39,37 +29,23 @@ export const sparqlLanguageConfiguration = {
   ],
 };
 
-// SPARQL keywords
 export const sparqlKeywords = [
-  // Query forms
   'SELECT', 'DISTINCT', 'REDUCED', 'CONSTRUCT', 'DESCRIBE', 'ASK',
-  // Dataset clauses
   'FROM', 'NAMED',
-  // Where clause
   'WHERE', 'GRAPH',
-  // Solution modifiers
   'ORDER', 'BY', 'ASC', 'DESC', 'LIMIT', 'OFFSET',
   'GROUP', 'HAVING',
-  // Aggregates
   'COUNT', 'SUM', 'MIN', 'MAX', 'AVG', 'SAMPLE', 'GROUP_CONCAT', 'SEPARATOR',
-  // Patterns
   'OPTIONAL', 'UNION', 'FILTER', 'BIND', 'AS', 'VALUES', 'MINUS',
-  // Existence
   'EXISTS', 'NOT',
-  // Service
   'SERVICE', 'SILENT',
-  // Update
   'INSERT', 'DELETE', 'DATA', 'LOAD', 'CLEAR', 'DROP', 'CREATE',
   'ADD', 'MOVE', 'COPY', 'WITH', 'USING', 'DEFAULT', 'ALL', 'TO',
-  // Prefix/Base
   'PREFIX', 'BASE',
-  // Other
   'IN', 'A',
 ];
 
-// SPARQL built-in functions
 export const sparqlFunctions = [
-  // String functions
   'STR', 'LANG', 'LANGMATCHES', 'DATATYPE', 'BOUND', 'IRI', 'URI', 'BNODE',
   'RAND', 'ABS', 'CEIL', 'FLOOR', 'ROUND', 'CONCAT', 'STRLEN', 'UCASE', 'LCASE',
   'ENCODE_FOR_URI', 'CONTAINS', 'STRSTARTS', 'STRENDS', 'STRBEFORE', 'STRAFTER',
@@ -79,7 +55,6 @@ export const sparqlFunctions = [
   'ISLITERAL', 'ISNUMERIC', 'REGEX', 'SUBSTR', 'REPLACE',
 ];
 
-// Monaco monarch tokenizer for SPARQL
 export const sparqlTokensProvider = {
   defaultToken: '',
   tokenPostfix: '.sparql',
@@ -97,64 +72,46 @@ export const sparqlTokensProvider = {
 
   tokenizer: {
     root: [
-      // Comments
       [/#.*$/, 'comment'],
 
-      // Variables (?var or $var)
       [/[?$][a-zA-Z_][a-zA-Z0-9_]*/, 'variable'],
 
-      // Keywords
       [/\b(SELECT|DISTINCT|REDUCED|CONSTRUCT|DESCRIBE|ASK|FROM|NAMED|WHERE|GRAPH|ORDER|BY|ASC|DESC|LIMIT|OFFSET|GROUP|HAVING|OPTIONAL|UNION|FILTER|BIND|AS|VALUES|MINUS|EXISTS|NOT|SERVICE|SILENT|INSERT|DELETE|DATA|LOAD|CLEAR|DROP|CREATE|ADD|MOVE|COPY|WITH|USING|DEFAULT|ALL|TO|PREFIX|BASE|IN)\b/i, 'keyword'],
 
-      // Aggregate keywords
       [/\b(COUNT|SUM|MIN|MAX|AVG|SAMPLE|GROUP_CONCAT|SEPARATOR)\b/i, 'keyword'],
 
-      // Built-in functions
       [/\b(STR|LANG|LANGMATCHES|DATATYPE|BOUND|IRI|URI|BNODE|RAND|ABS|CEIL|FLOOR|ROUND|CONCAT|STRLEN|UCASE|LCASE|ENCODE_FOR_URI|CONTAINS|STRSTARTS|STRENDS|STRBEFORE|STRAFTER|YEAR|MONTH|DAY|HOURS|MINUTES|SECONDS|TIMEZONE|TZ|NOW|UUID|STRUUID|MD5|SHA1|SHA256|SHA384|SHA512|COALESCE|IF|STRLANG|STRDT|SAMETERM|ISIRI|ISURI|ISBLANK|ISLITERAL|ISNUMERIC|REGEX|SUBSTR|REPLACE)\b/i, 'support.function'],
 
-      // IRI references <...>
       [/<[^\s<>"{}|^`\\]*>/, 'string.link'],
 
-      // Prefixed names (namespace:localname)
       [/(\w*:)(\w*)/, ['storage.type', 'variable']],
 
-      // The 'a' keyword (rdf:type shorthand)
       [/\ba\b/, 'keyword'],
 
-      // Language tags
       [/@[a-zA-Z]+(-[a-zA-Z0-9]+)*/, 'type'],
 
-      // Datatype annotation
       [/\^\^/, 'operator'],
 
-      // Triple-quoted strings
       [/"""/, 'string', '@tripleDoubleString'],
       [/'''/, 'string', '@tripleSingleString'],
 
-      // Double-quoted strings
       [/"([^"\\]|\\.)*$/, 'string.invalid'],
       [/"/, 'string', '@doubleString'],
 
-      // Single-quoted strings
       [/'([^'\\]|\\.)*$/, 'string.invalid'],
       [/'/, 'string', '@singleString'],
 
-      // Numbers
       [/[+-]?\d+\.\d*([eE][+-]?\d+)?/, 'number.float'],
       [/[+-]?\.\d+([eE][+-]?\d+)?/, 'number.float'],
       [/[+-]?\d+[eE][+-]?\d+/, 'number.float'],
       [/[+-]?\d+/, 'number'],
 
-      // Booleans
       [/\b(?:true|false)\b/i, 'keyword'],
 
-      // Blank nodes
       [/_:\w+/, 'variable.predefined'],
 
-      // Operators
       [/\|\||&&|=|!=|<=?|>=?|\+|-|\*|\/|!/, 'operator'],
 
-      // Punctuation
       [/[;,.]/, 'delimiter'],
       [/[\[\]{}()]/, '@brackets'],
     ],
@@ -187,7 +144,6 @@ export const sparqlTokensProvider = {
   },
 };
 
-// SPARQL query templates for auto-completion
 export const sparqlTemplates = [
   {
     label: 'SELECT query',
@@ -268,11 +224,7 @@ UNION
   },
 ];
 
-/**
- * Register SPARQL language with Monaco editor
- */
 export function registerSparqlLanguage(monaco: typeof import('monaco-editor')) {
-  // Register the language
   monaco.languages.register({
     id: SPARQL_LANGUAGE_ID,
     extensions: SPARQL_EXTENSIONS,
@@ -280,19 +232,16 @@ export function registerSparqlLanguage(monaco: typeof import('monaco-editor')) {
     mimetypes: ['application/sparql-query', 'application/sparql-update'],
   });
 
-  // Set language configuration
   monaco.languages.setLanguageConfiguration(
     SPARQL_LANGUAGE_ID,
     sparqlLanguageConfiguration
   );
 
-  // Set monarch tokenizer
   monaco.languages.setMonarchTokensProvider(
     SPARQL_LANGUAGE_ID,
     sparqlTokensProvider as unknown as import('monaco-editor').languages.IMonarchLanguage
   );
 
-  // Register completion provider
   monaco.languages.registerCompletionItemProvider(SPARQL_LANGUAGE_ID, {
     provideCompletionItems: (model, position) => {
       const word = model.getWordUntilPosition(position);
@@ -304,14 +253,12 @@ export function registerSparqlLanguage(monaco: typeof import('monaco-editor')) {
       };
 
       const suggestions = [
-        // Keyword suggestions
         ...sparqlKeywords.map((kw) => ({
           label: kw,
           kind: monaco.languages.CompletionItemKind.Keyword,
           insertText: kw,
           range,
         })),
-        // Function suggestions
         ...sparqlFunctions.map((fn) => ({
           label: fn,
           kind: monaco.languages.CompletionItemKind.Function,
@@ -319,7 +266,6 @@ export function registerSparqlLanguage(monaco: typeof import('monaco-editor')) {
           insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
           range,
         })),
-        // Template suggestions
         ...sparqlTemplates.map((t) => ({
           label: t.label,
           kind: monaco.languages.CompletionItemKind.Snippet,

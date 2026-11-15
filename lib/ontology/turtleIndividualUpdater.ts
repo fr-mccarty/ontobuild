@@ -1,9 +1,3 @@
-/**
- * Turtle source manipulation for individual (named individual) updates.
- *
- * Generates and replaces individual blocks in Turtle source text.
- */
-
 import type { LocalizedString, AnnotationUpdate } from "@/lib/api/client";
 import {
   parseDeclarations,
@@ -15,8 +9,6 @@ import {
   esc,
 } from "@/lib/ontology/turtleUtils";
 import type { PropertyAssertion } from "@/lib/ontology/entityDetailExtractors";
-
-// ── Types ─────────────────────────────────────────────────────────────
 
 export interface TurtleIndividualUpdateData {
   labels: LocalizedString[];
@@ -33,8 +25,6 @@ export interface TurtleIndividualUpdateData {
   isDefinedByIris?: string[];
 }
 
-// ── Block generator ───────────────────────────────────────────────────
-
 function genIndividualBlock(
   iri: string,
   data: TurtleIndividualUpdateData,
@@ -43,7 +33,6 @@ function genIndividualBlock(
   const subject = toTurtle(iri, rev);
   const po: string[] = [];
 
-  // rdf:type — owl:NamedIndividual + user types on same line
   const typeTokens = ["owl:NamedIndividual"];
   for (const t of data.typeIris) {
     typeTokens.push(toTurtle(t, rev));
@@ -77,13 +66,11 @@ function genIndividualBlock(
     po.push(`owl:differentFrom ${toTurtle(d, rev)}`);
   }
 
-  // Object property assertions
   for (const a of data.objectPropertyAssertions) {
     if (!a.targetIri) continue;
     po.push(`${toTurtle(a.propertyIri, rev)} ${toTurtle(a.targetIri, rev)}`);
   }
 
-  // Data property assertions
   for (const a of data.dataPropertyAssertions) {
     if (!a.value) continue;
     const prop = toTurtle(a.propertyIri, rev);
@@ -134,13 +121,6 @@ function genIndividualBlock(
   return lines.join("\n");
 }
 
-// ── Public API ────────────────────────────────────────────────────────
-
-/**
- * Update an individual definition in Turtle source text.
- *
- * @throws Error if the individual block cannot be found in the source
- */
 export function updateIndividualInTurtle(
   source: string,
   individualIri: string,

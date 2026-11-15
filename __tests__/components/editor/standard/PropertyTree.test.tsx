@@ -2,8 +2,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import React from "react";
 
-// ── Mocks ──────────────────────────────────────────────────────────
-
 const mockSearchEntities = vi.fn();
 
 vi.mock("@/lib/api/client", () => ({
@@ -61,8 +59,6 @@ vi.mock("@/components/editor/shared/EntityTree", () => ({
 
 import { PropertyTree } from "@/components/editor/standard/PropertyTree";
 
-// ── Tests ──────────────────────────────────────────────────────────
-
 describe("PropertyTree", () => {
   const defaultProps = {
     projectId: "proj-1",
@@ -119,9 +115,6 @@ describe("PropertyTree", () => {
   });
 
   it("groups properties into Object Properties via property_kind=object", async () => {
-    // Note: the IRI here intentionally has no "objectproperty" substring —
-    // grouping must come from the backend-supplied property_kind, not from
-    // pattern-matching the IRI string.
     mockSearchEntities.mockResolvedValue({
       results: [
         { iri: "http://ex.org/hasPart", label: "hasPart", entity_type: "property", property_kind: "object", deprecated: false },
@@ -159,8 +152,6 @@ describe("PropertyTree", () => {
   });
 
   it("groups properties without property_kind into 'Other Properties'", async () => {
-    // Covers both edge cases (rdf:Property without OWL subtype) and older
-    // backends that haven't started populating property_kind yet.
     mockSearchEntities.mockResolvedValue({
       results: [
         { iri: "http://ex.org/someProp", label: "someProp", entity_type: "property", deprecated: false },
@@ -218,17 +209,14 @@ describe("PropertyTree", () => {
       expect(screen.getByText("Object Properties")).toBeDefined();
     });
 
-    // Click collapse
     const collapseBtn = screen.getByTestId("collapse-__group__object");
     fireEvent.click(collapseBtn);
 
-    // After collapse, the group should update (re-render)
     await waitFor(() => {
       const expanded = screen.getByTestId("group-expanded");
       expect(expanded.textContent).toBe("false");
     });
 
-    // Click expand
     const expandBtn = screen.getByTestId("expand-__group__object");
     fireEvent.click(expandBtn);
 

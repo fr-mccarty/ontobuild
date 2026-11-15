@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 
-// Mock API modules
 vi.mock("@/lib/api/client", () => ({
   projectOntologyApi: {
     searchEntities: vi.fn().mockResolvedValue({ results: [], total: 0 }),
@@ -42,7 +41,6 @@ describe("ParentClassPicker", () => {
 
   it("calls onClose when close button is clicked", () => {
     render(<ParentClassPicker {...defaultProps} />);
-    // The X button is the one inside the search bar
     const buttons = screen.getAllByRole("button");
     const closeButton = buttons[0];
     fireEvent.click(closeButton);

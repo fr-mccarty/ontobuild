@@ -13,7 +13,6 @@ import {
 interface InlineAnnotationAdderProps {
   excludeIris: string[];
   onAdd: (propertyIri: string, value: string, lang: string) => void;
-  /** Called after a new annotation is committed — used for auto-save */
   onSaveNeeded?: () => void;
 }
 
@@ -28,7 +27,6 @@ export function InlineAnnotationAdder({ excludeIris, onAdd, onSaveNeeded }: Inli
   const propertyInputRef = useRef<HTMLInputElement>(null);
   const valueInputRef = useRef<HTMLInputElement>(null);
 
-  // Click outside to close dropdown
   useEffect(() => {
     if (!isDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -88,7 +86,6 @@ export function InlineAnnotationAdder({ excludeIris, onAdd, onSaveNeeded }: Inli
   return (
     <div className="flex gap-4">
       <div className="w-40 shrink-0 pt-1">
-        {/* Property combobox */}
         <div ref={containerRef} className="relative">
           {selectedProperty ? (
             <button
@@ -175,7 +172,6 @@ export function InlineAnnotationAdder({ excludeIris, onAdd, onSaveNeeded }: Inli
         </div>
       </div>
 
-      {/* Value + lang + placeholder for delete button */}
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
           <input
@@ -198,7 +194,6 @@ export function InlineAnnotationAdder({ excludeIris, onAdd, onSaveNeeded }: Inli
             )}
           />
           <LanguagePicker value={lang} onChange={setLang} disabled={!selectedProperty} />
-          {/* Invisible placeholder to align with delete buttons above */}
           <div className="shrink-0 rounded-sm p-1">
             <div className="h-3.5 w-3.5" />
           </div>

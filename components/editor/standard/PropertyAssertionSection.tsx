@@ -6,6 +6,7 @@ import { getLocalName } from "@/lib/utils";
 import { LanguageFlag } from "@/components/editor/LanguageFlag";
 import { projectOntologyApi } from "@/lib/api/client";
 import type { PropertyAssertion } from "@/lib/ontology/entityDetailExtractors";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface PropertyAssertionSectionProps {
   assertions: PropertyAssertion[];
@@ -42,47 +43,50 @@ export function PropertyAssertionSection({
         const propLabel = resolvedLabels?.[a.propertyIri] || getLocalName(a.propertyIri);
         return (
           <div key={idx} className="contents">
-            <span
-              className="self-center rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-              title={a.propertyIri}
-            >
-              {propLabel}
-            </span>
+            <Tooltip content={a.propertyIri}>
+              <span className="self-center rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                {propLabel}
+              </span>
+            </Tooltip>
             <div className="flex items-center gap-2">
               {assertionType === "object" && a.targetIri ? (
-                <button
-                  onClick={() => onNavigateToEntity?.(a.targetIri!)}
-                  className="truncate text-sm text-primary-600 hover:underline dark:text-primary-400"
-                  title={a.targetIri}
-                >
-                  {resolvedLabels?.[a.targetIri] || getLocalName(a.targetIri)}
-                </button>
+                <Tooltip content={a.targetIri}>
+                  <button
+                    onClick={() => onNavigateToEntity?.(a.targetIri!)}
+                    className="truncate text-sm text-primary-600 hover:underline dark:text-primary-400"
+                  >
+                    {resolvedLabels?.[a.targetIri] || getLocalName(a.targetIri)}
+                  </button>
+                </Tooltip>
               ) : (
                 <>
                   {a.lang && <LanguageFlag lang={a.lang} />}
                   <span className="text-sm text-slate-700 dark:text-slate-300">{a.value}</span>
                   {a.datatype && (
-                    <span className="shrink-0 rounded-sm bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400" title={a.datatype}>
-                      {getLocalName(a.datatype)}
-                    </span>
+                    <Tooltip content={a.datatype}>
+                      <span className="shrink-0 rounded-sm bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        {getLocalName(a.datatype)}
+                      </span>
+                    </Tooltip>
                   )}
                 </>
               )}
               {isEditing && onRemove && (
-                <button
-                  onClick={() => { onRemove(idx); onSaveNeeded?.(); }}
-                  className="shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                  title="Remove"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <Tooltip content="Remove">
+                  <button
+                    onClick={() => { onRemove(idx); onSaveNeeded?.(); }}
+                    className="shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                    aria-label="Remove"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>
         );
       })}
 
-      {/* Ghost row for adding */}
       {isEditing && onAdd && (
         <AssertionAdder
           assertionType={assertionType}
@@ -95,8 +99,6 @@ export function PropertyAssertionSection({
     </div>
   );
 }
-
-// ── Assertion adder sub-component ──
 
 interface AssertionAdderProps {
   assertionType: "object" | "data";
@@ -125,7 +127,6 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
   const propContainerRef = useRef<HTMLDivElement>(null);
   const valueContainerRef = useRef<HTMLDivElement>(null);
 
-  // Search properties
   useEffect(() => {
     if (!propQuery.trim()) { setPropResults([]); setIsPropSearching(false); return; }
     setIsPropSearching(true);
@@ -138,7 +139,6 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
     return () => clearTimeout(timer);
   }, [propQuery, projectId, accessToken, branch]);
 
-  // Search entities for object values
   useEffect(() => {
     if (assertionType !== "object" || !valueQuery.trim()) { setValueResults([]); setIsValueSearching(false); return; }
     setIsValueSearching(true);
@@ -151,7 +151,6 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
     return () => clearTimeout(timer);
   }, [valueQuery, projectId, accessToken, branch, assertionType]);
 
-  // Click outside handlers
   useEffect(() => {
     if (!isPropFocused) return;
     const h = (e: MouseEvent) => { if (propContainerRef.current && !propContainerRef.current.contains(e.target as Node)) setIsPropFocused(false); };
@@ -194,7 +193,6 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
 
   return (
     <div className="flex gap-2">
-      {/* Property selector */}
       <div ref={propContainerRef} className="relative w-40 shrink-0">
         {selectedPropIri ? (
           <button
@@ -232,7 +230,6 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
         )}
       </div>
 
-      {/* Value input */}
       <div className="min-w-0 flex-1">
         {assertionType === "object" ? (
           <div ref={valueContainerRef} className="relative">
@@ -281,15 +278,19 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
             <div className="mt-1 shrink-0">
               <LanguageFlag lang={dataLang} />
             </div>
-            <input
-              type="text"
-              value={dataLang}
-              onChange={(e) => setDataLang(e.target.value)}
-              className="w-14 shrink-0 rounded-md border border-dashed border-slate-300 bg-white px-2 py-1.5 text-center text-xs focus:border-primary-500 focus:border-solid focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-              title="Language tag"
-              placeholder="lang"
-              disabled={!selectedPropIri}
-            />
+            <Tooltip content="Language tag">
+              <span className="inline-flex shrink-0">
+                <input
+                  type="text"
+                  value={dataLang}
+                  onChange={(e) => setDataLang(e.target.value)}
+                  className="w-14 shrink-0 rounded-md border border-dashed border-slate-300 bg-white px-2 py-1.5 text-center text-xs focus:border-primary-500 focus:border-solid focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                  aria-label="Language tag"
+                  placeholder="lang"
+                  disabled={!selectedPropIri}
+                />
+              </span>
+            </Tooltip>
           </div>
         )}
       </div>

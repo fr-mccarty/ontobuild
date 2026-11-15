@@ -15,12 +15,10 @@ describe("updateClassInTurtle", () => {
       "http://example.org/ont#Dog",
       baseData,
     );
-    // Dog block should still exist
     expect(result).toContain("ex:Dog");
     expect(result).toContain('rdfs:label "Dog"@en');
     expect(result).toContain("rdfs:subClassOf ex:Animal");
 
-    // Animal block should be untouched
     expect(result).toContain('rdfs:label "Animal"@en');
     expect(result).toContain('rdfs:comment "A living organism"@en');
   });
@@ -62,12 +60,10 @@ describe("updateClassInTurtle", () => {
         parent_iris: ["http://example.org/ont#Animal"],
       },
     );
-    // Extract just the Dog block to check it has no comment
     const dogBlockStart = result.indexOf("ex:Dog");
     const dogBlockEnd = result.indexOf(".", dogBlockStart);
     const dogBlock = result.slice(dogBlockStart, dogBlockEnd + 1);
     expect(dogBlock).not.toContain("rdfs:comment");
-    // But the Animal block's comment should still be present
     expect(result).toContain("A living organism");
   });
 
@@ -81,7 +77,6 @@ describe("updateClassInTurtle", () => {
         parent_iris: [],
       },
     );
-    // Dog block should not have subClassOf
     const dogBlockStart = result.indexOf("ex:Dog");
     const dogBlockEnd = result.indexOf(".", dogBlockStart);
     const dogBlock = result.slice(dogBlockStart, dogBlockEnd + 1);
@@ -172,7 +167,6 @@ describe("updateClassInTurtle", () => {
         parent_iris: [],
       },
     );
-    // The result includes the Animal block's label too
     const dogBlockStart = result.indexOf("ex:Dog");
     const dogBlockEnd = result.indexOf(".", dogBlockStart);
     const dogBlock = result.slice(dogBlockStart, dogBlockEnd + 1);

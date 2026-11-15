@@ -1,9 +1,3 @@
-/**
- * In-process background jobs (replaces ARQ/Redis). A job is an async function run on
- * the next tick; its status/progress/result are tracked in the `jobs` table so status
- * endpoints can be polled. Jobs do not survive a server restart (running jobs are
- * marked failed on startup).
- */
 import { all, fromJson, get, insert, newId, nowIso, run, toJson, update } from "./db";
 
 export type JobStatus = "pending" | "running" | "completed" | "failed";
@@ -25,7 +19,6 @@ export interface Job<R = unknown> {
 
 export interface JobContext {
   id: string;
-  /** Update progress (0..1 or any number you like) and an optional message. */
   setProgress(progress: number | null, message?: string): void;
 }
 
@@ -47,10 +40,6 @@ function init() {
   );
 }
 
-/**
- * Start a job. Returns the job id immediately; `fn` runs asynchronously.
- * Its resolved value is stored as JSON `result`; a thrown error marks it failed.
- */
 export function startJob<R>(
   kind: string,
   opts: { projectId?: string | null; branch?: string | null; id?: string },
@@ -94,7 +83,6 @@ export function getJob<R = unknown>(id: string): Job<R> | null {
   return r ? toJob<R>(r) : null;
 }
 
-/** Most recent job of a kind for a project (optionally a branch). */
 export function latestJob<R = unknown>(kind: string, projectId: string, branch?: string | null): Job<R> | null {
   const r =
     branch === undefined
@@ -123,7 +111,6 @@ export function listJobs<R = unknown>(filter: { kind?: string; projectId?: strin
   return all<JobRow>(sql, ...params).map((r) => toJob<R>(r));
 }
 
-/** True if a job of this kind is pending/running for the project (and branch, if given). */
 export function isJobActive(kind: string, projectId: string, branch?: string | null): boolean {
   const j = latestJob(kind, projectId, branch);
   return !!j && (j.status === "pending" || j.status === "running");

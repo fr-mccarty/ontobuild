@@ -4,7 +4,6 @@ import React from "react";
 import { createQueryWrapper } from "@/__tests__/helpers/renderWithProviders";
 import type { BranchListResponse, BranchInfo } from "@/lib/api/revisions";
 
-// Mock the API before imports
 vi.mock("@/lib/api/revisions", () => ({
   branchesApi: {
     list: vi.fn(),
@@ -66,12 +65,10 @@ function createWrapper(props: { projectId: string; accessToken?: string; initial
 describe("BranchContext", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: return a main branch
     mockedList.mockResolvedValue(
       makeListResponse([makeBranch("main"), makeBranch("feature-1")])
     );
     mockedSavePreference.mockResolvedValue(undefined);
-    // Clear sessionStorage
     sessionStorage.clear();
   });
 
@@ -121,7 +118,7 @@ describe("BranchContext", () => {
     });
 
     it("throws when switching without authentication", async () => {
-      const wrapper = createWrapper({ projectId: "p1" }); // no accessToken
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -237,7 +234,6 @@ describe("BranchContext", () => {
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-      // Switch to feature-1 first so main is not current but is still default
       await act(async () => {
         await result.current.switchBranch("feature-1");
       });

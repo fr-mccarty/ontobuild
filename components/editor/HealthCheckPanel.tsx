@@ -28,6 +28,7 @@ import { qualityApi } from "@/lib/api/quality";
 import type { ConsistencyCheckResult, ConsistencyIssue, DuplicateCluster, DuplicateDetectionResult } from "@/lib/ontology/qualityTypes";
 import Link from "next/link";
 import { cn, formatDateTime, getLocalName } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface HealthCheckPanelProps {
   projectId: string;
@@ -36,8 +37,8 @@ interface HealthCheckPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigateToClass?: (iri: string, subjectType?: string) => void;
-  /** Whether the current user can trigger a lint run (requires admin/manager role) */
   canRunLint?: boolean;
+  embedded?: boolean;
 }
 
 type HealthTab = "lint" | "consistency" | "duplicates";
@@ -63,6 +64,7 @@ export function HealthCheckPanel({
   isOpen,
   onClose,
   onNavigateToClass,
+  embedded = false,
 }: HealthCheckPanelProps) {
   const [activeTab, setActiveTab] = useState<HealthTab>("lint");
   const [summary, setSummary] = useState<LintSummary | null>(null);
@@ -72,34 +74,24 @@ export function HealthCheckPanel({
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<IssueFilter>("all");
 
-  // Consistency check state
   const [consistencyIssues, setConsistencyIssues] = useState<ConsistencyIssue[]>([]);
   const [isCheckingConsistency, setIsCheckingConsistency] = useState(false);
   const [consistencyError, setConsistencyError] = useState<string | null>(null);
 
-  // Duplicate detection state
   const [duplicateClusters, setDuplicateClusters] = useState<DuplicateCluster[]>([]);
   const [isDetectingDuplicates, setIsDetectingDuplicates] = useState(false);
   const [duplicatesError, setDuplicatesError] = useState<string | null>(null);
 
-  // Loading flags for cached data fetches (distinct from the check/detect flags
-  // so the tab switches immediately and the button stays enabled)
   const [isLoadingCachedConsistency, setIsLoadingCachedConsistency] = useState(false);
   const [isLoadingCachedDuplicates, setIsLoadingCachedDuplicates] = useState(false);
 
-  // Lint config hint (level name + rule count)
   const [lintConfigHint, setLintConfigHint] = useState<string | null>(null);
 
-  // Clear lint results
   const [isClearing, setIsClearing] = useState(false);
 
-  // True while we should poll /lint/status for an in-flight lint run
-  // (replaces the old lint WebSocket notifications).
   const [isPollingLint, setIsPollingLint] = useState(false);
-  // Cancellation flag for the quality job polling loops
   const pollCancelled = useRef(false);
 
-  // Fetch lint status and issues
   const fetchData = useCallback(async (issueFilter?: IssueFilter) => {
     if (!isOpen) return;
 
@@ -107,7 +99,6 @@ export function HealthCheckPanel({
     setError(null);
 
     try {
-      // Build issue fetch options based on filter
       const issueOptions: { issue_type?: LintIssueType; limit: number } = { limit: 500 };
       const activeFilter = issueFilter ?? filter;
       if (activeFilter !== "all") {
@@ -122,7 +113,6 @@ export function HealthCheckPanel({
       setSummary(summaryData);
       setIssues(issuesData.items);
 
-      // Check if a run is in progress; if so, poll until it finishes
       if (isLintRunActive(summaryData)) {
         setIsRunning(true);
         setIsPollingLint(true);
@@ -137,11 +127,9 @@ export function HealthCheckPanel({
     }
   }, [projectId, accessToken, isOpen, filter]);
 
-  // Stable ref for fetchData so the polling effect can call it without re-running
   const fetchDataRef = useRef(fetchData);
   useEffect(() => { fetchDataRef.current = fetchData; }, [fetchData]);
 
-  // Fetch lint config hint (level name + rule count)
   useEffect(() => {
     if (!isOpen || !accessToken) return;
     let cancelled = false;
@@ -162,26 +150,21 @@ export function HealthCheckPanel({
         } else if (config.enabled_rules) {
           setLintConfigHint(`Custom (${config.enabled_rules.length} rules)`);
         } else {
-          // No explicit config — backend's effective_rules is the authoritative
-          // count of what the linter will actually run for this project.
           setLintConfigHint(`All rules (${config.effective_rules.length})`);
         }
       } catch (err) {
-        // Hint is non-critical UI, but the failure must be observable.
         console.error("Failed to fetch lint config hint:", err);
       }
     })();
     return () => { cancelled = true; };
   }, [isOpen, projectId, accessToken]);
 
-  // Initial load
   useEffect(() => {
     if (isOpen) {
       fetchData();
     }
   }, [isOpen, fetchData]);
 
-  // Poll lint status while a run is in progress, then refresh results
   useEffect(() => {
     if (!isOpen || !isPollingLint) return;
     const controller = new AbortController();
@@ -222,7 +205,6 @@ export function HealthCheckPanel({
     }
   };
 
-  // Trigger a new lint run
   const handleRunLint = async () => {
     if (!accessToken) {
       setError("Authentication required to run lint");
@@ -234,7 +216,6 @@ export function HealthCheckPanel({
 
     try {
       await lintApi.triggerLint(projectId, accessToken);
-      // Poll the status endpoint until the run completes
       setIsPollingLint(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to start lint";
@@ -243,7 +224,6 @@ export function HealthCheckPanel({
     }
   };
 
-  // Trigger consistency check as a background job and poll for its result.
   const handleRunConsistencyCheck = async () => {
     if (!accessToken) return;
     setIsCheckingConsistency(true);
@@ -265,7 +245,6 @@ export function HealthCheckPanel({
       return;
     }
 
-    // Poll for job result with exponential backoff
     try {
       let delay = 1000;
       const maxDelay = 5000;
@@ -301,7 +280,6 @@ export function HealthCheckPanel({
     }
   };
 
-  // Trigger duplicate detection as a background job and poll for its result.
   const handleDetectDuplicates = async () => {
     if (!accessToken) return;
     setIsDetectingDuplicates(true);
@@ -323,7 +301,6 @@ export function HealthCheckPanel({
       return;
     }
 
-    // Poll for job result with exponential backoff
     try {
       let delay = 1000;
       const maxDelay = 5000;
@@ -337,12 +314,10 @@ export function HealthCheckPanel({
           jobId,
           accessToken
         );
-        // 202 Accepted: job still pending — keep polling
         if ("status" in result && result.status === "pending") {
           delay = Math.min(delay * 1.5, maxDelay);
           continue;
         }
-        // 200 OK: job complete — narrow to DuplicateDetectionResult
         const completed = result as DuplicateDetectionResult;
         setDuplicateClusters(completed.clusters);
         return;
@@ -361,9 +336,6 @@ export function HealthCheckPanel({
     }
   };
 
-  // Load cached data when tab changes.
-  // Use requestAnimationFrame so the tab switch paints before the loading
-  // state is set, preventing the UI from appearing frozen.
   useEffect(() => {
     let cancelled = false;
     if (activeTab === "consistency" && consistencyIssues.length === 0 && !isCheckingConsistency) {
@@ -389,7 +361,6 @@ export function HealthCheckPanel({
     return () => { cancelled = true; };
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Clear stale quality data when project or branch changes
   useEffect(() => {
     setConsistencyIssues([]);
     setConsistencyError(null);
@@ -397,8 +368,6 @@ export function HealthCheckPanel({
     setDuplicatesError(null);
   }, [projectId, branch]);
 
-  // Stop any in-flight quality polling when the panel closes, the project or
-  // branch changes, or the component unmounts.
   useEffect(() => {
     if (!isOpen) return;
     return () => {
@@ -406,15 +375,12 @@ export function HealthCheckPanel({
     };
   }, [isOpen, projectId, branch]);
 
-  // Dismiss an issue
   const handleDismissIssue = async (issueId: string) => {
     if (!accessToken) return;
 
     try {
       await lintApi.dismissIssue(projectId, issueId, accessToken);
-      // Remove from local state
       setIssues((prev) => prev.filter((i) => i.id !== issueId));
-      // Update counts
       if (summary) {
         const issue = issues.find((i) => i.id === issueId);
         if (issue) {
@@ -441,20 +407,17 @@ export function HealthCheckPanel({
     }
   };
 
-  // Handle filter change - update filter and fetch matching issues
   const handleFilterChange = useCallback((newFilter: IssueFilter) => {
     setFilter(newFilter);
     fetchData(newFilter);
   }, [fetchData]);
 
-  // Issues are now pre-filtered by the API, no client-side filtering needed
   const filteredIssues = issues;
 
   if (!isOpen) return null;
 
   return (
-    <div className="flex h-full flex-col border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      {/* Header */}
+    <div className={cn("flex h-full flex-col bg-white dark:bg-slate-900", !embedded && "border-l border-slate-200 dark:border-slate-700")}>
       <div className="border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
@@ -470,8 +433,6 @@ export function HealthCheckPanel({
           </div>
           <div className="flex items-center gap-2">
             {activeTab === "lint" && (
-              // Only offer Clear when there's actually something to clear.
-              // A completed run with zero issues should re-prompt Run Lint.
               summary?.last_run?.status === "completed" && !isRunning && summary.total_issues > 0 ? (
                 <Button
                   variant="outline"
@@ -520,12 +481,13 @@ export function HealthCheckPanel({
                 {isDetectingDuplicates ? "Detecting..." : "Find Duplicates"}
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0" aria-label="Close">
-              <X className="h-4 w-4" />
-            </Button>
+            {!embedded && (
+              <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0" aria-label="Close">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
-        {/* Tabs */}
         <div className="flex px-4">
           {(["lint", "consistency", "duplicates"] as HealthTab[]).map((tab) => (
             <button
@@ -544,10 +506,8 @@ export function HealthCheckPanel({
         </div>
       </div>
 
-      {/* Lint Tab */}
       {activeTab === "lint" && (
       <>
-      {/* Summary */}
       {summary && (
         <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-700">
           <div className="grid grid-cols-4 gap-2">
@@ -610,21 +570,18 @@ export function HealthCheckPanel({
         </div>
       )}
 
-      {/* Error message */}
       {error && (
         <div className="mx-4 mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
           {error}
         </div>
       )}
 
-      {/* Loading */}
       {isLoading && !summary && (
         <div className="flex flex-1 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
         </div>
       )}
 
-      {/* No issues (only after a completed run) */}
       {!isLoading && summary?.last_run?.status === "completed" && summary.total_issues === 0 && (
         <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
           <CheckCircle2 className="h-12 w-12 text-green-500" />
@@ -637,7 +594,6 @@ export function HealthCheckPanel({
         </div>
       )}
 
-      {/* No run yet */}
       {!isLoading && !summary?.last_run && (
         <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
           <Info className="h-12 w-12 text-slate-300 dark:text-slate-600" />
@@ -650,7 +606,6 @@ export function HealthCheckPanel({
         </div>
       )}
 
-      {/* Issues list */}
       {!isLoading && filteredIssues.length > 0 && (
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-2">
@@ -668,7 +623,6 @@ export function HealthCheckPanel({
       </>
       )}
 
-      {/* Consistency Tab */}
       {activeTab === "consistency" && (
         <div className="flex-1 overflow-y-auto p-4">
           {consistencyError && (
@@ -732,7 +686,6 @@ export function HealthCheckPanel({
         </div>
       )}
 
-      {/* Duplicates Tab */}
       {activeTab === "duplicates" && (
         <div className="flex-1 overflow-y-auto p-4">
           {duplicatesError && (
@@ -846,15 +799,11 @@ const SUBJECT_TYPE_BADGE: Record<SubjectType, { letter: string; colorClass: stri
 function resolveBadgeKey(subjectType: SubjectType | null): SubjectType {
   if (subjectType === null) return "other";
   if (subjectType in SUBJECT_TYPE_BADGE) return subjectType;
-  // Unknown SubjectType from backend (schema drift) — surface for observability.
   console.error("Unknown lint issue subject_type:", subjectType);
   return "other";
 }
 
 function IssueCard({ issue, onNavigate, onDismiss }: IssueCardProps) {
-  // Resolved once so the subject button and the related-entity buttons agree
-  // on the entity type when navigating. duplicate-label and similar rules
-  // emit `duplicate_iris` for entities of the same kind as `subject_type`.
   const subjectTypeKey = resolveBadgeKey(issue.subject_type);
   const subjectBadge = SUBJECT_TYPE_BADGE[subjectTypeKey];
   return (
@@ -876,42 +825,41 @@ function IssueCard({ issue, onNavigate, onDismiss }: IssueCardProps) {
             {issue.message}
           </p>
           {issue.subject_iri && (
-            <button
-              onClick={() => onNavigate?.(issue.subject_iri!, subjectTypeKey)}
-              className="mt-2 flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400"
-              title={issue.subject_iri}
-            >
-              <span
-                aria-label={`subject type: ${subjectTypeKey}`}
-                data-testid={`subject-type-badge-${subjectTypeKey}`}
-                className={cn("flex h-4 w-4 items-center justify-center rounded-full border", subjectBadge.colorClass)}
+            <Tooltip content={issue.subject_iri}>
+              <button
+                onClick={() => onNavigate?.(issue.subject_iri!, subjectTypeKey)}
+                className="mt-2 flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400"
               >
-                <span className="text-[8px] font-bold">{subjectBadge.letter}</span>
-              </span>
-              {getLocalName(issue.subject_iri)}
-              <ExternalLink className="h-3 w-3 opacity-50" />
-            </button>
+                <span
+                  aria-label={`subject type: ${subjectTypeKey}`}
+                  data-testid={`subject-type-badge-${subjectTypeKey}`}
+                  className={cn("flex h-4 w-4 items-center justify-center rounded-full border", subjectBadge.colorClass)}
+                >
+                  <span className="text-[8px] font-bold">{subjectBadge.letter}</span>
+                </span>
+                {getLocalName(issue.subject_iri)}
+                <ExternalLink className="h-3 w-3 opacity-50" />
+              </button>
+            </Tooltip>
           )}
-          {/* Related entities from issue details */}
           {issue.details?.duplicate_iris && issue.details.duplicate_iris.length > 0 && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
               <span>Also:</span>
               {issue.details.duplicate_iris.slice(0, 3).map((iri) => (
-                <button
-                  key={iri}
-                  onClick={() => onNavigate?.(iri, subjectTypeKey)}
-                  className="text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400"
-                  title={iri}
-                >
-                  {getLocalName(iri)}
-                </button>
+                <Tooltip key={iri} content={iri}>
+                  <button
+                    onClick={() => onNavigate?.(iri, subjectTypeKey)}
+                    className="text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400"
+                  >
+                    {getLocalName(iri)}
+                  </button>
+                </Tooltip>
               ))}
               {issue.details.duplicate_iris.length > 3 && (
                 <span>+{issue.details.duplicate_iris.length - 3} more</span>
               )}
             </div>
           )}
-          {/* Conflicting values from label-per-language */}
           {issue.details?.labels && issue.details.labels.length > 1 && (
             <div className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
               <span>Values: </span>
@@ -925,13 +873,15 @@ function IssueCard({ issue, onNavigate, onDismiss }: IssueCardProps) {
           )}
         </div>
         {onDismiss && (
-          <button
-            onClick={onDismiss}
-            className="rounded-sm p-1 text-slate-400 hover:bg-slate-200/50 hover:text-slate-600 dark:hover:bg-slate-700/50 dark:hover:text-slate-300"
-            title="Dismiss issue"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <Tooltip content="Dismiss issue">
+            <button
+              onClick={onDismiss}
+              className="rounded-sm p-1 text-slate-400 hover:bg-slate-200/50 hover:text-slate-600 dark:hover:bg-slate-700/50 dark:hover:text-slate-300"
+              aria-label="Dismiss issue"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </Tooltip>
         )}
       </div>
     </div>

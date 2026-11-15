@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/editor/ThemeToggle";
 import { cn } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const navLinks = [
   { href: "/", label: "Projects" },
@@ -49,14 +50,15 @@ export function Header() {
         </div>
         <div className="flex items-center gap-4">
           <ThemeToggle />
-          <Link
-            href="/settings"
-            title="Settings"
-            aria-label="Settings"
-            className="rounded-md p-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white"
-          >
-            <Settings className="h-5 w-5" />
-          </Link>
+          <Tooltip side="bottom" content="User settings: your preferences across all projects (theme, Save button, AI agent key, effort and instructions)">
+            <Link
+              href="/settings"
+              aria-label="User settings"
+              className="rounded-md p-1.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-white"
+            >
+              <Settings className="h-5 w-5" />
+            </Link>
+          </Tooltip>
         </div>
       </div>
     </header>

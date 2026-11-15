@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { branchesApi } from "@/lib/api/revisions";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface PRActionsProps {
   projectId: string;
@@ -57,7 +58,6 @@ export function PRActions({
   const isClosed = pr.status === "closed";
   const isMerged = pr.status === "merged";
 
-  // Check if source branch exists when viewing a merged PR
   useEffect(() => {
     if (isMerged && sourceBranchExists === null) {
       branchesApi
@@ -67,7 +67,6 @@ export function PRActions({
           setSourceBranchExists(branchNames.includes(pr.source_branch));
         })
         .catch(() => {
-          // If we can't fetch branches, assume branch might exist to show delete button
           setSourceBranchExists(true);
         });
     }
@@ -81,7 +80,6 @@ export function PRActions({
       accessToken
     );
 
-    // Refresh PR data
     const updatedPR = await pullRequestsApi.get(
       projectId,
       pr.pr_number,
@@ -89,7 +87,6 @@ export function PRActions({
     );
     onUpdate(updatedPR);
 
-    // Track if we didn't delete the branch
     if (!deleteSourceBranch) {
       setSourceBranchExists(true);
     } else {
@@ -135,7 +132,6 @@ export function PRActions({
         accessToken
       );
 
-      // Refresh PR data
       const updatedPR = await pullRequestsApi.get(
         projectId,
         pr.pr_number,
@@ -154,7 +150,6 @@ export function PRActions({
     }
   };
 
-  // Merged PRs - show option to delete source branch and navigate to editor
   if (isMerged) {
     return (
       <div className={cn("space-y-4", className)}>
@@ -164,7 +159,7 @@ export function PRActions({
           </p>
 
           <div className="flex flex-wrap gap-2">
-            <Link href={`/projects/${projectId}/editor?branch=${pr.target_branch}`}>
+            <Link href={`/projects/${projectId}?branch=${pr.target_branch}`}>
               <Button size="sm" className="gap-1">
                 <ExternalLink className="h-4 w-4" />
                 Continue to Editor
@@ -204,7 +199,6 @@ export function PRActions({
           </div>
         </div>
 
-        {/* Delete Branch Confirmation Dialog */}
         <ConfirmDialog
           open={showDeleteBranchDialog}
           onOpenChange={setShowDeleteBranchDialog}
@@ -218,7 +212,6 @@ export function PRActions({
     );
   }
 
-  // Closed PRs can be reopened
   if (isClosed) {
     return (
       <div className={cn("space-y-4", className)}>
@@ -247,7 +240,6 @@ export function PRActions({
           )}
         </div>
 
-        {/* Reopen Confirmation Dialog */}
         <ConfirmDialog
           open={showReopenDialog}
           onOpenChange={setShowReopenDialog}
@@ -269,7 +261,6 @@ export function PRActions({
         </div>
       )}
 
-      {/* Review Form */}
       {showReviewForm ? (
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
           <h4 className="mb-2 font-medium">Submit Review</h4>
@@ -329,7 +320,6 @@ export function PRActions({
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {/* Review button */}
           <Button
             size="sm"
             variant="secondary"
@@ -341,29 +331,26 @@ export function PRActions({
             Review
           </Button>
 
-          {/* Merge button */}
           {canMerge && (
-            <Button
-              size="sm"
-              onClick={() => setShowMergeDialog(true)}
-              disabled={isSubmitting || !pr.can_merge}
-              className="gap-1"
-              title={
-                !pr.can_merge
-                  ? "Cannot merge: approval requirements not met"
-                  : undefined
-              }
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <GitMerge className="h-4 w-4" />
-              )}
-              Merge
-            </Button>
+            <Tooltip content={!pr.can_merge ? "Cannot merge: approval requirements not met" : undefined}>
+              <span className="inline-flex">
+                <Button
+                  size="sm"
+                  onClick={() => setShowMergeDialog(true)}
+                  disabled={isSubmitting || !pr.can_merge}
+                  className="gap-1"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <GitMerge className="h-4 w-4" />
+                  )}
+                  Merge
+                </Button>
+              </span>
+            </Tooltip>
           )}
 
-          {/* Close button */}
           <Button
             size="sm"
             variant="ghost"
@@ -377,7 +364,6 @@ export function PRActions({
         </div>
       )}
 
-      {/* Merge Confirmation Dialog */}
       <ConfirmDialog
         open={showMergeDialog}
         onOpenChange={setShowMergeDialog}
@@ -400,7 +386,6 @@ export function PRActions({
         </label>
       </ConfirmDialog>
 
-      {/* Close Confirmation Dialog */}
       <ConfirmDialog
         open={showCloseDialog}
         onOpenChange={setShowCloseDialog}
@@ -411,7 +396,6 @@ export function PRActions({
         variant="danger"
       />
 
-      {/* Merge status */}
       {!pr.can_merge && canMerge && (
         <p className="text-sm text-amber-600 dark:text-amber-400">
           This pull request requires additional approvals before it can be merged.

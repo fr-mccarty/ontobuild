@@ -1,6 +1,7 @@
 "use client";
 
 import { cn, getLocalName } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function EntityPlaceholderDetail({
   selectedIri,
@@ -41,9 +42,11 @@ export function EntityPlaceholderDetail({
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             {getLocalName(selectedIri)}
           </h2>
-          <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={selectedIri}>
-            {selectedIri}
-          </p>
+          <Tooltip content={selectedIri}>
+            <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+              {selectedIri}
+            </p>
+          </Tooltip>
         </div>
       </div>
       <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">

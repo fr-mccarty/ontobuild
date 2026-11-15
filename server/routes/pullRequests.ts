@@ -1,11 +1,3 @@
-/**
- * Pull requests: CRUD, close/reopen, merge, reviews, comments, commits, diff, PR settings,
- * and the global open-PR summary.
- * Port of ontokit-api/ontokit/api/routes/pull_requests.py + services/pull_request_service.py
- * (minus GitHub integration/sync, notifications and the retroactive "direct git merge" PR sync).
- *
- * Every request acts as the local user, who owns every project (so all permission checks pass).
- */
 import { Hono } from "hono";
 import type { Context } from "hono";
 import * as git from "../git";
@@ -62,10 +54,6 @@ interface CommentRow {
   created_at: string;
   updated_at: string | null;
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function prNumberParam(c: Context): number {
   const raw = c.req.param("prNumber") ?? "";
@@ -162,7 +150,6 @@ function commentBase(c: CommentRow) {
   };
 }
 
-/** Comment with its (recursively nested) replies, oldest first. */
 function toCommentResponse(c: CommentRow, byParent?: Map<string, CommentRow[]>): CommentResponse {
   const children =
     byParent?.get(c.id) ??
@@ -196,7 +183,6 @@ function optionalString(body: Record<string, unknown>, field: string, opts: { mi
   return v;
 }
 
-/** Refs to compare for a PR: stored hashes for merged PRs, else the branch names. */
 function prRefs(pr: PRRow): [string, string] {
   if (pr.status === "merged" && pr.base_commit_hash && pr.head_commit_hash)
     return [pr.base_commit_hash, pr.head_commit_hash];
@@ -204,10 +190,6 @@ function prRefs(pr: PRRow): [string, string] {
 }
 
 const CHANGE_TYPES: Record<string, string> = { A: "added", M: "modified", D: "deleted", R: "renamed" };
-
-// ---------------------------------------------------------------------------
-// Global (must be registered before /projects/:id routes)
-// ---------------------------------------------------------------------------
 
 r.get("/projects/pull-requests/open-summary", (c) => {
   const rows = all<{ project_id: string; project_name: string; open_count: number }>(
@@ -220,10 +202,6 @@ r.get("/projects/pull-requests/open-summary", (c) => {
   const byProject = rows.map((row) => ({ ...row, open_count: Number(row.open_count) }));
   return c.json({ total_open: byProject.reduce((s, p) => s + p.open_count, 0), by_project: byProject });
 });
-
-// ---------------------------------------------------------------------------
-// Pull requests
-// ---------------------------------------------------------------------------
 
 r.get("/projects/:id/pull-requests", async (c) => {
   const id = c.req.param("id");
@@ -390,7 +368,6 @@ r.post("/projects/:id/pull-requests/:prNumber/merge", async (c) => {
   );
   update("projects", { updated_at: mergedAt }, { id });
 
-  // Let other domains (index, lint, ...) react to the new head of the target branch.
   if (result.merge_commit_hash && result.merge_commit_hash !== base.commit_hash) {
     await emitOntologyEvent({
       type: "commit",
@@ -421,10 +398,6 @@ r.post("/projects/:id/pull-requests/:prNumber/merge", async (c) => {
     merge_commit_hash: result.merge_commit_hash,
   });
 });
-
-// ---------------------------------------------------------------------------
-// Reviews
-// ---------------------------------------------------------------------------
 
 r.get("/projects/:id/pull-requests/:prNumber/reviews", (c) => {
   const id = c.req.param("id");
@@ -461,10 +434,6 @@ r.post("/projects/:id/pull-requests/:prNumber/reviews", async (c) => {
   update("pull_requests", { updated_at: nowIso() }, { id: pr.id });
   return c.json(toReviewResponse(get<ReviewRow>("SELECT * FROM pull_request_reviews WHERE id = ?", reviewId)!), 201);
 });
-
-// ---------------------------------------------------------------------------
-// Comments
-// ---------------------------------------------------------------------------
 
 r.get("/projects/:id/pull-requests/:prNumber/comments", (c) => {
   const id = c.req.param("id");
@@ -534,10 +503,6 @@ r.delete("/projects/:id/pull-requests/:prNumber/comments/:commentId", (c) => {
   return noContent(c);
 });
 
-// ---------------------------------------------------------------------------
-// Commits and diff
-// ---------------------------------------------------------------------------
-
 r.get("/projects/:id/pull-requests/:prNumber/commits", async (c) => {
   const id = c.req.param("id");
   requireProject(id);
@@ -582,10 +547,6 @@ r.get("/projects/:id/pull-requests/:prNumber/diff", async (c) => {
     files_changed: info.files_changed,
   });
 });
-
-// ---------------------------------------------------------------------------
-// PR settings
-// ---------------------------------------------------------------------------
 
 r.get("/projects/:id/pr-settings", (c) => {
   const project = requireProject(c.req.param("id"));

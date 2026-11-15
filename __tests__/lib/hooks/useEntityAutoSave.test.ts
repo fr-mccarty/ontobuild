@@ -3,7 +3,6 @@ import { renderHook, act } from "@testing-library/react";
 import { useEntityAutoSave } from "@/lib/hooks/useEntityAutoSave";
 import type { AnyDraftEntry } from "@/lib/stores/draftStore";
 
-// Mock the draft store with stable function references
 const mockDrafts: Record<string, AnyDraftEntry> = {};
 
 const stableSetDraft = (key: string, data: AnyDraftEntry) => {
@@ -200,7 +199,6 @@ describe("useEntityAutoSave", () => {
       useEntityAutoSave({ ...BASE_OPTIONS, onFlush, validate }),
     );
 
-    // Manually place a draft in the store
     const key = "proj-1:main:http://example.org/myProp";
     mockDrafts[key] = makeDraftEntry();
 
@@ -265,7 +263,6 @@ describe("useEntityAutoSave", () => {
 
     expect(result.current.restoredDraft).not.toBeNull();
 
-    // Remove from store before clearing so re-render effect doesn't re-read it
     delete mockDrafts[key];
 
     act(() => {

@@ -1,12 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-// Mock next-intl/server
 const mockGetRequestConfig = vi.fn((fn: (args: unknown) => unknown) => fn);
 vi.mock("next-intl/server", () => ({
   getRequestConfig: (fn: (args: unknown) => unknown) => mockGetRequestConfig(fn),
 }));
 
-// Mock next/headers
 const mockCookieGet = vi.fn();
 const mockHeaderGet = vi.fn();
 vi.mock("next/headers", () => ({
@@ -14,7 +12,6 @@ vi.mock("next/headers", () => ({
   headers: () => Promise.resolve({ get: mockHeaderGet }),
 }));
 
-// Mock messages
 vi.mock("@/messages/en.json", () => ({
   default: { greeting: "Hello" },
 }));
@@ -22,7 +19,6 @@ vi.mock("@/messages/en.json", () => ({
 describe("lib/i18n/request", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset module cache to re-import the module fresh
     vi.resetModules();
   });
 
@@ -30,7 +26,6 @@ describe("lib/i18n/request", () => {
     mockCookieGet.mockReturnValue({ value: "en" });
     mockHeaderGet.mockReturnValue(null);
 
-    // Re-import to get fresh config function
     const mod = await import("@/lib/i18n/request");
     const configFn = mod.default as () => Promise<{ locale: string; messages: unknown }>;
     const result = await configFn();

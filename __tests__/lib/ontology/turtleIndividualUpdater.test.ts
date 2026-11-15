@@ -24,7 +24,6 @@ describe("updateIndividualInTurtle", () => {
     expect(result).toContain('rdfs:label "Fido"@en');
     expect(result).toContain('rdfs:comment "A specific dog"@en');
 
-    // Other blocks should be preserved
     expect(result).toContain("ex:Animal a owl:Class");
     expect(result).toContain("ex:Dog a owl:Class");
   });
@@ -232,12 +231,10 @@ describe("updateIndividualInTurtle", () => {
         objectPropertyAssertions: [
           {
             propertyIri: "http://example.org/ont#hasPart",
-            // no targetIri
           },
         ],
       },
     );
-    // hasPart should not appear since targetIri is missing
     const fidoBlock = result.slice(
       result.indexOf("ex:fido"),
       result.indexOf(".", result.indexOf("ex:fido")) + 1,
@@ -254,7 +251,6 @@ describe("updateIndividualInTurtle", () => {
         dataPropertyAssertions: [
           {
             propertyIri: "http://example.org/ont#hasAge",
-            // no value
           },
         ],
       },

@@ -7,7 +7,6 @@ import {
 import type { OWLClassDetail } from "@/lib/api/client";
 import type { ClassTreeNode } from "@/lib/ontology/types";
 
-/** Helper to build a minimal OWLClassDetail for testing. */
 function makeClassDetail(overrides: Partial<OWLClassDetail> = {}): OWLClassDetail {
   return {
     iri: "urn:test",
@@ -25,8 +24,6 @@ function makeClassDetail(overrides: Partial<OWLClassDetail> = {}): OWLClassDetai
     ...overrides,
   };
 }
-
-// ─── getSeeAlsoIris ─────────────────────────────────────────────
 
 describe("getSeeAlsoIris", () => {
   it("extracts seeAlso HTTP/HTTPS IRIs from annotations", () => {
@@ -80,8 +77,6 @@ describe("getSeeAlsoIris", () => {
     expect(getSeeAlsoIris(detail)).toEqual([]);
   });
 });
-
-// ─── extractTreeLabelMap ────────────────────────────────────────
 
 describe("extractTreeLabelMap", () => {
   it("builds IRI→label map from flat list", () => {
@@ -174,8 +169,6 @@ describe("extractTreeLabelMap", () => {
   });
 });
 
-// ─── buildGraphFromClassDetail ──────────────────────────────────
-
 describe("buildGraphFromClassDetail", () => {
   it("always includes the focus node in output", () => {
     const focusIri = "urn:focus";
@@ -214,8 +207,6 @@ describe("buildGraphFromClassDetail", () => {
     const focusIri = "urn:focus";
     const parentIri = "urn:parent";
 
-    // Create a parent with more than 20 children (child-cap = 20)
-    // The focus + 20 other children = 21 total → last one gets pruned
     const childDetails: [string, OWLClassDetail][] = [];
     for (let i = 0; i < 21; i++) {
       const childIri = `urn:child-${i}`;
@@ -229,7 +220,6 @@ describe("buildGraphFromClassDetail", () => {
       ]);
     }
 
-    // Insert focus AFTER the 21 siblings so it's not kept just by insertion order
     const resolved = new Map<string, OWLClassDetail>([
       ...childDetails,
       [
@@ -244,26 +234,22 @@ describe("buildGraphFromClassDetail", () => {
 
     const result = buildGraphFromClassDetail(focusIri, resolved);
 
-    // At most 20 capped siblings + the focus edge (always preserved)
     const subClassEdges = result.edges.filter(
       (e) => e.target === parentIri && e.edgeType === "subClassOf",
     );
     expect(subClassEdges.length).toBeLessThanOrEqual(21);
 
-    // Pruned children should not appear in nodes
     const nodeIds = new Set(result.nodes.map((n) => n.id));
     const orphanedChildren = childDetails
       .map(([iri]) => iri)
       .filter((iri) => !subClassEdges.some((e) => e.source === iri));
 
     for (const orphan of orphanedChildren) {
-      // Orphaned children (not connected by any edge) are pruned unless they're the focus
       if (orphan !== focusIri) {
         expect(nodeIds.has(orphan)).toBe(false);
       }
     }
 
-    // The focus node's edge to its parent must survive the cap
     expect(
       result.edges.some((e) => e.source === focusIri && e.target === parentIri),
     ).toBe(true);

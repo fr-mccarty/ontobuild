@@ -10,9 +10,16 @@ import {
   TURTLE_COMPLEX,
 } from "./fixtures";
 
-// ── extractPropertyDetail ──────────────────────────────────────────────
-
 describe("extractPropertyDetail", () => {
+  it("reports plain rdf:Property as 'other' rather than object", () => {
+    const src = `@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix ex: <http://ex.org/> .
+
+ex:birthDate a rdf:Property .
+`;
+    expect(extractPropertyDetail(src, "http://ex.org/birthDate")!.propertyType).toBe("other");
+  });
+
   it("returns null when property is not found", () => {
     expect(
       extractPropertyDetail(
@@ -176,8 +183,6 @@ describe("extractPropertyDetail", () => {
     );
   });
 });
-
-// ── extractIndividualDetail ────────────────────────────────────────────
 
 describe("extractIndividualDetail", () => {
   it("returns null when individual is not found", () => {

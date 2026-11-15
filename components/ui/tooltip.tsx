@@ -17,6 +17,9 @@ export function Tooltip({
   side = "top",
   align = "center",
 }: TooltipProps) {
+  if (content === null || content === undefined || content === false || content === "") {
+    return <>{children}</>;
+  }
   return (
     <TooltipPrimitive.Root>
       <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
@@ -27,7 +30,7 @@ export function Tooltip({
           sideOffset={5}
           className={cn(
             "z-50 max-w-xs rounded-md bg-slate-900 px-3 py-2 text-xs text-slate-50",
-            "shadow-md animate-in fade-in-0 zoom-in-95",
+            "shadow-md tooltip-fade-in",
             "dark:bg-slate-100 dark:text-slate-900",
           )}
         >

@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement) => rtlRender(<TooltipPrimitive.Provider>{ui}</TooltipPrimitive.Provider>);
 import userEvent from "@testing-library/user-event";
 
-// Provide localStorage before component imports (jsdom may not have it ready)
 vi.hoisted(() => {
   if (!globalThis.localStorage || typeof globalThis.localStorage.setItem !== "function") {
     const store = new Map<string, string>();
@@ -165,5 +168,28 @@ describe("EntityTreeToolbar", () => {
     );
     await userEvent.click(screen.getByLabelText("Dismiss tip"));
     expect(screen.queryByText(/Tip: click Expand/)).toBeNull();
+  });
+});
+
+describe("EntityTreeToolbar tooltips", () => {
+  it("explains the expand-all half when it receives focus", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+    render(
+      <EntityTreeToolbar
+        showSearch={false}
+        searchQuery=""
+        onToggleSearch={vi.fn()}
+        onSearchChange={vi.fn()}
+        onCloseSearch={vi.fn()}
+        onExpandOneLevel={vi.fn()}
+        onExpandAllFully={vi.fn()}
+        onCollapseAll={vi.fn()}
+        onCollapseOneLevel={vi.fn()}
+        hasExpandableNodes
+        hasExpandedNodes
+      />,
+    );
+    fireEvent.focus(screen.getByLabelText("Expand all levels"));
+    expect((await screen.findAllByText(/keeps opening branches until the whole tree is expanded/)).length).toBeGreaterThan(0);
   });
 });

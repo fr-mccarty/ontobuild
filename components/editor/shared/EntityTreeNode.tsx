@@ -21,13 +21,9 @@ interface EntityTreeNodeProps {
   onAddChild?: (parentIri: string) => void;
   onCopyIri?: (iri: string) => void;
   onDelete?: (iri: string, label: string) => void;
-  onViewInSource?: (iri: string) => void;
   draftIris?: Set<string>;
-  /** Drag state for drag-and-drop reparenting. Undefined = drag disabled. */
   dragState?: DragState;
-  /** Called when drag hovers over this node (for auto-expand) */
   onDragEnterNode?: (iri: string) => void;
-  /** Called when drag leaves this node */
   onDragLeaveNode?: () => void;
 }
 
@@ -56,7 +52,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
   onAddChild,
   onCopyIri,
   onDelete,
-  onViewInSource,
   draftIris,
   dragState,
   onDragEnterNode,
@@ -67,7 +62,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
   const hasChildren = node.hasChildren || node.children.length > 0;
   const isRoot = depth === 0;
 
-  // Drag-and-drop hooks (only when dragState is provided)
   const isDndEnabled = !!dragState;
   const { attributes: dragAttributes, listeners: dragListeners, setNodeRef: setDragRef } = useDraggable({
     id: node.iri,
@@ -78,7 +72,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
     disabled: !isDndEnabled,
   });
 
-  // Combine refs for the row element
   const setRowRef = useCallback(
     (el: HTMLDivElement | null) => {
       if (isDndEnabled) {
@@ -89,7 +82,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
     [isDndEnabled, setDragRef, setDropRef],
   );
 
-  // Drag state for this specific node
   const isBeingDragged = dragState?.draggedIri === node.iri;
   const isDropTarget = dragState?.dropTargetIri === node.iri;
   const isValidDrop = isDropTarget && dragState?.isValidDropTarget;
@@ -125,7 +117,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
     [node.iri, onAddChild],
   );
 
-  // Group headers: uppercase label + count, click only toggles expand
   if (node.isGroupHeader) {
     return (
       <div>
@@ -163,7 +154,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
                 onAddChild={onAddChild}
                 onCopyIri={onCopyIri}
                 onDelete={onDelete}
-                onViewInSource={onViewInSource}
                 draftIris={draftIris}
               />
             ))}
@@ -173,7 +163,7 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
     );
   }
 
-  const hasContextMenu = onCopyIri || onDelete || onViewInSource || onAddChild;
+  const hasContextMenu = onCopyIri || onDelete || onAddChild;
   const treeItemId = `tree-item-${node.iri.replace(/[^a-zA-Z0-9-_]/g, "_")}`;
 
   const rowContent = (
@@ -201,7 +191,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
       data-iri={node.iri}
       {...(isDndEnabled ? { ...dragAttributes, ...dragListeners, role: "treeitem" } : { role: "treeitem" })}
     >
-      {/* Expand/collapse chevron or leaf dot — same 16px box for alignment */}
       {hasChildren ? (
         <span
           role="presentation"
@@ -223,7 +212,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
         </span>
       )}
 
-      {/* Label */}
       <span
         className={cn(
           "flex-1 truncate text-sm",
@@ -235,7 +223,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
           : node.label}
       </span>
 
-      {/* Draft indicator */}
       {draftIris?.has(node.iri) && (
         <span
           className="h-2 w-2 shrink-0 rounded-full bg-amber-400"
@@ -244,7 +231,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
         />
       )}
 
-      {/* Add child button — visible on hover */}
       {onAddChild && (
         <button
           onClick={handleAddChild}
@@ -268,14 +254,12 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
             onAddChild={onAddChild}
             onCopyIri={onCopyIri}
             onDelete={onDelete}
-            onViewInSource={onViewInSource}
           />
         </ContextMenu>
       ) : (
         rowContent
       )}
 
-      {/* Children — rendered flat; indentation handled by each row's paddingLeft */}
       {node.isExpanded && node.children.length > 0 &&
         node.children.map((child) => (
           <EntityTreeNodeRow
@@ -291,7 +275,6 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
             onAddChild={onAddChild}
             onCopyIri={onCopyIri}
             onDelete={onDelete}
-            onViewInSource={onViewInSource}
             draftIris={draftIris}
             dragState={dragState}
             onDragEnterNode={onDragEnterNode}

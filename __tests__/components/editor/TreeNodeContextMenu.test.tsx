@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
 
-// Track onSelect callbacks to simulate menu item clicks
 let capturedItems: Array<{
   text: string;
   onSelect?: () => void;
@@ -49,7 +48,6 @@ vi.mock("@/components/ui/context-menu", () => ({
 vi.mock("lucide-react", () => ({
   Plus: () => <span data-testid="icon-plus" />,
   Copy: () => <span data-testid="icon-copy" />,
-  Code: () => <span data-testid="icon-code" />,
   Trash2: () => <span data-testid="icon-trash" />,
 }));
 
@@ -63,7 +61,6 @@ describe("TreeNodeContextMenu", () => {
     _separatorCount = 0;
   });
 
-  // ── Rendering with all callbacks ─────────────────────────────────
   describe("with all callbacks provided", () => {
     it("renders all menu items", () => {
       render(
@@ -71,14 +68,12 @@ describe("TreeNodeContextMenu", () => {
           node={baseNode}
           onAddChild={vi.fn()}
           onCopyIri={vi.fn()}
-          onViewInSource={vi.fn()}
           onDelete={vi.fn()}
         />
       );
       expect(screen.getByTestId("context-menu-content")).not.toBeNull();
       expect(screen.getByTestId("menu-item-Add Subclass")).not.toBeNull();
       expect(screen.getByTestId("menu-item-Copy IRI")).not.toBeNull();
-      expect(screen.getByTestId("menu-item-View in Source")).not.toBeNull();
       expect(screen.getByTestId("menu-item-Delete")).not.toBeNull();
     });
 
@@ -88,7 +83,6 @@ describe("TreeNodeContextMenu", () => {
           node={baseNode}
           onAddChild={vi.fn()}
           onCopyIri={vi.fn()}
-          onViewInSource={vi.fn()}
           onDelete={vi.fn()}
         />
       );
@@ -102,25 +96,21 @@ describe("TreeNodeContextMenu", () => {
           node={baseNode}
           onAddChild={vi.fn()}
           onCopyIri={vi.fn()}
-          onViewInSource={vi.fn()}
           onDelete={vi.fn()}
         />
       );
       expect(screen.getByTestId("icon-plus")).not.toBeNull();
       expect(screen.getByTestId("icon-copy")).not.toBeNull();
-      expect(screen.getByTestId("icon-code")).not.toBeNull();
       expect(screen.getByTestId("icon-trash")).not.toBeNull();
     });
   });
 
-  // ── Conditional rendering ────────────────────────────────────────
   describe("conditional rendering", () => {
     it("hides Add Subclass when onAddChild is not provided", () => {
       render(
         <TreeNodeContextMenu
           node={baseNode}
           onCopyIri={vi.fn()}
-          onViewInSource={vi.fn()}
         />
       );
       expect(screen.queryByTestId("menu-item-Add Subclass")).toBeNull();
@@ -131,21 +121,9 @@ describe("TreeNodeContextMenu", () => {
         <TreeNodeContextMenu
           node={baseNode}
           onAddChild={vi.fn()}
-          onViewInSource={vi.fn()}
         />
       );
       expect(screen.queryByTestId("menu-item-Copy IRI")).toBeNull();
-    });
-
-    it("hides View in Source when onViewInSource is not provided", () => {
-      render(
-        <TreeNodeContextMenu
-          node={baseNode}
-          onAddChild={vi.fn()}
-          onCopyIri={vi.fn()}
-        />
-      );
-      expect(screen.queryByTestId("menu-item-View in Source")).toBeNull();
     });
 
     it("hides Delete when onDelete is not provided", () => {
@@ -164,7 +142,6 @@ describe("TreeNodeContextMenu", () => {
       expect(screen.getByTestId("context-menu-content")).not.toBeNull();
       expect(screen.queryByTestId("menu-item-Add Subclass")).toBeNull();
       expect(screen.queryByTestId("menu-item-Copy IRI")).toBeNull();
-      expect(screen.queryByTestId("menu-item-View in Source")).toBeNull();
       expect(screen.queryByTestId("menu-item-Delete")).toBeNull();
     });
 
@@ -173,14 +150,12 @@ describe("TreeNodeContextMenu", () => {
         <TreeNodeContextMenu
           node={baseNode}
           onCopyIri={vi.fn()}
-          onViewInSource={vi.fn()}
         />
       );
       expect(screen.queryByTestId("separator")).toBeNull();
     });
   });
 
-  // ── Callback invocations ─────────────────────────────────────────
   describe("callback invocations", () => {
     it("calls onAddChild with the node IRI", () => {
       const onAddChild = vi.fn();
@@ -200,15 +175,6 @@ describe("TreeNodeContextMenu", () => {
       expect(onCopyIri).toHaveBeenCalledWith(baseNode.iri);
     });
 
-    it("calls onViewInSource with the node IRI", () => {
-      const onViewInSource = vi.fn();
-      render(
-        <TreeNodeContextMenu node={baseNode} onViewInSource={onViewInSource} />
-      );
-      fireEvent.click(screen.getByTestId("menu-item-View in Source"));
-      expect(onViewInSource).toHaveBeenCalledWith(baseNode.iri);
-    });
-
     it("calls onDelete with the node IRI and label", () => {
       const onDelete = vi.fn();
       render(
@@ -219,7 +185,6 @@ describe("TreeNodeContextMenu", () => {
     });
   });
 
-  // ── Label fallback ───────────────────────────────────────────────
   describe("label fallback", () => {
     it("uses IRI as label when node.label is empty", () => {
       const onDelete = vi.fn();
@@ -235,7 +200,6 @@ describe("TreeNodeContextMenu", () => {
     });
   });
 
-  // ── Delete is marked destructive ─────────────────────────────────
   describe("destructive styling", () => {
     it("marks Delete menu item as destructive", () => {
       render(
@@ -251,15 +215,12 @@ describe("TreeNodeContextMenu", () => {
           node={baseNode}
           onAddChild={vi.fn()}
           onCopyIri={vi.fn()}
-          onViewInSource={vi.fn()}
         />
       );
       const addItem = screen.getByTestId("menu-item-Add Subclass");
       expect(addItem.getAttribute("data-destructive")).toBeNull();
       const copyItem = screen.getByTestId("menu-item-Copy IRI");
       expect(copyItem.getAttribute("data-destructive")).toBeNull();
-      const viewItem = screen.getByTestId("menu-item-View in Source");
-      expect(viewItem.getAttribute("data-destructive")).toBeNull();
     });
   });
 });

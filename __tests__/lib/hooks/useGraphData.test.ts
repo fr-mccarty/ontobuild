@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { useGraphData } from "@/lib/hooks/useGraphData";
 
-// Mock API and graph builder
 vi.mock("@/lib/api/client", () => ({
   projectOntologyApi: {
     getClassDetail: vi.fn(),
@@ -109,8 +108,8 @@ describe("useGraphData", () => {
     const detailB = makeDetail("http://example.org/B");
 
     mockedGetClassDetail
-      .mockResolvedValueOnce(detailA) // focus node
-      .mockResolvedValueOnce(detailB); // parent node
+      .mockResolvedValueOnce(detailA)
+      .mockResolvedValueOnce(detailB);
 
     const { result } = renderHook(() =>
       useGraphData({
@@ -138,7 +137,6 @@ describe("useGraphData", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // Should still build a graph (single-node graph fallback)
     expect(mockedBuildGraph).toHaveBeenCalled();
   });
 
@@ -147,8 +145,8 @@ describe("useGraphData", () => {
     const detailB = makeDetail("http://example.org/B");
 
     mockedGetClassDetail
-      .mockResolvedValueOnce(detailA) // initial load
-      .mockResolvedValueOnce(detailB); // expand node
+      .mockResolvedValueOnce(detailA)
+      .mockResolvedValueOnce(detailB);
 
     const { result } = renderHook(() =>
       useGraphData({

@@ -141,7 +141,6 @@ describe("useCrossReferences", () => {
 
     await waitFor(() => expect(result1.current.isSuccess).toBe(true));
     await waitFor(() => expect(result2.current.isSuccess).toBe(true));
-    // Both should have fired separate calls (different query keys)
     expect(mockedGetCrossReferences).toHaveBeenCalledTimes(2);
   });
 });

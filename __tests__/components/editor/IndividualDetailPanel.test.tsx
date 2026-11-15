@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render as rtlRender, screen, waitFor, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 
-// ── Configurable mock state (tests can override before render) ──
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
+import userEvent from "@testing-library/user-event";
 
 const mockExtractIndividualDetail = vi.fn();
 vi.mock("@/lib/ontology/entityDetailExtractors", () => ({
@@ -39,14 +42,13 @@ vi.mock("@/lib/hooks/useEntityAutoSave", () => ({
 
 vi.mock("@/lib/stores/editorModeStore", () => ({
   useEditorModeStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ editorMode: "standard", ...editorModeOverrides }),
+    selector({ ...editorModeOverrides }),
 }));
 
 vi.mock("@/lib/hooks/useIriLabels", () => ({
   useIriLabels: () => ({}),
 }));
 
-// Stub child components - capture props for callback testing
 vi.mock("@/components/editor/LanguageFlag", () => ({
   LanguageFlag: () => null,
 }));
@@ -106,8 +108,6 @@ vi.mock("@/components/editor/AutoSaveAffordanceBar", () => ({
 
 import { IndividualDetailPanel } from "@/components/editor/IndividualDetailPanel";
 
-// ── Helpers ──
-
 function makeIndividualDetail(overrides: Record<string, unknown> = {}) {
   return {
     labels: [{ value: "John Doe", lang: "en" }],
@@ -143,8 +143,6 @@ const DEFAULT_PROPS = {
   branch: "main",
 };
 
-// ── Tests ──
-
 describe("IndividualDetailPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -158,8 +156,6 @@ describe("IndividualDetailPanel", () => {
     capturedInlineAnnotationAdderProps = null;
     mockExtractIndividualDetail.mockReturnValue(makeIndividualDetail());
   });
-
-  // ── Empty / placeholder state ──
 
   it("renders 'Select an individual' placeholder when individualIri is null", () => {
     render(
@@ -175,8 +171,6 @@ describe("IndividualDetailPanel", () => {
     ).toBeDefined();
   });
 
-  // ── Loading state ──
-
   it("shows a loading spinner when sourceContent is empty", () => {
     const { container } = render(
       <IndividualDetailPanel
@@ -188,8 +182,6 @@ describe("IndividualDetailPanel", () => {
     );
     expect(container.querySelector(".animate-spin")).not.toBeNull();
   });
-
-  // ── Not found state ──
 
   it("shows not-found message when extractIndividualDetail returns null", () => {
     mockExtractIndividualDetail.mockReturnValue(null);
@@ -212,8 +204,6 @@ describe("IndividualDetailPanel", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("JohnDoe")).toBeDefined();
   });
-
-  // ── Successful render ──
 
   it("renders individual label and IRI", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} />);
@@ -339,32 +329,26 @@ describe("IndividualDetailPanel", () => {
     expect(screen.queryByText("Data Properties")).toBeNull();
   });
 
-  // ── Copy IRI ──
-
   it("renders Copy IRI button when onCopyIri is provided", () => {
     const onCopyIri = vi.fn();
     render(<IndividualDetailPanel {...DEFAULT_PROPS} onCopyIri={onCopyIri} />);
-    expect(screen.getByTitle("Copy IRI")).toBeDefined();
+    expect(screen.getByLabelText("Copy IRI")).toBeDefined();
   });
 
   it("calls onCopyIri when Copy IRI button is clicked", async () => {
     const user = userEvent.setup();
     const onCopyIri = vi.fn();
     render(<IndividualDetailPanel {...DEFAULT_PROPS} onCopyIri={onCopyIri} />);
-    await user.click(screen.getByTitle("Copy IRI"));
+    await user.click(screen.getByLabelText("Copy IRI"));
     expect(onCopyIri).toHaveBeenCalledWith(
       "http://example.org/ontology#JohnDoe"
     );
   });
 
-  // ── Read-only mode (canEdit=false) ──
-
   it("does not show edit button when canEdit is false", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} canEdit={false} />);
     expect(screen.queryByText("Edit Item")).toBeNull();
   });
-
-  // ── Edit mode (canEdit=true) ──
 
   it("never renders an Edit Item button in editor context", async () => {
     const onUpdateIndividual = vi.fn();
@@ -381,8 +365,6 @@ describe("IndividualDetailPanel", () => {
     });
     expect(screen.queryByText("Edit Item")).toBeNull();
   });
-
-  // ── API call verification ──
 
   it("calls extractIndividualDetail with sourceContent and individualIri", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} />);
@@ -402,8 +384,6 @@ describe("IndividualDetailPanel", () => {
     expect(mockExtractIndividualDetail).toHaveBeenCalledTimes(2);
   });
 
-  // ── Falls back to local name when no labels ──
-
   it("renders local name when individual has no labels", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({ labels: [] })
@@ -411,8 +391,6 @@ describe("IndividualDetailPanel", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getAllByText("JohnDoe").length).toBeGreaterThanOrEqual(1);
   });
-
-  // ── Relationships section ──
 
   it("renders relationships section when seeAlsoIris present", () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -434,8 +412,6 @@ describe("IndividualDetailPanel", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} canEdit={false} />);
     expect(screen.queryByText("Relationships")).toBeNull();
   });
-
-  // ── Edit mode: label editing ──
 
   it("renders editable label inputs in edit mode", async () => {
     const onUpdateIndividual = vi.fn();
@@ -588,8 +564,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("Relationships")).not.toBeNull();
   });
 
-  // ── Label input interaction ──
-
   it("allows typing in a label input in edit mode", async () => {
     const user = userEvent.setup();
     const onUpdateIndividual = vi.fn();
@@ -609,8 +583,6 @@ describe("IndividualDetailPanel", () => {
     expect((labelInput as HTMLInputElement).value).toBe("Jane Doe");
   });
 
-  // ── Cancel edit mode ──
-
   it("shows auto-save bar when in edit mode", async () => {
     const onUpdateIndividual = vi.fn();
     render(
@@ -626,8 +598,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
   });
 
-  // ── Auto-enter edit mode in editor context ──
-
   it("auto-enters edit mode when onUpdateIndividual is provided", async () => {
     const onUpdateIndividual = vi.fn();
     render(
@@ -641,8 +611,6 @@ describe("IndividualDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
   });
-
-  // ── Draft restoration ──
 
   it("auto-enters edit mode when restoredDraft is available", async () => {
     autoSaveOverrides = {
@@ -676,12 +644,7 @@ describe("IndividualDetailPanel", () => {
     expect(mockClearRestoredDraft).toHaveBeenCalled();
   });
 
-  // ── flushToGit on unmount ──
-
   it("flushes pending draft to git on unmount", async () => {
-    // The parent layout remounts the panel on selection change via a key
-    // prop, so the panel's contract for "navigate away" is "unmount and let
-    // the cleanup flush". This test exercises that contract directly.
     const { unmount } = render(
       <IndividualDetailPanel {...DEFAULT_PROPS} canEdit={false} />
     );
@@ -691,8 +654,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── Does not auto-enter edit mode when canEdit is false ──
-
   it("does not auto-enter edit mode when canEdit is false even with onUpdateIndividual", () => {
     render(
       <IndividualDetailPanel {...DEFAULT_PROPS} canEdit={false} onUpdateIndividual={vi.fn()} />
@@ -700,16 +661,12 @@ describe("IndividualDetailPanel", () => {
     expect(screen.queryByTestId("auto-save-bar")).toBeNull();
   });
 
-  // ── Does not show edit button without onUpdateIndividual ──
-
   it("does not show edit button when canEdit is true but onUpdateIndividual is not provided", () => {
     render(
       <IndividualDetailPanel {...DEFAULT_PROPS} canEdit={true} />
     );
     expect(screen.queryByText("Edit Item")).toBeNull();
   });
-
-  // ── Language tag input in edit mode ──
 
   it("renders language tag pickers in edit mode", async () => {
     const onUpdateIndividual = vi.fn();
@@ -726,8 +683,6 @@ describe("IndividualDetailPanel", () => {
     const langPickers = screen.getAllByLabelText("Language tag");
     expect(langPickers.length).toBeGreaterThanOrEqual(1);
   });
-
-  // ── triggerSave on blur of label input ──
 
   it("calls triggerSave on blur of label input", async () => {
     const user = userEvent.setup();
@@ -750,8 +705,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── isDefinedBy in relationships ──
-
   it("renders relationships section when isDefinedByIris present", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -761,8 +714,6 @@ describe("IndividualDetailPanel", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("Relationships")).not.toBeNull();
   });
-
-  // ── Does not enter edit mode on draft restoration when entityType mismatches ──
 
   it("does not restore draft when entityType does not match individual", async () => {
     autoSaveOverrides = {
@@ -780,15 +731,11 @@ describe("IndividualDetailPanel", () => {
         onUpdateIndividual={onUpdateIndividual}
       />
     );
-    // Edit mode auto-enters (editor context), but the wrong-type draft should not be applied
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    // The "Wrong type" label from the class draft should not appear
     expect(screen.queryByDisplayValue("Wrong type")).toBeNull();
   });
-
-  // ── Multiple labels in read-only ──
 
   it("renders multiple labels in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -803,8 +750,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getAllByText("John Doe").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Jean Dupont")).not.toBeNull();
   });
-
-  // ── Object property assertion navigation target ──
 
   it("renders object property assertion with target in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -828,8 +773,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("JamesDoe")).not.toBeNull();
   });
 
-  // ── Data property assertion with language ──
-
   it("renders data property assertion with datatype in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -848,8 +791,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("John")).not.toBeNull();
     expect(screen.getByText("string")).not.toBeNull();
   });
-
-  // ── Remove label button in edit mode ──
 
   it("shows remove button when multiple labels exist in edit mode", async () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -871,11 +812,9 @@ describe("IndividualDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    const removeButtons = container.querySelectorAll('button[title="Remove"]');
+    const removeButtons = container.querySelectorAll('button[aria-label="Remove"]');
     expect(removeButtons.length).toBeGreaterThanOrEqual(1);
   });
-
-  // ── Language tag editing in edit mode ──
 
   it("allows editing language tag via picker", async () => {
     const user = userEvent.setup();
@@ -898,8 +837,6 @@ describe("IndividualDetailPanel", () => {
     expect(mockTriggerSave).toHaveBeenCalled();
   });
 
-  // ── Edit mode with no initial comments ──
-
   it("renders empty comment placeholder in edit mode when no comments", async () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({ comments: [] })
@@ -917,8 +854,6 @@ describe("IndividualDetailPanel", () => {
     });
     expect(screen.getByText("Comment(s)")).not.toBeNull();
   });
-
-  // ── Edit mode with no initial definitions ──
 
   it("renders empty definition placeholder in edit mode when no definitions", async () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -938,8 +873,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("Definition")).not.toBeNull();
   });
 
-  // ── Edit mode with empty types ──
-
   it("renders types search in edit mode even when empty", async () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({ typeIris: [] })
@@ -957,8 +890,6 @@ describe("IndividualDetailPanel", () => {
     });
     expect(screen.getByText("Type(s)")).not.toBeNull();
   });
-
-  // ── Edit mode with empty sameAs ──
 
   it("renders same-as search in edit mode even when empty", async () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -978,8 +909,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("Same As")).not.toBeNull();
   });
 
-  // ── Edit mode with empty differentFrom ──
-
   it("renders different-from search in edit mode even when empty", async () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({ differentFromIris: [] })
@@ -998,8 +927,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("Different From")).not.toBeNull();
   });
 
-  // ── Navigate to entity callback ──
-
   it("calls onNavigateToEntity when type IRI link is clicked", async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
@@ -1016,8 +943,6 @@ describe("IndividualDetailPanel", () => {
     );
   });
 
-  // ── Multiple comments in read-only ──
-
   it("renders multiple comments in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1031,8 +956,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("First comment")).not.toBeNull();
     expect(screen.getByText("Second comment")).not.toBeNull();
   });
-
-  // ── Multiple definitions in read-only ──
 
   it("renders multiple definitions in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -1048,8 +971,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("Def two")).not.toBeNull();
   });
 
-  // ── Empty labels does not render labels section in read-only ──
-
   it("does not render labels section in read-only when no labels", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({ labels: [] })
@@ -1057,8 +978,6 @@ describe("IndividualDetailPanel", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} canEdit={false} />);
     expect(screen.queryByText("Label(s)")).toBeNull();
   });
-
-  // ── Empty comments does not render comments section in read-only ──
 
   it("does not render comments section in read-only when no comments", () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -1068,8 +987,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.queryByText("Comment(s)")).toBeNull();
   });
 
-  // ── Empty definitions does not render definitions section in read-only ──
-
   it("does not render definitions section in read-only when no definitions", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({ definitions: [] })
@@ -1077,8 +994,6 @@ describe("IndividualDetailPanel", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} canEdit={false} />);
     expect(screen.queryByText("Definition")).toBeNull();
   });
-
-  // ── Object property assertion navigation ──
 
   it("calls onNavigateToEntity when clicking object property target", async () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -1105,8 +1020,6 @@ describe("IndividualDetailPanel", () => {
     );
   });
 
-  // ── Data property assertion without datatype ──
-
   it("renders data property assertion without datatype badge when no datatype", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1122,8 +1035,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("A note")).not.toBeNull();
   });
 
-  // ── sameAs links in read-only ──
-
   it("renders sameAs IRI links in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1134,8 +1045,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("JDoe")).not.toBeNull();
   });
 
-  // ── differentFrom links in read-only ──
-
   it("renders differentFrom IRI links in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1145,8 +1054,6 @@ describe("IndividualDetailPanel", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("JaneDoe")).not.toBeNull();
   });
-
-  // ── Cancel edit mode via AutoSaveAffordanceBar ──
 
   it("invokes cancelEditMode via AutoSaveAffordanceBar onCancel", async () => {
     const onUpdateIndividual = vi.fn();
@@ -1165,8 +1072,6 @@ describe("IndividualDetailPanel", () => {
     onCancel();
     expect(mockDiscardDraft).toHaveBeenCalled();
   });
-
-  // ── Manual save via AutoSaveAffordanceBar ──
 
   it("invokes flushDraftToGit via AutoSaveAffordanceBar onManualSave", async () => {
     const onUpdateIndividual = vi.fn();
@@ -1187,8 +1092,6 @@ describe("IndividualDetailPanel", () => {
     expect(mockFlushToGit).toHaveBeenCalled();
   });
 
-  // ── Retry via AutoSaveAffordanceBar ──
-
   it("invokes flushToGit via AutoSaveAffordanceBar onRetry", async () => {
     const onUpdateIndividual = vi.fn();
     render(
@@ -1206,8 +1109,6 @@ describe("IndividualDetailPanel", () => {
     onRetry();
     expect(mockFlushToGit).toHaveBeenCalled();
   });
-
-  // ── AnnotationRow callbacks for comments ──
 
   it("passes comment callbacks to AnnotationRow", async () => {
     const onUpdateIndividual = vi.fn();
@@ -1246,8 +1147,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── AnnotationRow callbacks for definitions ──
-
   it("passes definition callbacks to AnnotationRow", async () => {
     const onUpdateIndividual = vi.fn();
     render(
@@ -1275,8 +1174,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── AnnotationRow onBlur triggers save ──
-
   it("AnnotationRow onBlur triggers triggerSave", async () => {
     const onUpdateIndividual = vi.fn();
     render(
@@ -1297,8 +1194,6 @@ describe("IndividualDetailPanel", () => {
     onBlur();
     expect(mockTriggerSave).toHaveBeenCalled();
   });
-
-  // ── AnnotationRow onRemove for comments ──
 
   it("passes onRemove to AnnotationRow for non-last comment rows", async () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -1333,8 +1228,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── AnnotationRow onRemove for definitions ──
-
   it("passes onRemove to AnnotationRow for non-last definition rows", async () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1367,8 +1260,6 @@ describe("IndividualDetailPanel", () => {
       expect(mockTriggerSave).toHaveBeenCalled();
     });
   });
-
-  // ── PropertyAssertionSection callbacks ──
 
   it("passes onAdd callback to PropertyAssertionSection for object properties", async () => {
     const onUpdateIndividual = vi.fn();
@@ -1482,8 +1373,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── RelationshipSection callbacks ──
-
   it("passes relationship callbacks to RelationshipSection in edit mode", async () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1577,8 +1466,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── Custom annotation editing callbacks ──
-
   it("invokes updateAnnotationValue for custom annotations in edit mode", async () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1664,8 +1551,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── initEditState with seeAlso and isDefinedBy ──
-
   it("initializes edit state with seeAlso and isDefinedBy relationships", async () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1688,8 +1573,6 @@ describe("IndividualDetailPanel", () => {
     expect(capturedRelationshipSectionProps!.isEditing).toBe(true);
   });
 
-  // ── Remove label button interaction ──
-
   it("clicking remove label button triggers triggerSave", async () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1711,15 +1594,13 @@ describe("IndividualDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
-    const removeButtons = container.querySelectorAll('button[title="Remove"]');
+    const removeButtons = container.querySelectorAll('button[aria-label="Remove"]');
     expect(removeButtons.length).toBeGreaterThanOrEqual(1);
     await user.click(removeButtons[0]);
     await waitFor(() => {
       expect(mockTriggerSave).toHaveBeenCalled();
     });
   });
-
-  // ── Annotations read-only with resolved labels ──
 
   it("renders annotation property label in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -1735,8 +1616,6 @@ describe("IndividualDetailPanel", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("Pref Label Value")).not.toBeNull();
   });
-
-  // ── PropertyAssertionSection onSaveNeeded callback ──
 
   it("passes onSaveNeeded callback to PropertyAssertionSection", async () => {
     const onUpdateIndividual = vi.fn();
@@ -1759,8 +1638,6 @@ describe("IndividualDetailPanel", () => {
     expect(mockTriggerSave).toHaveBeenCalled();
   });
 
-  // ── Manual save stays in edit mode when flushToGit fails ──
-
   it("stays in edit mode when flushDraftToGit flush fails", async () => {
     const onUpdateIndividual = vi.fn();
     mockFlushToGit.mockResolvedValue(false);
@@ -1779,11 +1656,8 @@ describe("IndividualDetailPanel", () => {
     await onManualSave();
     expect(mockTriggerSave).toHaveBeenCalled();
     expect(mockFlushToGit).toHaveBeenCalled();
-    // Should still be in edit mode
     expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
   });
-
-  // ── InlineAnnotationAdder onAdd adds to existing annotation ──
 
   it("InlineAnnotationAdder adds value to existing annotation property", async () => {
     const PREF_LABEL_IRI = "http://www.w3.org/2004/02/skos/core#prefLabel";
@@ -1824,8 +1698,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── InlineAnnotationAdder onAdd creates new annotation property ──
-
   it("InlineAnnotationAdder creates new annotation property when not existing", async () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({ annotations: [] })
@@ -1857,8 +1729,6 @@ describe("IndividualDetailPanel", () => {
     });
   });
 
-  // ── InlineAnnotationAdder onSaveNeeded callback ──
-
   it("InlineAnnotationAdder onSaveNeeded calls triggerSave", async () => {
     const onUpdateIndividual = vi.fn();
     render(
@@ -1880,8 +1750,6 @@ describe("IndividualDetailPanel", () => {
     onSaveNeeded();
     expect(mockTriggerSave).toHaveBeenCalled();
   });
-
-  // ── RelationshipSection onSaveNeeded callback ──
 
   it("RelationshipSection onSaveNeeded calls triggerSave", async () => {
     const onUpdateIndividual = vi.fn();
@@ -1905,14 +1773,10 @@ describe("IndividualDetailPanel", () => {
     expect(mockTriggerSave).toHaveBeenCalled();
   });
 
-  // ── Labels section visible in read-only with labels ──
-
   it("renders labels section title in read-only when labels exist", () => {
     render(<IndividualDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("Label(s)")).not.toBeNull();
   });
-
-  // ── Cancel keeps the panel in edit mode ──
 
   it("stays in edit mode after cancel and discards the draft", async () => {
     const onUpdateIndividual = vi.fn();
@@ -1927,7 +1791,6 @@ describe("IndividualDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
 
-    // Trigger cancel
     expect(capturedAutoSaveBarProps).not.toBeNull();
     const onCancel = capturedAutoSaveBarProps!.onCancel as () => void;
     onCancel();
@@ -1937,8 +1800,6 @@ describe("IndividualDetailPanel", () => {
     });
     expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
   });
-
-  // ── Edit mode with isDefinedBy relationships ──
 
   it("initializes edit mode with isDefinedBy as separate relationship group", async () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -1964,8 +1825,6 @@ describe("IndividualDetailPanel", () => {
     expect(definedByGroup).toBeDefined();
   });
 
-  // ── Object property assertion without targetIri ──
-
   it("renders object property assertion without target when targetIri is null", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -1979,11 +1838,8 @@ describe("IndividualDetailPanel", () => {
     );
     render(<IndividualDetailPanel {...DEFAULT_PROPS} />);
     expect(screen.getByText("Object Properties")).not.toBeNull();
-    // Should not crash when targetIri is null
     expect(screen.getByText("hasParent")).not.toBeNull();
   });
-
-  // ── Edit mode with no labels initializes empty placeholder ──
 
   it("initializes edit mode with empty label placeholder when no labels", async () => {
     mockExtractIndividualDetail.mockReturnValue(
@@ -2005,8 +1861,6 @@ describe("IndividualDetailPanel", () => {
     expect((labelInputs[0] as HTMLInputElement).value).toBe("");
   });
 
-  // ── Data property assertion with lang tag in read-only ──
-
   it("renders data property assertion with lang flag in read-only mode", () => {
     mockExtractIndividualDetail.mockReturnValue(
       makeIndividualDetail({
@@ -2023,8 +1877,6 @@ describe("IndividualDetailPanel", () => {
     expect(screen.getByText("Data Properties")).not.toBeNull();
     expect(screen.getByText("Jean")).not.toBeNull();
   });
-
-  // ── PropertyAssertionSection data onSaveNeeded callback ──
 
   it("passes onSaveNeeded callback to data PropertyAssertionSection", async () => {
     const onUpdateIndividual = vi.fn();
@@ -2046,8 +1898,6 @@ describe("IndividualDetailPanel", () => {
     onSaveNeeded();
     expect(mockTriggerSave).toHaveBeenCalled();
   });
-
-  // ── Annotation language change callback ──
 
   it("updates custom annotation language via AnnotationRow callback", async () => {
     mockExtractIndividualDetail.mockReturnValue(

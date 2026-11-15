@@ -1,8 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import userEvent from "@testing-library/user-event";
 
-// Mock all external dependencies before imports
 vi.mock("@/lib/api/lint", () => ({
   lintApi: {
     getStatus: vi.fn(),
@@ -15,7 +19,6 @@ vi.mock("@/lib/api/lint", () => ({
   },
   isLintRunActive: (s: { last_run?: { status?: string } | null } | null | undefined) =>
     s?.last_run?.status === "pending" || s?.last_run?.status === "running",
-  // By default a polled run never finishes; individual tests override this.
   waitForLintRun: vi.fn(() => new Promise(() => {})),
 }));
 
@@ -110,7 +113,6 @@ function setup(overrides: Partial<React.ComponentProps<typeof HealthCheckPanel>>
 describe("HealthCheckPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock requestAnimationFrame so deferred cached-data fetches fire synchronously
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       cb(0);
       return 0;
@@ -165,7 +167,7 @@ describe("HealthCheckPanel", () => {
     expect(screen.getByText("Warnings")).toBeDefined();
     expect(screen.getByText("Info")).toBeDefined();
     expect(screen.getByText("Total")).toBeDefined();
-    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1); // error_count
+    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows lint issues", async () => {
@@ -201,14 +203,12 @@ describe("HealthCheckPanel", () => {
     });
     await userEvent.click(screen.getByText("Clear"));
     expect(mockLintApi.clearResults).toHaveBeenCalledWith("p1", "tok");
-    // After clearing, should switch to Run Lint
     await waitFor(() => {
       expect(screen.getByText("Run Lint")).toBeDefined();
     });
   });
 
   it("shows Run Lint (not Clear) when last run completed with zero issues", async () => {
-    // No issues = nothing to clear. Re-prompt Run Lint instead.
     mockLintApi.getStatus.mockResolvedValue({
       ...baseSummary,
       error_count: 0,
@@ -243,8 +243,6 @@ describe("HealthCheckPanel", () => {
       expect(screen.getByText("Clear")).toBeDefined();
     });
     await userEvent.click(screen.getByText("Clear"));
-    // Each summary card pairs the count with its label inside the same button.
-    // Find each label, walk up to its button, and verify the numeric count is "0".
     await waitFor(() => {
       for (const label of ["Errors", "Warnings", "Info", "Total"]) {
         const card = screen.getByText(label).closest("button")!;
@@ -279,8 +277,6 @@ describe("HealthCheckPanel", () => {
   });
 
   it("shows duplicate_iris related entities with +N more for many duplicates", async () => {
-    // Multi-letter local names so the test isn't confused with single-letter
-    // entity-type badges ("C", "P", "I", "?") that share a screen.
     mockLintApi.getIssues.mockResolvedValue({
       items: [
         {
@@ -303,7 +299,6 @@ describe("HealthCheckPanel", () => {
       total: 1, skip: 0, limit: 500,
     });
     setup();
-    // First three are visible, fourth is hidden behind the "+N more" indicator.
     await waitFor(() => {
       expect(screen.getByText("Alpha")).toBeDefined();
     });
@@ -356,6 +351,15 @@ describe("HealthCheckPanel", () => {
     expect(closeBtn).toBeTruthy();
     await userEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("hides its close button and left border when embedded", async () => {
+    const { container } = setup({ embedded: true });
+    await waitFor(() => {
+      expect(screen.getByText("Health Check")).toBeDefined();
+    });
+    expect(screen.queryByRole("button", { name: /^close$/i })).toBeNull();
+    expect((container.firstChild as HTMLElement).className).not.toContain("border-l");
   });
 
   it("displays no issues message when total is 0", async () => {
@@ -458,11 +462,6 @@ describe("HealthCheckPanel", () => {
   });
 
   it("treats null subject_type as 'other' for navigation", async () => {
-    // Null subject_type means the backend couldn't classify the entity. Routing
-    // it as a class would lead to a 404 in the class tree if it's actually a
-    // property/individual. Routing as "other" lets each layout decide:
-    // Developer mode scrolls to source; Standard mode falls back to class tree
-    // (which surfaces ClassDetailPanel's helpful 404 message).
     const onNav = vi.fn();
     mockLintApi.getIssues.mockResolvedValue({
       items: [
@@ -479,8 +478,6 @@ describe("HealthCheckPanel", () => {
   });
 
   it("shows lint configuration hint", async () => {
-    // Hint renders regardless of whether the action button is "Run Lint" or
-    // "Clear" — the default fixture (last_run completed) shows Clear.
     setup();
     await waitFor(() => {
       expect(screen.getByText("Level 2 — Consistency (3 rules)")).toBeDefined();
@@ -521,16 +518,11 @@ describe("HealthCheckPanel", () => {
       expect(screen.getByText("Bar")).toBeDefined();
       expect(screen.getByText("Baz")).toBeDefined();
     });
-    // Click a related entity
     await userEvent.click(screen.getByText("Bar"));
     expect(onNav).toHaveBeenCalledWith("http://example.org/Bar", "class");
   });
 
   it("routes duplicate IRIs using the issue's own subject_type", async () => {
-    // For duplicate-label and similar rules, the related entities listed in
-    // duplicate_iris are the same kind as the issue's subject. Hardcoding
-    // "class" would route property/individual duplicates to the class tree
-    // and surface a 404.
     mockLintApi.getIssues.mockResolvedValue({
       items: [
         {
@@ -786,7 +778,6 @@ describe("HealthCheckPanel", () => {
       await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(
         screen.getByText("Run Check")
       );
-      // Advance through polling delays
       for (let i = 0; i < 5; i++) {
         await vi.advanceTimersByTimeAsync(2000);
       }
@@ -946,8 +937,7 @@ describe("HealthCheckPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("Missing label")).toBeDefined();
     });
-    // Find dismiss buttons (X buttons inside issue cards) - they have title "Dismiss issue"
-    const dismissBtns = screen.getAllByTitle("Dismiss issue");
+    const dismissBtns = screen.getAllByLabelText("Dismiss issue");
     expect(dismissBtns.length).toBeGreaterThan(0);
     await userEvent.click(dismissBtns[0]);
     expect(mockLintApi.dismissIssue).toHaveBeenCalledWith("p1", "i1", "tok");
@@ -1093,7 +1083,6 @@ describe("HealthCheckPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("Run Check")).toBeDefined();
     });
-    // Button is disabled, but test the handler guard directly
     expect(mockQualityApi.triggerConsistencyCheck).not.toHaveBeenCalled();
   });
 
@@ -1113,7 +1102,6 @@ describe("HealthCheckPanel", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
       mockQualityApi.triggerDuplicateDetection.mockResolvedValue({ job_id: "dup-slow" });
-      // Always return pending so the loop keeps polling until timeout
       mockQualityApi.getDuplicateJobResult.mockResolvedValue({
         job_id: "dup-slow",
         status: "pending",
@@ -1133,7 +1121,6 @@ describe("HealthCheckPanel", () => {
         screen.getByText("Find Duplicates")
       );
 
-      // Advance enough time for all polling attempts
       for (let i = 0; i < 25; i++) {
         await vi.advanceTimersByTimeAsync(6000);
       }
@@ -1188,14 +1175,11 @@ describe("HealthCheckPanel", () => {
         screen.getByText("Find Duplicates")
       );
 
-      // Let one poll iteration start
       await vi.advanceTimersByTimeAsync(1500);
       const callsBefore = mockQualityApi.getDuplicateJobResult.mock.calls.length;
 
-      // Unmount mid-poll — should cancel further iterations
       unmount();
 
-      // Advance more time — should NOT produce more API calls
       await vi.advanceTimersByTimeAsync(10_000);
       expect(mockQualityApi.getDuplicateJobResult.mock.calls.length).toBe(callsBefore);
     } finally {
@@ -1204,7 +1188,6 @@ describe("HealthCheckPanel", () => {
   });
 
   it("cancels deferred cache fetch when tab switches before rAF fires", async () => {
-    // Override rAF to be async (not synchronous like the default mock)
     const pendingCallbacks: FrameRequestCallback[] = [];
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       pendingCallbacks.push(cb);
@@ -1216,23 +1199,16 @@ describe("HealthCheckPanel", () => {
       expect(screen.getByText("Consistency")).toBeDefined();
     });
 
-    // Switch to Consistency — queues an rAF callback
     await userEvent.click(screen.getByText("Consistency"));
 
-    // Switch away before rAF fires — sets cancelled = true
     await userEvent.click(screen.getByText("Duplicates"));
 
-    // Now flush the pending rAF — the cancelled guard should prevent the fetch
     pendingCallbacks.forEach((cb) => cb(0));
 
-    // Neither fetch should have been called from the cancelled consistency rAF
-    // (the duplicates rAF may or may not have fired depending on timing)
-    // Wait a tick for any promises to settle
     await waitFor(() => {
       expect(screen.getByText("No duplicates detected")).toBeDefined();
     });
 
-    // Restore the synchronous mock for other tests
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => { cb(0); return 0; });
   });
 

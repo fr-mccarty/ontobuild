@@ -56,23 +56,19 @@ export function useAutoSave({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [restoredDraft, setRestoredDraft] = useState<DraftEntry | null>(null);
 
-  // Refs to hold current edit state so flush closure reads latest values
   const editStateRef = useRef<EditState | null>(null);
   const classDetailRef = useRef<OWLClassDetail | null>(null);
   const flushingRef = useRef(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep classDetail ref up to date
   useEffect(() => {
     classDetailRef.current = classDetail;
   }, [classDetail]);
 
-  // Check for restored draft on class change
   useEffect(() => {
     if (!classIri || !branch) return;
     const key = draftKey(projectId, branch, classIri);
     const draft = getDraft(key);
-    // Only restore class drafts (no entityType or entityType === "class")
     if (draft && (!draft.entityType || draft.entityType === "class")) {
       setRestoredDraft(draft as DraftEntry);
     } else {
@@ -87,7 +83,6 @@ export function useAutoSave({
     setRestoredDraft(null);
   }, []);
 
-  // Discard draft for current classIri (used by Cancel)
   const discardDraft = useCallback(() => {
     if (!classIri || !branch) return;
     const key = draftKey(projectId, branch, classIri);
@@ -99,13 +94,11 @@ export function useAutoSave({
     editStateRef.current = null;
   }, [classIri, branch, projectId, clearDraft, editStateRef]);
 
-  // Save edit state to draft store (Tier 1: instant, local)
   const triggerSave = useCallback(() => {
     if (!classIri || !branch || !canEdit) return;
     const state = editStateRef.current;
     if (!state) return;
 
-    // Validate: at least one non-empty label
     const validLabels = state.labels.filter((l) => l.value.trim());
     if (validLabels.length === 0) {
       setValidationError("At least one label is required");
@@ -127,18 +120,13 @@ export function useAutoSave({
     setSaveStatus("draft");
     setSaveError(null);
 
-    // Clear any "saved" fade timer
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
   }, [classIri, branch, projectId, canEdit, setDraft]);
 
-  // Flush draft to git (Tier 2: commit on navigate away)
-  // Returns true on success, false on error or no-op
   const flushToGit = useCallback(async (): Promise<boolean> => {
     if (flushingRef.current) return false;
     if (!classIri || !branch || !canEdit || !onUpdateClass) return false;
 
-    // Re-validate current edit state to prevent flushing a stale draft
-    // after triggerSave() aborted on validation
     const state = editStateRef.current;
     if (state && state.labels.every((l) => !l.value.trim())) {
       setValidationError("At least one label is required");
@@ -149,7 +137,6 @@ export function useAutoSave({
     const key = draftKey(projectId, branch, classIri);
     const rawDraft = getDraft(key);
     if (!rawDraft) return false;
-    // Only flush class drafts
     if (rawDraft.entityType && rawDraft.entityType !== "class") return false;
     const draft = rawDraft as DraftEntry;
 
@@ -160,7 +147,6 @@ export function useAutoSave({
     setSaveError(null);
 
     try {
-      // Filter out empty annotation values
       const cleanAnnotations = draft.annotations
         .map((a) => ({
           ...a,
@@ -168,7 +154,6 @@ export function useAutoSave({
         }))
         .filter((a) => a.values.length > 0);
 
-      // Convert relationships back to annotation format
       const relationshipAnnotations: AnnotationUpdate[] = draft.relationships
         .filter((g) => g.targets.length > 0)
         .map((g) => ({
@@ -192,7 +177,6 @@ export function useAutoSave({
       clearDraft(key);
       setSaveStatus("saved");
 
-      // Fade "saved" indicator after 2s
       savedTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
       return true;
     } catch (err) {
@@ -206,7 +190,6 @@ export function useAutoSave({
     }
   }, [classIri, branch, projectId, canEdit, onUpdateClass, getDraft, clearDraft]);
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);

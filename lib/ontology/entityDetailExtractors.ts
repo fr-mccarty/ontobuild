@@ -1,8 +1,3 @@
-/**
- * Entity detail extractors — transform ParsedTriple[] into typed detail objects
- * for PropertyDetailPanel and IndividualDetailPanel.
- */
-
 import { parseBlockTriples, type ParsedTriple } from "@/lib/ontology/turtleBlockParser";
 import type { LocalizedString, AnnotationUpdate } from "@/lib/api/client";
 import {
@@ -13,15 +8,12 @@ import {
   IS_DEFINED_BY_IRI,
 } from "@/lib/ontology/annotationProperties";
 
-// ── Well-known IRIs ───────────────────────────────────────────────────
-
 const RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 
-// OWL property types
+const OWL_OBJECT_PROPERTY = "http://www.w3.org/2002/07/owl#ObjectProperty";
 const OWL_DATATYPE_PROPERTY = "http://www.w3.org/2002/07/owl#DatatypeProperty";
 const OWL_ANNOTATION_PROPERTY = "http://www.w3.org/2002/07/owl#AnnotationProperty";
 
-// OWL property characteristics
 const OWL_FUNCTIONAL = "http://www.w3.org/2002/07/owl#FunctionalProperty";
 const OWL_INVERSE_FUNCTIONAL = "http://www.w3.org/2002/07/owl#InverseFunctionalProperty";
 const OWL_TRANSITIVE = "http://www.w3.org/2002/07/owl#TransitiveProperty";
@@ -30,7 +22,6 @@ const OWL_ASYMMETRIC = "http://www.w3.org/2002/07/owl#AsymmetricProperty";
 const OWL_REFLEXIVE = "http://www.w3.org/2002/07/owl#ReflexiveProperty";
 const OWL_IRREFLEXIVE = "http://www.w3.org/2002/07/owl#IrreflexiveProperty";
 
-// OWL/RDFS predicates for properties
 const RDFS_DOMAIN = "http://www.w3.org/2000/01/rdf-schema#domain";
 const RDFS_RANGE = "http://www.w3.org/2000/01/rdf-schema#range";
 const RDFS_SUB_PROPERTY_OF = "http://www.w3.org/2000/01/rdf-schema#subPropertyOf";
@@ -39,7 +30,6 @@ const OWL_EQUIVALENT_PROPERTY = "http://www.w3.org/2002/07/owl#equivalentPropert
 const OWL_PROPERTY_DISJOINT_WITH = "http://www.w3.org/2002/07/owl#propertyDisjointWith";
 const OWL_DEPRECATED = "http://www.w3.org/2002/07/owl#deprecated";
 
-// OWL individual predicates
 const OWL_NAMED_INDIVIDUAL = "http://www.w3.org/2002/07/owl#NamedIndividual";
 const OWL_SAME_AS = "http://www.w3.org/2002/07/owl#sameAs";
 const OWL_DIFFERENT_FROM = "http://www.w3.org/2002/07/owl#differentFrom";
@@ -56,7 +46,6 @@ export const PROPERTY_CHARACTERISTIC_TYPES = [
 
 const CHARACTERISTIC_IRIS = new Set<string>(PROPERTY_CHARACTERISTIC_TYPES.map((c) => c.iri));
 
-// IRIs that belong to specific sections (not general annotations)
 const PROPERTY_METADATA_IRIS = new Set([
   RDF_TYPE, LABEL_IRI, COMMENT_IRI, DEFINITION_IRI,
   RDFS_DOMAIN, RDFS_RANGE, RDFS_SUB_PROPERTY_OF,
@@ -70,9 +59,7 @@ const INDIVIDUAL_METADATA_IRIS = new Set([
   SEE_ALSO_IRI, IS_DEFINED_BY_IRI,
 ]);
 
-// ── Types ─────────────────────────────────────────────────────────────
-
-export type PropertyType = "object" | "data" | "annotation";
+export type PropertyType = "object" | "data" | "annotation" | "other";
 
 export interface ParsedPropertyDetail {
   propertyType: PropertyType;
@@ -84,7 +71,7 @@ export interface ParsedPropertyDetail {
   rangeIris: string[];
   parentIris: string[];
   inverseOf: string | null;
-  characteristics: string[]; // IRIs of characteristic types
+  characteristics: string[];
   deprecated: boolean;
   equivalentIris: string[];
   disjointIris: string[];
@@ -105,7 +92,7 @@ export interface ParsedIndividualDetail {
   comments: LocalizedString[];
   definitions: LocalizedString[];
   annotations: AnnotationUpdate[];
-  typeIris: string[]; // rdf:type excluding owl:NamedIndividual
+  typeIris: string[];
   sameAsIris: string[];
   differentFromIris: string[];
   deprecated: boolean;
@@ -114,8 +101,6 @@ export interface ParsedIndividualDetail {
   seeAlsoIris: string[];
   isDefinedByIris: string[];
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────
 
 function extractLiterals(triples: ParsedTriple[], predicateIri: string): LocalizedString[] {
   return triples
@@ -146,7 +131,6 @@ function isDeprecated(triples: ParsedTriple[]): boolean {
   );
 }
 
-/** Group remaining annotation triples into AnnotationUpdate[] */
 function groupAnnotations(
   triples: ParsedTriple[],
   excludeIris: Set<string>,
@@ -167,12 +151,6 @@ function groupAnnotations(
   }));
 }
 
-// ── Public API ────────────────────────────────────────────────────────
-
-/**
- * Extract property detail from Turtle source.
- * Returns null if the property block cannot be found.
- */
 export function extractPropertyDetail(
   source: string,
   propertyIri: string,
@@ -180,16 +158,16 @@ export function extractPropertyDetail(
   const triples = parseBlockTriples(source, propertyIri);
   if (!triples) return null;
 
-  // Determine property type from rdf:type triples
   const typeIris = extractIris(triples, RDF_TYPE);
-  let propertyType: PropertyType = "object";
-  if (typeIris.includes(OWL_DATATYPE_PROPERTY)) {
+  let propertyType: PropertyType = "other";
+  if (typeIris.includes(OWL_OBJECT_PROPERTY)) {
+    propertyType = "object";
+  } else if (typeIris.includes(OWL_DATATYPE_PROPERTY)) {
     propertyType = "data";
   } else if (typeIris.includes(OWL_ANNOTATION_PROPERTY)) {
     propertyType = "annotation";
   }
 
-  // Extract characteristics from rdf:type
   const characteristics = typeIris.filter((iri) => CHARACTERISTIC_IRIS.has(iri));
 
   return {
@@ -211,10 +189,6 @@ export function extractPropertyDetail(
   };
 }
 
-/**
- * Extract individual detail from Turtle source.
- * Returns null if the individual block cannot be found.
- */
 export function extractIndividualDetail(
   source: string,
   individualIri: string,
@@ -222,18 +196,14 @@ export function extractIndividualDetail(
   const triples = parseBlockTriples(source, individualIri);
   if (!triples) return null;
 
-  // Types: rdf:type excluding owl:NamedIndividual
   const allTypeIris = extractIris(triples, RDF_TYPE);
   const typeIris = allTypeIris.filter((iri) => iri !== OWL_NAMED_INDIVIDUAL);
 
-  // Property assertions: any predicate NOT in the known metadata set
   const objectPropertyAssertions: PropertyAssertion[] = [];
   const dataPropertyAssertions: PropertyAssertion[] = [];
 
   for (const t of triples) {
     if (INDIVIDUAL_METADATA_IRIS.has(t.predicate)) continue;
-    // Skip annotation properties (literal-valued predicates in known annotation vocabs)
-    // These are handled by groupAnnotations
 
     if (t.object.type === "iri") {
       objectPropertyAssertions.push({
@@ -242,8 +212,6 @@ export function extractIndividualDetail(
       });
     } else if (t.object.type === "literal") {
       const obj = t.object as { type: "literal"; value: string; lang?: string; datatype?: string };
-      // Check if this is a known annotation property (literal-valued)
-      // If so, it'll be grouped in annotations instead
       const isKnownAnnotation = !INDIVIDUAL_METADATA_IRIS.has(t.predicate) &&
         groupAnnotations([t], INDIVIDUAL_METADATA_IRIS).length > 0;
       if (!isKnownAnnotation) {
@@ -257,9 +225,6 @@ export function extractIndividualDetail(
     }
   }
 
-  // For annotations, we need to separate literal predicates that are "annotation-like"
-  // from data property assertions. We consider predicates from known annotation vocabularies
-  // as annotations, and everything else as property assertions.
   const knownAnnotationPrefixes = [
     "http://www.w3.org/2004/02/skos/core#",
     "http://purl.org/dc/elements/1.1/",
@@ -287,7 +252,6 @@ export function extractIndividualDetail(
     definitions: extractLiterals(triples, DEFINITION_IRI),
     annotations: [
       ...groupAnnotations(triples, INDIVIDUAL_METADATA_IRIS),
-      // Remove duplicates from annotationTriples that groupAnnotations already caught
     ].filter((a, i, arr) => arr.findIndex((b) => b.property_iri === a.property_iri) === i),
     typeIris,
     sameAsIris: extractIris(triples, OWL_SAME_AS),

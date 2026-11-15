@@ -33,8 +33,6 @@ describe("revisionsApi", () => {
     mockFetch.mockReset();
   });
 
-  // --- getHistory ---
-
   describe("getHistory", () => {
     it("calls GET /api/v1/projects/:id/revisions with default limit", async () => {
       const response = { project_id: "p1", commits: [], total: 0 };
@@ -75,8 +73,6 @@ describe("revisionsApi", () => {
     });
   });
 
-  // --- getFileAtVersion ---
-
   describe("getFileAtVersion", () => {
     it("calls GET with version and default filename", async () => {
       const response = { project_id: "p1", version: "abc123", filename: "ontology.ttl", content: "@prefix..." };
@@ -110,8 +106,6 @@ describe("revisionsApi", () => {
     });
   });
 
-  // --- getDiff ---
-
   describe("getDiff", () => {
     it("calls GET with from_version and default to_version", async () => {
       const response = { project_id: "p1", from_version: "a", to_version: "HEAD", files_changed: 0, changes: [] };
@@ -142,8 +136,6 @@ describe("branchesApi", () => {
     mockFetch.mockReset();
   });
 
-  // --- list ---
-
   describe("list", () => {
     it("calls GET /api/v1/projects/:id/branches", async () => {
       const response = {
@@ -173,8 +165,6 @@ describe("branchesApi", () => {
     });
   });
 
-  // --- create ---
-
   describe("create", () => {
     it("calls POST /api/v1/projects/:id/branches", async () => {
       const branch = { name: "feature", is_current: false, is_default: false, commits_ahead: 0, commits_behind: 0, can_delete: true, has_open_pr: false, has_delete_permission: true };
@@ -191,8 +181,6 @@ describe("branchesApi", () => {
     });
   });
 
-  // --- switch ---
-
   describe("switch", () => {
     it("calls POST with URL-encoded branch name", async () => {
       mockOk({ name: "feat/my-branch" });
@@ -204,8 +192,6 @@ describe("branchesApi", () => {
       expect(options.method).toBe("POST");
     });
   });
-
-  // --- delete ---
 
   describe("delete", () => {
     it("calls DELETE with URL-encoded branch name and force param", async () => {
@@ -228,8 +214,6 @@ describe("branchesApi", () => {
       expect(url).toContain("force=false");
     });
   });
-
-  // --- savePreference ---
 
   describe("savePreference", () => {
     it("calls PUT /api/v1/projects/:id/branch-preference", async () => {

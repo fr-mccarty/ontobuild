@@ -61,7 +61,6 @@ export function PRCreateModal({
       onCreated?.(pr);
       onClose();
 
-      // Reset form
       setTitle("");
       setDescription("");
     } catch (err) {
@@ -77,15 +76,12 @@ export function PRCreateModal({
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-black/50"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
           <h2 className="text-lg font-semibold">Create Pull Request</h2>
           <button
@@ -96,7 +92,6 @@ export function PRCreateModal({
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="px-6 py-4">
           {error && (
             <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
@@ -104,7 +99,6 @@ export function PRCreateModal({
             </div>
           )}
 
-          {/* Branch selection */}
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-slate-50 p-3 dark:bg-slate-700/50">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-medium text-slate-500">
@@ -149,7 +143,6 @@ export function PRCreateModal({
             </div>
           </div>
 
-          {/* Title */}
           <div className="mb-4">
             <label
               htmlFor="pr-title"
@@ -168,7 +161,6 @@ export function PRCreateModal({
             />
           </div>
 
-          {/* Description */}
           <div className="mb-4">
             <label
               htmlFor="pr-description"
@@ -186,7 +178,6 @@ export function PRCreateModal({
             />
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end gap-3">
             <Button
               type="button"

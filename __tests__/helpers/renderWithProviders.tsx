@@ -1,5 +1,6 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { render, renderHook, type RenderOptions } from "@testing-library/react";
 import type { ReactNode, ReactElement } from "react";
 
@@ -9,7 +10,11 @@ export function createQueryWrapper() {
   });
   // eslint-disable-next-line react/display-name
   return ({ children }: { children: ReactNode }) =>
-    React.createElement(QueryClientProvider, { client: queryClient }, children);
+    React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      React.createElement(TooltipPrimitive.Provider, null, children),
+    );
 }
 
 export function renderWithQueryClient(ui: ReactElement, options?: RenderOptions) {

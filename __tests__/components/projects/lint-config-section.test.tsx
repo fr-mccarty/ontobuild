@@ -1,13 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, waitFor, fireEvent, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderWithQueryClient } from "@/__tests__/helpers/renderWithProviders";
 
-// ---- matchMedia polyfill (must run BEFORE module imports load the editor
-// mode store, whose top-level code calls window.matchMedia(...).addEventListener
-// during module initialization). vi.hoisted runs before ES-module hoisting so
-// the polyfill is in place before any subsequent import resolves. ----
 vi.hoisted(() => {
   if (typeof globalThis.window === "undefined") return;
   if (typeof window.matchMedia === "function") return;
@@ -26,7 +27,6 @@ vi.hoisted(() => {
   });
 });
 
-// Mock heavy dependencies that the settings page imports but LintConfigSection doesn't use
 vi.mock("@/components/layout/header", () => ({
   Header: () => null,
 }));
@@ -51,7 +51,6 @@ vi.mock("next/link", () => ({
     children,
 }));
 
-// Mock dependencies before imports
 vi.mock("@/lib/api/lint", () => ({
   lintApi: {
     getRules: vi.fn(),
@@ -121,8 +120,6 @@ const sampleRules: LintRuleInfo[] = [
   { rule_id: "R004", name: "Style hint", description: "Consider using camelCase", severity: "info", scope: ["class", "property", "individual"] },
 ];
 
-// --- Pure function tests ---
-
 describe("getSeverityColor", () => {
   it("returns red classes for error", () => {
     expect(getSeverityColor("error")).toContain("bg-red-100");
@@ -140,8 +137,6 @@ describe("getSeverityColor", () => {
     expect(getSeverityColor("unknown")).toContain("bg-slate-100");
   });
 });
-
-// --- Component tests ---
 
 const sampleLevels = {
   levels: [
@@ -161,11 +156,10 @@ describe("LintConfigSection", () => {
   });
 
   it("shows loading spinner initially", () => {
-    mockLintApi.getRules.mockReturnValue(new Promise(() => {})); // never resolves
+    mockLintApi.getRules.mockReturnValue(new Promise(() => {}));
     renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
 
     expect(screen.getByText("Lint Rule Configuration")).toBeDefined();
-    // Loading spinner is present (the animate-spin div)
   });
 
   it("renders rules after loading", async () => {
@@ -218,7 +212,6 @@ describe("LintConfigSection", () => {
     renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
 
     await waitFor(() => {
-      // Level 2 enables error + warning rules = 3 of 4
       expect(screen.getByText("Rules (3 of 4 enabled)")).toBeDefined();
     });
   });
@@ -299,7 +292,6 @@ describe("LintConfigSection", () => {
     await user.click(screen.getByText("Save Lint Configuration"));
 
     await waitFor(() => {
-      // Preset mode must not include enabled_rules (backend's enforce_xor).
       expect(mockLintApi.updateLintConfig).toHaveBeenCalledWith(
         "p1",
         { lint_level: 3 },
@@ -310,10 +302,6 @@ describe("LintConfigSection", () => {
   });
 
   it("saves with lint_level: null when switching from preset to Custom", async () => {
-    // Round-trip the wire format for custom mode: starting from a preset
-    // (Level 2 → R001/R002/R003), switching to Custom and saving must send
-    // `lint_level: null` with the explicit rule list. Without this, the
-    // backend would interpret the request as a preset and ignore enabled_rules.
     const user = userEvent.setup();
     mockLintApi.getRules.mockResolvedValue({ rules: sampleRules });
     mockLintApi.getLintConfig.mockResolvedValue({
@@ -339,7 +327,6 @@ describe("LintConfigSection", () => {
         "tok"
       );
     });
-    // The rule list carried over from the preset should be persisted.
     const [, payload] = mockLintApi.updateLintConfig.mock.calls[0];
     expect(new Set((payload as { enabled_rules: string[] }).enabled_rules)).toEqual(
       new Set(["R001", "R002", "R003"])
@@ -347,10 +334,6 @@ describe("LintConfigSection", () => {
   });
 
   it("does not overwrite in-progress edits when the config refetches", async () => {
-    // The hasChangesRef short-circuit in the config-sync effect prevents a
-    // background refetch (e.g. on window focus) from clobbering whatever the
-    // user is in the middle of editing. Without it, switching to Level 3 and
-    // then triggering a refetch would silently revert the level to 2.
     const user = userEvent.setup();
     mockLintApi.getRules.mockResolvedValue({ rules: sampleRules });
     mockLintApi.getLintConfig.mockResolvedValue({
@@ -370,17 +353,14 @@ describe("LintConfigSection", () => {
       expect(screen.getByText(/Level 3 — Labels/)).toBeDefined();
     });
 
-    // Make a dirty edit.
     await user.click(screen.getByText(/Level 3 — Labels/));
     await waitFor(() => {
       const lvl3Btn = screen.getByText(/Level 3 — Labels/).closest("button")!;
       expect(lvl3Btn.getAttribute("aria-pressed")).toBe("true");
     });
 
-    // Simulate a background refetch that returns the original Level 2 payload.
     await queryClient.invalidateQueries({ queryKey: ["lintConfig"] });
 
-    // The dirty edit must survive the refetch.
     await waitFor(() => {
       const lvl3Btn = screen.getByText(/Level 3 — Labels/).closest("button")!;
       expect(lvl3Btn.getAttribute("aria-pressed")).toBe("true");
@@ -403,14 +383,10 @@ describe("LintConfigSection", () => {
       ).toBeDefined();
     });
 
-    // Save button should not be present
     expect(screen.queryByText("Save Lint Configuration")).toBeNull();
   });
 
   it("surfaces the API error when config endpoint returns 404", async () => {
-    // No silent fallback — a 404 from the config endpoint is now reported to
-    // the user instead of fabricating Level 2 defaults that could overwrite
-    // real config on save.
     mockLintApi.getRules.mockResolvedValue({ rules: sampleRules });
     mockLintApi.getLintConfig.mockRejectedValue(new MockApiError(404, "Not Found", "Not found"));
 
@@ -472,7 +448,6 @@ describe("LintConfigSection", () => {
       expect(switches.length).toBe(sampleRules.length);
     });
 
-    // Level 2 enables error + warning rules (R001, R002, R003), not info (R004)
     const toggleR001 = screen.getByLabelText("Toggle Missing label");
     expect(toggleR001.getAttribute("aria-checked")).toBe("true");
 
@@ -530,7 +505,6 @@ describe("LintConfigSection", () => {
     mockLintApi.getLintConfig.mockResolvedValue({
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
-    // Clear Results only renders when there's something to clear.
     mockLintApi.getStatus.mockResolvedValue(summaryWithResults);
     mockLintApi.clearResults.mockResolvedValue(undefined);
 
@@ -563,7 +537,6 @@ describe("LintConfigSection", () => {
       expect(screen.getByText("Custom")).toBeDefined();
     });
 
-    // Should show custom as active (lint_level: null maps to 0)
     await waitFor(() => {
       const customBtn = screen.getByText("Custom").closest("button")!;
       expect(customBtn.getAttribute("aria-pressed")).toBe("true");
@@ -579,7 +552,6 @@ describe("LintConfigSection", () => {
     renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
 
     await waitFor(() => {
-      // Level 1 has 1 rule, Level 2 has 3, Level 3 has 4
       expect(screen.getByText(/1 rules/)).toBeDefined();
       expect(screen.getByText(/3 rules/)).toBeDefined();
       expect(screen.getByText(/4 rules/)).toBeDefined();
@@ -594,19 +566,20 @@ describe("LintConfigSection", () => {
 
     renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
 
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     await waitFor(() => {
-      // R001 has scope ["class", "property", "individual"] → 3 badges (C, P, I)
-      // R003 has scope ["class"] → 1 badge (C)
-      // All rules together: C appears in all 4 rules
-      const allBadges = screen.getAllByTitle("class");
-      expect(allBadges.length).toBe(4); // all 4 rules have "class" scope
+      const allBadges = screen.getAllByText("C");
+      expect(allBadges.length).toBe(4);
 
-      const propBadges = screen.getAllByTitle("property");
-      expect(propBadges.length).toBe(3); // R001, R002, R004 have "property" scope
+      const propBadges = screen.getAllByText("P");
+      expect(propBadges.length).toBe(3);
 
-      const indBadges = screen.getAllByTitle("individual");
-      expect(indBadges.length).toBe(3); // R001, R002, R004 have "individual" scope
+      const indBadges = screen.getAllByText("I");
+      expect(indBadges.length).toBe(3);
     });
+
+    fireEvent.focus(screen.getAllByText("P")[0]);
+    expect((await screen.findAllByText("property")).length).toBeGreaterThan(0);
   });
 
   it("shows error when clearing results fails", async () => {
@@ -632,8 +605,6 @@ describe("LintConfigSection", () => {
   });
 
   it("shows Run Lint when no run exists, and triggers a run on click", async () => {
-    // Default status mock has last_run: null — so the Run Lint variant should
-    // render in place of Clear Results.
     const user = userEvent.setup();
     mockLintApi.getRules.mockResolvedValue({ rules: sampleRules });
     mockLintApi.getLintConfig.mockResolvedValue({

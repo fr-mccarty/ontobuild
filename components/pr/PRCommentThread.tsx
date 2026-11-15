@@ -5,6 +5,7 @@ import { pullRequestsApi, type Comment } from "@/lib/api/pullRequests";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Reply, Edit, Trash2, User, CornerDownRight } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface PRCommentThreadProps {
   projectId: string;
@@ -115,7 +116,6 @@ export function PRCommentThread({
         )}
       >
         <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-          {/* Header */}
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700">
@@ -134,31 +134,33 @@ export function PRCommentThread({
               </div>
             </div>
 
-            {/* Actions */}
             {isOwn && !isEditing && (
               <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <button
-                  onClick={() => {
-                    setEditingId(comment.id);
-                    setEditBody(comment.body);
-                  }}
-                  className="rounded-sm p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"
-                  title="Edit"
-                >
-                  <Edit className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(comment.id)}
-                  className="rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                  title="Delete"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <Tooltip content="Edit">
+                  <button
+                    onClick={() => {
+                      setEditingId(comment.id);
+                      setEditBody(comment.body);
+                    }}
+                    className="rounded-sm p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"
+                    aria-label="Edit"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                </Tooltip>
+                <Tooltip content="Delete">
+                  <button
+                    onClick={() => handleDelete(comment.id)}
+                    className="rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </Tooltip>
               </div>
             )}
           </div>
 
-          {/* Body */}
           {isEditing ? (
             <div className="space-y-2">
               <textarea
@@ -193,7 +195,6 @@ export function PRCommentThread({
             </p>
           )}
 
-          {/* Reply button */}
           {!isReply && !isEditing && (
             <button
               onClick={() => setReplyingTo(comment.id)}
@@ -205,7 +206,6 @@ export function PRCommentThread({
           )}
         </div>
 
-        {/* Reply form */}
         {replyingTo === comment.id && (
           <div className="ml-8 mt-2 border-l-2 border-slate-200 pl-4 dark:border-slate-700">
             <div className="flex items-start gap-2">
@@ -243,7 +243,6 @@ export function PRCommentThread({
           </div>
         )}
 
-        {/* Nested replies */}
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-3 space-y-3">
             {comment.replies.map((reply) => renderComment(reply, true))}

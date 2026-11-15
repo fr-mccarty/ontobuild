@@ -36,6 +36,7 @@ import {
 } from "@/lib/ontology/entityDetailExtractors";
 import { type IndividualDraftEntry } from "@/lib/stores/draftStore";
 import { useIriLabels } from "@/lib/hooks/useIriLabels";
+import { Tooltip } from "@/components/ui/tooltip";
 
 function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
@@ -76,7 +77,6 @@ export function IndividualDetailPanel({
     return extractIndividualDetail(sourceContent, individualIri);
   }, [individualIri, sourceContent, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Collect all IRIs that need label resolution
   const allDisplayedIris = useMemo(() => {
     if (!detail) return [];
     const iris: string[] = [
@@ -86,16 +86,13 @@ export function IndividualDetailPanel({
       ...detail.seeAlsoIris,
       ...detail.isDefinedByIris,
     ];
-    // Object property assertion property IRIs and target IRIs
     for (const a of detail.objectPropertyAssertions) {
       iris.push(a.propertyIri);
       if (a.targetIri) iris.push(a.targetIri);
     }
-    // Data property assertion property IRIs
     for (const a of detail.dataPropertyAssertions) {
       iris.push(a.propertyIri);
     }
-    // Annotation property IRIs
     for (const ann of detail.annotations) {
       iris.push(ann.property_iri);
     }
@@ -233,12 +230,6 @@ export function IndividualDetailPanel({
     setEditAnnotations(regularAnnotations);
   }, []);
 
-  // Flush any pending draft to git when this panel unmounts. The flush
-  // closure captures props that can change between mount and unmount, so
-  // route the call through a ref that we keep up to date in an effect — the
-  // cleanup then sees the latest closure rather than the one captured on
-  // first render. (Mirrors the pattern used in ClassDetailPanel /
-  // PropertyDetailPanel.)
   const flushToGitRef = useRef(flushToGit);
   useEffect(() => {
     flushToGitRef.current = flushToGit;
@@ -249,7 +240,6 @@ export function IndividualDetailPanel({
     };
   }, []);
 
-  // Reset edit state when the selected individual changes
   useEffect(() => {
     editInitializedRef.current = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on selection change; matches ClassDetailPanel/PropertyDetailPanel patterns
@@ -263,13 +253,11 @@ export function IndividualDetailPanel({
     setIsEditing(true);
   }, [detail, initEditState]);
 
-  // Cancel: discard draft, re-init from server. Stay in edit mode.
   const cancelEditMode = useCallback(() => {
     discardDraft();
     if (detail) initEditState(detail);
   }, [detail, discardDraft, initEditState]);
 
-  // Manual save: flush the current draft to git. Stays in edit mode.
   const flushDraftToGit = useCallback(async () => {
     triggerSave();
     await flushToGit();
@@ -301,7 +289,6 @@ export function IndividualDetailPanel({
     enterEditMode();
   }, [detail, canEdit, restoredDraft, individualIri, clearRestoredDraft, onUpdateIndividual, isEditing, enterEditMode]);
 
-  // ── Edit helpers ──
   const updateLabel = useCallback((index: number, field: "value" | "lang", val: string) => {
     setEditLabels((prev) => ensureTrailingEmpty(prev.map((l, i) => (i === index ? { ...l, [field]: val } : l))));
   }, []);
@@ -365,7 +352,6 @@ export function IndividualDetailPanel({
     setEditRelationships((prev) => [...prev, { property_iri: SEE_ALSO_IRI, property_label: "See Also", targets: [] }]);
   }, []);
 
-  // ── Render ──
   if (!individualIri) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
@@ -394,7 +380,9 @@ export function IndividualDetailPanel({
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{getLocalName(individualIri)}</h2>
-            <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={individualIri}>{individualIri}</p>
+            <Tooltip content={individualIri}>
+              <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{individualIri}</p>
+            </Tooltip>
           </div>
         </div>
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-900/10">
@@ -408,7 +396,6 @@ export function IndividualDetailPanel({
 
   return (
     <div className="flex h-full w-full flex-col">
-      {/* Header — pinned, always visible */}
       <div className="shrink-0 border-b border-slate-200 p-4 dark:border-slate-700">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border bg-purple-100 border-purple-300 dark:bg-purple-900/30 dark:border-purple-700">
@@ -427,18 +414,21 @@ export function IndividualDetailPanel({
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="rounded-full px-2 py-0.5 text-[10px] font-medium border bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-400">Individual</span>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400" title={individualIri}>{individualIri}</p>
+              <Tooltip content={individualIri}>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">{individualIri}</p>
+              </Tooltip>
               {onCopyIri && (
-                <button onClick={() => onCopyIri(individualIri)} className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700" title="Copy IRI">
-                  <Copy className="h-3 w-3" />
-                </button>
+                <Tooltip content="Copy IRI">
+                  <button onClick={() => onCopyIri(individualIri)} className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700" aria-label="Copy IRI">
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Auto-save affordance bar — pinned edit toolbar */}
       {isEditing && (
         <AutoSaveAffordanceBar
           status={saveStatus}
@@ -452,7 +442,6 @@ export function IndividualDetailPanel({
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-3">
-          {/* Labels */}
           {isEditing ? (
             <Section title="Label(s)" icon={<Tag className="h-4 w-4" />}>
               <div className="space-y-2">
@@ -479,7 +468,6 @@ export function IndividualDetailPanel({
             </Section>
           ) : null}
 
-          {/* Definitions */}
           {isEditing ? (
             <Section title="Definition" icon={<Lightbulb className="h-4 w-4" />}>
               <div className="space-y-2">
@@ -502,7 +490,6 @@ export function IndividualDetailPanel({
             </Section>
           ) : null}
 
-          {/* Comments */}
           {isEditing ? (
             <Section title="Comment(s)" icon={<MessageSquare className="h-4 w-4" />}>
               <div className="space-y-2">
@@ -525,7 +512,6 @@ export function IndividualDetailPanel({
             </Section>
           ) : null}
 
-          {/* Types */}
           {(isEditing || detail.typeIris.length > 0) && (
             <Section title="Type(s)" icon={<Layers className="h-4 w-4" />}>
               {isEditing ? (
@@ -544,7 +530,6 @@ export function IndividualDetailPanel({
             </Section>
           )}
 
-          {/* Same As */}
           {(isEditing || detail.sameAsIris.length > 0) && (
             <Section title="Same As" icon={<Equal className="h-4 w-4" />}>
               {isEditing ? (
@@ -563,7 +548,6 @@ export function IndividualDetailPanel({
             </Section>
           )}
 
-          {/* Different From */}
           {(isEditing || detail.differentFromIris.length > 0) && (
             <Section title="Different From" icon={<Ban className="h-4 w-4" />}>
               {isEditing ? (
@@ -582,7 +566,6 @@ export function IndividualDetailPanel({
             </Section>
           )}
 
-          {/* Object Property Assertions */}
           {isEditing && (
             <Section title="Object Properties" icon={<Box className="h-4 w-4" />}>
               <PropertyAssertionSection
@@ -609,19 +592,22 @@ export function IndividualDetailPanel({
               {detail.objectPropertyAssertions.map((a, idx) => (
                 <div key={idx} className="flex gap-4">
                   <div className="w-40 shrink-0 flex items-center">
-                    <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300" title={a.propertyIri}>
-                      {resolvedLabels?.[a.propertyIri] || getLocalName(a.propertyIri)}
-                    </span>
+                    <Tooltip content={a.propertyIri}>
+                      <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                        {resolvedLabels?.[a.propertyIri] || getLocalName(a.propertyIri)}
+                      </span>
+                    </Tooltip>
                   </div>
                   <div className="min-w-0 flex-1 flex items-center gap-2">
                     {a.targetIri ? (
-                      <button
-                        onClick={() => onNavigateToEntity?.(a.targetIri!)}
-                        className="truncate text-sm text-primary-600 hover:underline dark:text-primary-400"
-                        title={a.targetIri}
-                      >
-                        {resolvedLabels?.[a.targetIri] || getLocalName(a.targetIri)}
-                      </button>
+                      <Tooltip content={a.targetIri}>
+                        <button
+                          onClick={() => onNavigateToEntity?.(a.targetIri!)}
+                          className="truncate text-sm text-primary-600 hover:underline dark:text-primary-400"
+                        >
+                          {resolvedLabels?.[a.targetIri] || getLocalName(a.targetIri)}
+                        </button>
+                      </Tooltip>
                     ) : null}
                   </div>
                 </div>
@@ -629,7 +615,6 @@ export function IndividualDetailPanel({
             </div>
           )}
 
-          {/* Data Property Assertions */}
           {isEditing && (
             <Section title="Data Properties" icon={<Database className="h-4 w-4" />}>
               <PropertyAssertionSection
@@ -656,15 +641,19 @@ export function IndividualDetailPanel({
               {detail.dataPropertyAssertions.map((a, idx) => (
                 <div key={idx} className="flex gap-4">
                   <div className="w-40 shrink-0 flex items-center">
-                    <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300" title={a.propertyIri}>
-                      {resolvedLabels?.[a.propertyIri] || getLocalName(a.propertyIri)}
-                    </span>
+                    <Tooltip content={a.propertyIri}>
+                      <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                        {resolvedLabels?.[a.propertyIri] || getLocalName(a.propertyIri)}
+                      </span>
+                    </Tooltip>
                   </div>
                   <div className="min-w-0 flex-1 flex items-center gap-2">
                     {a.lang && <LanguageFlag lang={a.lang} />}
                     <span className="text-sm text-slate-700 dark:text-slate-300">{a.value}</span>
                     {a.datatype && (
-                      <span className="shrink-0 rounded-sm bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400" title={a.datatype}>{getLocalName(a.datatype)}</span>
+                      <Tooltip content={a.datatype}>
+                        <span className="shrink-0 rounded-sm bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">{getLocalName(a.datatype)}</span>
+                      </Tooltip>
                     )}
                   </div>
                 </div>
@@ -672,7 +661,6 @@ export function IndividualDetailPanel({
             </div>
           )}
 
-          {/* Annotations */}
           {isEditing ? (
             <Section title="Annotations" icon={<StickyNote className="h-4 w-4" />}>
               <div className="space-y-3">
@@ -719,7 +707,9 @@ export function IndividualDetailPanel({
                   return (
                     <div key={`${ann.property_iri}-${vi}`} className="flex gap-4">
                       <div className="w-40 shrink-0 flex items-center">
-                        <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300" title={curie}>{effectiveLabel}</span>
+                        <Tooltip content={curie}>
+                          <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">{effectiveLabel}</span>
+                        </Tooltip>
                       </div>
                       <div className="min-w-0 flex-1 flex items-center gap-2">
                         {v.lang && <LanguageFlag lang={v.lang} />}
@@ -732,7 +722,6 @@ export function IndividualDetailPanel({
             </div>
           ) : null}
 
-          {/* Relationships */}
           {(isEditing || detail.seeAlsoIris.length > 0 || detail.isDefinedByIris.length > 0) && (
             <Section title="Relationships" icon={<Link2 className="h-4 w-4" />}>
               <RelationshipSection
@@ -753,18 +742,15 @@ export function IndividualDetailPanel({
   );
 }
 
-// ── Shared sub-components ──
-
 function Section({ title, tooltip, icon, children }: { title: string; tooltip?: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex gap-4">
-      <div
-        className="w-40 shrink-0 flex items-start gap-1.5 pt-1"
-        title={tooltip}
-      >
-        {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</span>
-      </div>
+      <Tooltip content={tooltip}>
+        <div className="w-40 shrink-0 flex items-start gap-1.5 pt-1">
+          {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</span>
+        </div>
+      </Tooltip>
       <div className="min-w-0 flex-1">
         {children}
       </div>
@@ -777,9 +763,13 @@ function IriLinks({ iris, onNavigate, resolvedLabels }: { iris: string[]; onNavi
     <div className="space-y-1">
       {iris.map((iri) => (
         <div key={iri}>
-          <button onClick={() => onNavigate?.(iri)} className={cn("text-sm truncate max-w-full", onNavigate ? "text-primary-600 hover:underline dark:text-primary-400" : "text-slate-700 dark:text-slate-300")} title={iri} disabled={!onNavigate}>
-            {resolvedLabels?.[iri] || getLocalName(iri)}
-          </button>
+          <Tooltip content={iri}>
+            <span className="inline-flex max-w-full">
+              <button onClick={() => onNavigate?.(iri)} className={cn("text-sm truncate max-w-full", onNavigate ? "text-primary-600 hover:underline dark:text-primary-400" : "text-slate-700 dark:text-slate-300")} disabled={!onNavigate}>
+                {resolvedLabels?.[iri] || getLocalName(iri)}
+              </button>
+            </span>
+          </Tooltip>
         </div>
       ))}
     </div>
@@ -822,8 +812,12 @@ function IriList({ iris, onRemove, onAdd, onNavigate, projectId, accessToken, br
     <div className="space-y-2">
       {iris.map((iri) => (
         <div key={iri} className="flex items-center gap-2">
-          <button onClick={() => onNavigate?.(iri)} className="flex-1 truncate text-sm text-primary-600 hover:underline dark:text-primary-400" title={iri}>{resolvedLabels?.[iri] || getLocalName(iri)}</button>
-          <button onClick={() => onRemove(iri)} className="shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20" title="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
+          <Tooltip content={iri}>
+            <button onClick={() => onNavigate?.(iri)} className="flex-1 truncate text-sm text-primary-600 hover:underline dark:text-primary-400">{resolvedLabels?.[iri] || getLocalName(iri)}</button>
+          </Tooltip>
+          <Tooltip content="Remove">
+            <button onClick={() => onRemove(iri)} className="shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20" aria-label="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
+          </Tooltip>
         </div>
       ))}
       <div ref={containerRef} className="relative">

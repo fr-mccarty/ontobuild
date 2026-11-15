@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
-// Mock EntityTree
 vi.mock("@/components/editor/shared/EntityTree", () => ({
   EntityTree: (props: Record<string, unknown>) => (
     <div
@@ -76,7 +75,6 @@ describe("ClassTree", () => {
     expect(screen.getByTestId("entity-tree")).toBeDefined();
   });
 
-  // Search results mode
   it("does not render EntityTree when isSearching is true", () => {
     render(
       <ClassTree
@@ -197,7 +195,6 @@ describe("ClassTree", () => {
       />,
     );
     const alphaTexts = screen.getAllByText("Alpha");
-    // Only the label, not a duplicate local name
     expect(alphaTexts.length).toBe(1);
   });
 

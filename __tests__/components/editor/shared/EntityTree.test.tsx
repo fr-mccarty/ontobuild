@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-// Polyfill CSS.escape and scrollIntoView for jsdom
 if (typeof CSS === "undefined") {
   (globalThis as Record<string, unknown>).CSS = { escape: (s: string) => s };
 }
@@ -9,7 +8,6 @@ Element.prototype.scrollIntoView = Element.prototype.scrollIntoView || (() => {}
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-// Mock dnd-kit
 vi.mock("@dnd-kit/core", () => ({
   useDraggable: () => ({ attributes: {}, listeners: {}, setNodeRef: vi.fn() }),
   useDroppable: () => ({ setNodeRef: vi.fn(), isOver: false }),
@@ -129,7 +127,6 @@ describe("EntityTree", () => {
     );
     const tree = screen.getByRole("tree");
     fireEvent.keyDown(tree, { key: "ArrowDown" });
-    // Should set focus to Beta (next node)
     expect(tree.getAttribute("aria-activedescendant")).toContain("ex_org_B");
   });
 
@@ -237,7 +234,6 @@ describe("EntityTree", () => {
     );
     const tree = screen.getByRole("tree");
     fireEvent.keyDown(tree, { key: "ArrowRight" });
-    // Should focus child Beta
     expect(tree.getAttribute("aria-activedescendant")).toContain("ex_org_B");
   });
 
@@ -263,7 +259,6 @@ describe("EntityTree", () => {
     );
     const tree = screen.getByRole("tree");
     fireEvent.keyDown(tree, { key: "ArrowLeft" });
-    // Beta is not expanded, so should navigate to parent Alpha
     expect(tree.getAttribute("aria-activedescendant")).toContain("ex_org_A");
   });
 
@@ -298,10 +293,8 @@ describe("EntityTree", () => {
       />,
     );
     const tree = screen.getByRole("tree");
-    // First ArrowDown to set focusedIri
     fireEvent.keyDown(tree, { key: "ArrowDown" });
     expect(tree.getAttribute("aria-activedescendant")).toContain("ex_org_B");
-    // Now blur to clear
     fireEvent.blur(tree);
     expect(tree.getAttribute("aria-activedescendant")).toBeNull();
   });
@@ -373,7 +366,6 @@ describe("EntityTree", () => {
     );
     const tree = screen.getByRole("tree");
     fireEvent.keyDown(tree, { key: "ArrowLeft" });
-    // Node is not expanded and has no parent, so nothing should happen
     expect(onCollapse).not.toHaveBeenCalled();
     expect(tree.getAttribute("aria-activedescendant")).toBeNull();
   });
@@ -390,7 +382,6 @@ describe("EntityTree", () => {
       />,
     );
     const tree = screen.getByRole("tree");
-    // ArrowDown with no selection should still move focus
     fireEvent.keyDown(tree, { key: "ArrowDown" });
     expect(tree.getAttribute("aria-activedescendant")).toContain("ex_org_A");
   });
@@ -406,7 +397,6 @@ describe("EntityTree", () => {
         searchQuery="Alp"
       />,
     );
-    // Draft indicator should be visible
     expect(screen.getByLabelText("Unsaved draft")).not.toBeNull();
   });
 });

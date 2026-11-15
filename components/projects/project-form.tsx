@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +23,6 @@ interface ProjectFormProps {
   nameRequired?: boolean;
   namePlaceholder?: string;
   descriptionPlaceholder?: string;
-  disableVisibility?: boolean;
 }
 
 export function ProjectForm({
@@ -36,11 +34,10 @@ export function ProjectForm({
   nameRequired = true,
   namePlaceholder = "My Ontology Project",
   descriptionPlaceholder = "A brief description of your project...",
-  disableVisibility = false,
 }: ProjectFormProps) {
   const [name, setName] = useState(initialData?.name || "");
   const [description, setDescription] = useState(initialData?.description || "");
-  const [isPublic, setIsPublic] = useState(initialData?.is_public ?? false);
+  const isPublic = initialData?.is_public ?? false;
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,71 +112,6 @@ export function ProjectForm({
           placeholder={descriptionPlaceholder}
           disabled={isLoading}
         />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Visibility
-        </label>
-        <div className="mt-2 flex gap-3">
-          <button
-            type="button"
-            onClick={() => setIsPublic(false)}
-            disabled={isLoading || disableVisibility}
-            className={cn(
-              "flex flex-1 items-center gap-3 rounded-lg border p-4 text-left transition-all",
-              !isPublic
-                ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500 dark:bg-primary-900/20"
-                : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
-            )}
-          >
-            <div
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-full",
-                !isPublic
-                  ? "bg-primary-100 text-primary-600 dark:bg-primary-900/50 dark:text-primary-400"
-                  : "bg-slate-100 text-slate-500 dark:bg-slate-800"
-              )}
-            >
-              <Lock className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-medium text-slate-900 dark:text-slate-100">Private</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Only you can access
-              </p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsPublic(true)}
-            disabled={isLoading || disableVisibility}
-            className={cn(
-              "flex flex-1 items-center gap-3 rounded-lg border p-4 text-left transition-all",
-              isPublic
-                ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500 dark:bg-primary-900/20"
-                : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
-            )}
-          >
-            <div
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-full",
-                isPublic
-                  ? "bg-primary-100 text-primary-600 dark:bg-primary-900/50 dark:text-primary-400"
-                  : "bg-slate-100 text-slate-500 dark:bg-slate-800"
-              )}
-            >
-              <Globe className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-medium text-slate-900 dark:text-slate-100">Public</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Anyone can view this project
-              </p>
-            </div>
-          </button>
-        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-4">

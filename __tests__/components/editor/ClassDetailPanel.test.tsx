@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render as rtlRender, screen, waitFor, fireEvent, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 
-// ── Configurable mock state (tests can override before render) ──
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
+import userEvent from "@testing-library/user-event";
 
 const mockTriggerSave = vi.fn();
 const mockFlushToGit = vi.fn().mockResolvedValue(true);
@@ -13,8 +16,6 @@ const mockEditStateRef = { current: null as Record<string, unknown> | null };
 let autoSaveOverrides: Record<string, unknown> = {};
 
 let editorModeOverrides: Record<string, unknown> = {};
-
-// ── Mocks (must be before component import) ──
 
 vi.mock("@/lib/api/client", () => ({
   projectOntologyApi: {
@@ -50,10 +51,9 @@ vi.mock("@/lib/hooks/useAutoSave", () => ({
 
 vi.mock("@/lib/stores/editorModeStore", () => ({
   useEditorModeStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ editorMode: "standard", ...editorModeOverrides }),
+    selector({ ...editorModeOverrides }),
 }));
 
-// Stub child components
 vi.mock("@/components/editor/LanguageFlag", () => ({
   LanguageFlag: () => null,
 }));
@@ -122,8 +122,6 @@ import { ClassDetailPanel, ensureTrailingEmpty } from "@/components/editor/Class
 import { projectOntologyApi } from "@/lib/api/client";
 import { lintApi } from "@/lib/api/lint";
 
-// ── Helpers ──
-
 const mockGetClassDetail = projectOntologyApi.getClassDetail as Mock;
 const mockGetIssues = lintApi.getIssues as Mock;
 const mockSearchEntities = projectOntologyApi.searchEntities as Mock;
@@ -169,8 +167,6 @@ const DEFAULT_PROPS = {
   branch: "main",
 };
 
-// ── Tests ──
-
 describe("ClassDetailPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -186,8 +182,6 @@ describe("ClassDetailPanel", () => {
     capturedRelationshipSectionProps = null;
   });
 
-  // ── Empty / placeholder state ──
-
   it("renders 'Select a class' placeholder when classIri is null", () => {
     render(<ClassDetailPanel projectId="proj-1" classIri={null} />);
     expect(
@@ -195,16 +189,11 @@ describe("ClassDetailPanel", () => {
     ).toBeDefined();
   });
 
-  // ── Loading state ──
-
   it("shows a loading spinner while fetching", () => {
-    // Never resolve the promise so it stays in loading state
     mockGetClassDetail.mockReturnValue(new Promise(() => {}));
     const { container } = render(<ClassDetailPanel {...DEFAULT_PROPS} />);
     expect(container.querySelector(".animate-spin")).not.toBeNull();
   });
-
-  // ── Error state ──
 
   it("shows error message when API call fails", async () => {
     mockGetClassDetail.mockRejectedValue(new Error("Network failure"));
@@ -236,14 +225,11 @@ describe("ClassDetailPanel", () => {
       <ClassDetailPanel {...DEFAULT_PROPS} selectedNodeFallback={fallback} />
     );
 
-    // Should show the fallback card instead of an error
     await waitFor(() => {
       expect(screen.getAllByText("NewClass").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("Unsaved")).toBeDefined();
     });
   });
-
-  // ── Successful render ──
 
   it("renders class detail with label and IRI", async () => {
     render(<ClassDetailPanel {...DEFAULT_PROPS} />);
@@ -251,7 +237,6 @@ describe("ClassDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Person").length).toBeGreaterThanOrEqual(1);
     });
-    // IRI displayed
     expect(
       screen.getByText("http://example.org/ontology#Person")
     ).toBeDefined();
@@ -286,9 +271,9 @@ describe("ClassDetailPanel", () => {
     render(<ClassDetailPanel {...DEFAULT_PROPS} />);
 
     await waitFor(() => {
-      expect(screen.getByText("5")).toBeDefined(); // child_count
+      expect(screen.getByText("5")).toBeDefined();
       expect(screen.getByText("subclasses")).toBeDefined();
-      expect(screen.getByText("42")).toBeDefined(); // instance_count
+      expect(screen.getByText("42")).toBeDefined();
     });
   });
 
@@ -320,8 +305,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── API call verification ──
-
   it("calls getClassDetail with correct arguments", async () => {
     render(<ClassDetailPanel {...DEFAULT_PROPS} />);
 
@@ -351,22 +334,16 @@ describe("ClassDetailPanel", () => {
   });
 
   it("renders the class detail when lintApi.getIssues rejects", async () => {
-    // The fetch effect tolerates a lint failure (it's wrapped in .catch
-    // that returns an empty issues list) so the rest of the panel still
-    // renders. Cover that branch.
     mockGetIssues.mockRejectedValue(new Error("lint service down"));
     render(<ClassDetailPanel {...DEFAULT_PROPS} />);
 
     await waitFor(() => {
       expect(mockGetClassDetail).toHaveBeenCalled();
     });
-    // No lint summary should be shown despite a class being loaded.
     await waitFor(() => {
       expect(screen.queryByText(/Health Issues/i)).toBeNull();
     });
   });
-
-  // ── Lint issues ──
 
   it("shows lint issues for the class", async () => {
     mockGetIssues.mockResolvedValue({ items: [makeLintIssue()] });
@@ -390,14 +367,12 @@ describe("ClassDetailPanel", () => {
     expect(screen.queryByText("Health Issues")).toBeNull();
   });
 
-  // ── Copy IRI ──
-
   it("renders Copy IRI button when onCopyIri is provided", async () => {
     const onCopyIri = vi.fn();
     render(<ClassDetailPanel {...DEFAULT_PROPS} onCopyIri={onCopyIri} />);
 
     await waitFor(() => {
-      expect(screen.getByTitle("Copy IRI")).toBeDefined();
+      expect(screen.getByLabelText("Copy IRI")).toBeDefined();
     });
   });
 
@@ -407,32 +382,14 @@ describe("ClassDetailPanel", () => {
     render(<ClassDetailPanel {...DEFAULT_PROPS} onCopyIri={onCopyIri} />);
 
     await waitFor(() => {
-      expect(screen.getByTitle("Copy IRI")).toBeDefined();
+      expect(screen.getByLabelText("Copy IRI")).toBeDefined();
     });
 
-    await user.click(screen.getByTitle("Copy IRI"));
+    await user.click(screen.getByLabelText("Copy IRI"));
     expect(onCopyIri).toHaveBeenCalledWith(
       "http://example.org/ontology#Person"
     );
   });
-
-  // ── View in Source ──
-
-  it("renders Source button when onNavigateToSource is provided", async () => {
-    const onNavigateToSource = vi.fn();
-    render(
-      <ClassDetailPanel
-        {...DEFAULT_PROPS}
-        onNavigateToSource={onNavigateToSource}
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Source")).toBeDefined();
-    });
-  });
-
-  // ── Read-only mode (canEdit=false) ──
 
   it("does not show edit button when canEdit is false", async () => {
     render(<ClassDetailPanel {...DEFAULT_PROPS} canEdit={false} />);
@@ -442,8 +399,6 @@ describe("ClassDetailPanel", () => {
     });
     expect(screen.queryByText("Edit Item")).toBeNull();
   });
-
-  // ── Tree-node fallback for unsaved entities ──
 
   it("renders unsaved entity fallback with parent link", async () => {
     mockGetClassDetail.mockRejectedValue(new Error("404 Class not found"));
@@ -464,25 +419,20 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Returns null when no detail and no fallback ──
-
   it("shows error when classDetail 404s and fallback IRI doesn't match", async () => {
     mockGetClassDetail.mockRejectedValue(new Error("404 Class not found"));
     const fallback = {
       label: "Other",
-      iri: "http://example.org/ontology#Other", // different IRI
+      iri: "http://example.org/ontology#Other",
     };
     render(
       <ClassDetailPanel {...DEFAULT_PROPS} selectedNodeFallback={fallback} />
     );
 
     await waitFor(() => {
-      // Should show error since fallback IRI doesn't match
       expect(screen.getByText(/Could not load .* as an OWL Class/)).toBeDefined();
     });
   });
-
-  // ── Header actions slot ──
 
   it("renders headerActions when provided", async () => {
     render(
@@ -496,8 +446,6 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByTestId("graph-btn")).toBeDefined();
     });
   });
-
-  // ── Annotations rendering ──
 
   it("renders definition annotation", async () => {
     const DEFINITION_IRI = "http://www.w3.org/2004/02/skos/core#definition";
@@ -541,8 +489,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Refetch on refreshKey change ──
-
   it("re-fetches when refreshKey changes", async () => {
     const { rerender } = render(
       <ClassDetailPanel {...DEFAULT_PROPS} refreshKey={1} />
@@ -558,8 +504,6 @@ describe("ClassDetailPanel", () => {
       expect(mockGetClassDetail).toHaveBeenCalledTimes(2);
     });
   });
-
-  // ── Edit mode entry ──
 
   it("auto-enters edit mode and renders inputs when onUpdateClass is provided", async () => {
     const onUpdateClass = vi.fn();
@@ -578,8 +522,6 @@ describe("ClassDetailPanel", () => {
     expect(labelInput).not.toBeNull();
     expect(labelInput.tagName).toBe("INPUT");
   });
-
-  // ── Label editing ──
 
   it("updates label value when typing in edit mode", async () => {
     const user = userEvent.setup();
@@ -626,14 +568,11 @@ describe("ClassDetailPanel", () => {
       expect(screen.getAllByLabelText("Language tag").length).toBeGreaterThanOrEqual(1);
     });
 
-    // Find the language picker (mocked as <select>)
     const langPickers = screen.getAllByLabelText("Language tag");
     await user.selectOptions(langPickers[0], "de");
 
     expect((langPickers[0] as HTMLSelectElement).value).toBe("de");
   });
-
-  // ── Comment editing ──
 
   it("renders comment textareas in edit mode", async () => {
     const onUpdateClass = vi.fn();
@@ -650,7 +589,6 @@ describe("ClassDetailPanel", () => {
     });
 
     await waitFor(() => {
-      // Comment value should appear in a textarea
       expect(screen.getByDisplayValue("A human being")).not.toBeNull();
     });
     const commentArea = screen.getByDisplayValue("A human being");
@@ -702,14 +640,11 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByDisplayValue("A human being")).not.toBeNull();
     });
 
-    const removeBtn = screen.getByTitle("Remove comment");
+    const removeBtn = screen.getByLabelText("Remove comment");
     await user.click(removeBtn);
 
-    // The comment should be removed; textarea with that value gone
     expect(screen.queryByDisplayValue("A human being")).toBeNull();
   });
-
-  // ── Parent editing ──
 
   it("shows parent with remove button in edit mode", async () => {
     const onUpdateClass = vi.fn();
@@ -726,9 +661,8 @@ describe("ClassDetailPanel", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTitle("Remove parent")).not.toBeNull();
+      expect(screen.getByLabelText("Remove parent")).not.toBeNull();
     });
-    // Parent label visible
     expect(screen.getByText("Agent")).not.toBeNull();
   });
 
@@ -748,15 +682,13 @@ describe("ClassDetailPanel", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTitle("Remove parent")).not.toBeNull();
+      expect(screen.getByLabelText("Remove parent")).not.toBeNull();
     });
 
-    await user.click(screen.getByTitle("Remove parent"));
+    await user.click(screen.getByLabelText("Remove parent"));
 
-    // Parent "Agent" should be gone from the edit parent list
-    // (the read-only IriLink "Agent" is gone since we're in edit mode)
     await waitFor(() => {
-      expect(screen.queryByTitle("Remove parent")).toBeNull();
+      expect(screen.queryByLabelText("Remove parent")).toBeNull();
     });
   });
 
@@ -781,8 +713,6 @@ describe("ClassDetailPanel", () => {
 
     await user.click(screen.getByText("Add parent"));
 
-    // ParentClassPicker is mocked to render null, but Add parent button should disappear
-    // (replaced by the picker component)
     await waitFor(() => {
       expect(screen.queryByText("Add parent")).toBeNull();
     });
@@ -803,22 +733,17 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByText("Add parent")).not.toBeNull();
     });
 
-    // Open the parent picker
     await user.click(screen.getByText("Add parent"));
     await waitFor(() => {
       expect(screen.queryByText("Add parent")).toBeNull();
     });
 
-    // Cancel via the AutoSaveAffordanceBar stub
     await user.click(screen.getByTestId("cancel-edit"));
 
-    // The picker should close — Add parent button reappears
     await waitFor(() => {
       expect(screen.getByText("Add parent")).not.toBeNull();
     });
   });
-
-  // ── Save flow ──
 
   it("triggers save on label input blur", async () => {
     const user = userEvent.setup();
@@ -841,12 +766,10 @@ describe("ClassDetailPanel", () => {
 
     const labelInput = screen.getByDisplayValue("Person");
     await user.click(labelInput);
-    await user.tab(); // blur
+    await user.tab();
 
     expect(mockTriggerSave).toHaveBeenCalled();
   });
-
-  // ── Cancel flow ──
 
   it("discards draft when cancel is invoked but stays in edit mode", async () => {
     const user = userEvent.setup();
@@ -868,21 +791,16 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByDisplayValue("Person")).not.toBeNull();
     });
 
-    // Click the cancel button exposed by the AutoSaveAffordanceBar stub
     const cancelBtn = screen.getByTestId("cancel-edit");
     await user.click(cancelBtn);
 
     await waitFor(() => {
       expect(mockDiscardDraft).toHaveBeenCalled();
     });
-    // Editor is always in edit mode — auto-save bar stays.
     expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
   });
 
   it("flushes pending draft to git on unmount", async () => {
-    // The parent layout remounts the panel on selection change via a key
-    // prop, so the panel's contract for "navigate away" is "unmount and let
-    // the cleanup flush". This test exercises that contract directly.
     const onUpdateClass = vi.fn();
 
     const { unmount } = render(
@@ -900,8 +818,6 @@ describe("ClassDetailPanel", () => {
 
     expect(mockFlushToGit).toHaveBeenCalled();
   });
-
-  // ── Multiple labels with remove ──
 
   it("shows remove button only when there are multiple labels", async () => {
     const onUpdateClass = vi.fn();
@@ -926,7 +842,7 @@ describe("ClassDetailPanel", () => {
     });
 
     await waitFor(() => {
-      const removeBtns = screen.getAllByTitle("Remove label");
+      const removeBtns = screen.getAllByLabelText("Remove label");
       expect(removeBtns.length).toBe(2);
     });
   });
@@ -958,15 +874,13 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByDisplayValue("Personne")).not.toBeNull();
     });
 
-    const removeBtns = screen.getAllByTitle("Remove label");
-    await user.click(removeBtns[1]); // Remove "Personne"
+    const removeBtns = screen.getAllByLabelText("Remove label");
+    await user.click(removeBtns[1]);
 
     await waitFor(() => {
       expect(screen.queryByDisplayValue("Personne")).toBeNull();
     });
   });
-
-  // ── No "Edit Item" affordance in editor context ──
 
   it("never renders an Edit Item button in editor context", async () => {
     const onUpdateClass = vi.fn();
@@ -983,8 +897,6 @@ describe("ClassDetailPanel", () => {
     });
     expect(screen.queryByText("Edit Item")).toBeNull();
   });
-
-  // ── Definition in edit mode ──
 
   it("renders Definition section with annotation row in edit mode", async () => {
     const onUpdateClass = vi.fn();
@@ -1011,13 +923,10 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
 
-    // Definition section title should be visible
     await waitFor(() => {
       expect(screen.getByText("Definition")).not.toBeNull();
     });
   });
-
-  // ── Non-Error object in catch ──
 
   it("shows generic error for non-Error exceptions", async () => {
     mockGetClassDetail.mockRejectedValue("string error");
@@ -1028,19 +937,14 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Empty labels fallback ──
-
   it("renders class with no labels using local name", async () => {
     mockGetClassDetail.mockResolvedValue(makeClassDetail({ labels: [] }));
     render(<ClassDetailPanel {...DEFAULT_PROPS} />);
 
     await waitFor(() => {
-      // Should fall back to getLocalName which extracts "Person" from the IRI
       expect(screen.getAllByText("Person").length).toBeGreaterThanOrEqual(1);
     });
   });
-
-  // ── Annotations: custom property rendering in read mode ──
 
   it("renders multiple annotation groups in read mode", async () => {
     mockGetClassDetail.mockResolvedValue(
@@ -1067,8 +971,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── No comments ──
-
   it("does not render comments section when comments array is empty", async () => {
     mockGetClassDetail.mockResolvedValue(makeClassDetail({ comments: [] }));
     render(<ClassDetailPanel {...DEFAULT_PROPS} />);
@@ -1076,11 +978,8 @@ describe("ClassDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Person").length).toBeGreaterThanOrEqual(1);
     });
-    // The "Comment(s)" section title should not appear
     expect(screen.queryByText("Comment(s)")).toBeNull();
   });
-
-  // ── No parents ──
 
   it("does not render parent section when parent_iris is empty", async () => {
     mockGetClassDetail.mockResolvedValue(
@@ -1091,33 +990,8 @@ describe("ClassDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Person").length).toBeGreaterThanOrEqual(1);
     });
-    // There should be no "Parent(s)" section
-    expect(screen.queryByText("Parent(s)")).toBeNull();
+    expect(screen.queryByText("Parent Class(es)")).toBeNull();
   });
-
-  // ── Navigate to source callback ──
-
-  it("calls onNavigateToSource when Source button is clicked", async () => {
-    const user = userEvent.setup();
-    const onNavigateToSource = vi.fn();
-    render(
-      <ClassDetailPanel
-        {...DEFAULT_PROPS}
-        onNavigateToSource={onNavigateToSource}
-      />
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("Source")).not.toBeNull();
-    });
-
-    await user.click(screen.getByText("Source"));
-    expect(onNavigateToSource).toHaveBeenCalledWith(
-      "http://example.org/ontology#Person"
-    );
-  });
-
-  // ── Navigate to parent class ──
 
   it("calls onNavigateToClass when parent link is clicked", async () => {
     const user = userEvent.setup();
@@ -1139,8 +1013,6 @@ describe("ClassDetailPanel", () => {
     );
   });
 
-  // ── instance_count null ──
-
   it("renders dash for null instance_count", async () => {
     mockGetClassDetail.mockResolvedValue(
       makeClassDetail({ instance_count: null })
@@ -1152,7 +1024,37 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Lint issues with different severities ──
+  it("navigates straight to the only instance when the count is clicked", async () => {
+    const onNavigateToIndividual = vi.fn();
+    mockGetClassDetail.mockResolvedValue(
+      makeClassDetail({ instance_count: 1, instances: [{ iri: "http://ex.org#rex", label: "Rex" }] })
+    );
+    render(<ClassDetailPanel {...DEFAULT_PROPS} onNavigateToIndividual={onNavigateToIndividual} />);
+    const btn = await screen.findByRole("button", { name: /instances/ });
+    fireEvent.click(btn);
+    expect(onNavigateToIndividual).toHaveBeenCalledWith("http://ex.org#rex");
+  });
+
+  it("lists several instances and navigates to the one clicked", async () => {
+    const onNavigateToIndividual = vi.fn();
+    mockGetClassDetail.mockResolvedValue(
+      makeClassDetail({
+        instance_count: 2,
+        instances: [{ iri: "http://ex.org#a", label: "Alpha" }, { iri: "http://ex.org#b", label: "Beta" }],
+      })
+    );
+    render(<ClassDetailPanel {...DEFAULT_PROPS} onNavigateToIndividual={onNavigateToIndividual} />);
+    fireEvent.click(await screen.findByRole("button", { name: /instances/ }));
+    fireEvent.click(screen.getByText("Beta"));
+    expect(onNavigateToIndividual).toHaveBeenCalledWith("http://ex.org#b");
+  });
+
+  it("does not make zero instances clickable", async () => {
+    mockGetClassDetail.mockResolvedValue(makeClassDetail({ instance_count: 0, instances: [] }));
+    render(<ClassDetailPanel {...DEFAULT_PROPS} onNavigateToIndividual={vi.fn()} />);
+    await screen.findByText("subclasses");
+    expect(screen.queryByRole("button", { name: /instances/ })).toBeNull();
+  });
 
   it("renders error-type lint issue", async () => {
     mockGetIssues.mockResolvedValue({
@@ -1183,8 +1085,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Edit mode with empty labels (no labels from server) ──
-
   it("initializes edit mode with empty label placeholder when server has no labels", async () => {
     const onUpdateClass = vi.fn();
     mockGetClassDetail.mockResolvedValue(makeClassDetail({ labels: [] }));
@@ -1201,14 +1101,11 @@ describe("ClassDetailPanel", () => {
     });
 
     await waitFor(() => {
-      // Should have an empty label input placeholder
       const inputs = screen.getAllByPlaceholderText("Label text");
       expect(inputs.length).toBeGreaterThanOrEqual(1);
       expect((inputs[0] as HTMLInputElement).value).toBe("");
     });
   });
-
-  // ── Comment ghost row (trailing empty placeholder) ──
 
   it("shows ghost comment row with placeholder text in edit mode", async () => {
     const onUpdateClass = vi.fn();
@@ -1225,16 +1122,12 @@ describe("ClassDetailPanel", () => {
     });
 
     await waitFor(() => {
-      // The comment "A human being" + a trailing empty ghost row
       const textareas = screen.getAllByRole("textbox").filter(
         (el) => el.tagName === "TEXTAREA"
       );
-      // Should have at least 2: the real comment and ghost placeholder
       expect(textareas.length).toBeGreaterThanOrEqual(2);
     });
   });
-
-  // ── 404 error with IRI containing slash (no hash) ──
 
   it("extracts local name from slash-separated IRI on 404", async () => {
     mockGetClassDetail.mockRejectedValue(new Error("404 Class not found"));
@@ -1250,8 +1143,6 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByText(/Could not load .* as an OWL Class/)).not.toBeNull();
     });
   });
-
-  // ── Edit mode with relationship annotations ──
 
   it("initializes edit mode with relationship annotations and regular annotations", async () => {
     const onUpdateClass = vi.fn();
@@ -1283,15 +1174,11 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
 
-    // The "Relationship(s)" section should appear in edit mode
     await waitFor(() => {
       expect(screen.getByText("Relationship(s)")).not.toBeNull();
     });
-    // The regular annotation "Preferred Label" section should also appear
     expect(screen.getByText("Preferred Label")).not.toBeNull();
   });
-
-  // ── Relationship section visible in read mode when targets exist ──
 
   it("renders relationship section in read mode when targets exist", async () => {
     mockGetClassDetail.mockResolvedValue(
@@ -1311,8 +1198,6 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByText("Relationship(s)")).not.toBeNull();
     });
   });
-
-  // ── Edit mode adds Definition section even if not present in server data ──
 
   it("adds empty Definition section in edit mode when not in server data", async () => {
     const onUpdateClass = vi.fn();
@@ -1336,8 +1221,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Relationship section hidden in read mode when no targets ──
-
   it("does not render relationship section in read mode when no targets", async () => {
     mockGetClassDetail.mockResolvedValue(
       makeClassDetail({
@@ -1345,7 +1228,7 @@ describe("ClassDetailPanel", () => {
           {
             property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
             property_label: "See Also",
-            values: [{ value: "", lang: "" }], // empty value
+            values: [{ value: "", lang: "" }],
           },
         ],
       })
@@ -1357,8 +1240,6 @@ describe("ClassDetailPanel", () => {
     });
     expect(screen.queryByText("Relationship(s)")).toBeNull();
   });
-
-  // ── Annotations with empty values not rendered in read mode ──
 
   it("does not render annotation section with empty values array", async () => {
     mockGetClassDetail.mockResolvedValue(
@@ -1377,11 +1258,8 @@ describe("ClassDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Person").length).toBeGreaterThanOrEqual(1);
     });
-    // Empty values array means section should not render
     expect(screen.queryByText("Preferred Label")).toBeNull();
   });
-
-  // ── Class with null annotations ──
 
   it("handles null annotations gracefully in read mode", async () => {
     mockGetClassDetail.mockResolvedValue(
@@ -1392,17 +1270,13 @@ describe("ClassDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Person").length).toBeGreaterThanOrEqual(1);
     });
-    // Should not crash, statistics should still render
     expect(screen.getByText("5")).not.toBeNull();
   });
-
-  // ── Relationship target label resolution via searchEntities ──
 
   it("resolves relationship target labels from class detail and search", async () => {
     const SEE_ALSO = "http://www.w3.org/2000/01/rdf-schema#seeAlso";
     const targetIri = "http://example.org/ontology#Related";
 
-    // First call is for the main class, subsequent calls for resolving targets
     mockGetClassDetail
       .mockResolvedValueOnce(
         makeClassDetail({
@@ -1415,10 +1289,8 @@ describe("ClassDetailPanel", () => {
           ],
         })
       )
-      // Target class lookup fails (not a class)
       .mockRejectedValueOnce(new Error("Class not found"));
 
-    // Search fallback resolves the label
     mockSearchEntities.mockResolvedValueOnce({
       results: [{ iri: targetIri, label: "Related Thing", entity_type: "individual" }],
     });
@@ -1429,13 +1301,10 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByText("Relationship(s)")).not.toBeNull();
     });
 
-    // The search should have been called to resolve the label
     await waitFor(() => {
       expect(mockSearchEntities).toHaveBeenCalled();
     });
   });
-
-  // ── Relationship target label resolution via getClassDetail success ──
 
   it("resolves relationship target labels from class detail endpoint", async () => {
     const SEE_ALSO = "http://www.w3.org/2000/01/rdf-schema#seeAlso";
@@ -1453,7 +1322,6 @@ describe("ClassDetailPanel", () => {
           ],
         })
       )
-      // Target class lookup succeeds
       .mockResolvedValueOnce({
         iri: targetIri,
         labels: [{ value: "Related Class", lang: "en" }],
@@ -1475,8 +1343,6 @@ describe("ClassDetailPanel", () => {
       expect(mockGetClassDetail).toHaveBeenCalledTimes(2);
     });
   });
-
-  // ── Edit mode with isDefinedBy relationship ──
 
   it("initializes edit mode with isDefinedBy relationship", async () => {
     const onUpdateClass = vi.fn();
@@ -1508,8 +1374,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Multiple lint issues ──
-
   it("renders multiple lint issues with correct count", async () => {
     mockGetIssues.mockResolvedValue({
       items: [
@@ -1525,8 +1389,6 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByText("Missing comment")).not.toBeNull();
     });
   });
-
-  // ── Edit mode comment language change ──
 
   it("updates comment language tag in edit mode", async () => {
     const user = userEvent.setup();
@@ -1547,18 +1409,14 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByDisplayValue("A human being")).not.toBeNull();
     });
 
-    // Find language pickers (mocked as <select>) — labels come first, then comments
     const langPickers = screen.getAllByLabelText("Language tag");
     expect(langPickers.length).toBeGreaterThanOrEqual(2);
 
-    // The comment lang picker is after the label ones
     const commentLangPicker = langPickers[langPickers.length - 1];
     await user.selectOptions(commentLangPicker, "fr");
 
     expect((commentLangPicker as HTMLSelectElement).value).toBe("fr");
   });
-
-  // ── Edit mode: definition section with existing values shows annotation rows ──
 
   it("renders definition values in edit mode with annotation rows", async () => {
     const onUpdateClass = vi.fn();
@@ -1589,20 +1447,16 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
 
-    // Definition section should be visible with values in annotation rows (mocked to null but section should render)
     await waitFor(() => {
       expect(screen.getByText("Definition")).not.toBeNull();
     });
   });
-
-  // ── Fallback card: unsaved entity without parent ──
 
   it("renders unsaved entity fallback without parent section when no parent", async () => {
     mockGetClassDetail.mockRejectedValue(new Error("404 Class not found"));
     const fallback = {
       label: "NewEntity",
       iri: "http://example.org/ontology#Person",
-      // no parentIri
     };
     render(
       <ClassDetailPanel {...DEFAULT_PROPS} selectedNodeFallback={fallback} />
@@ -1612,13 +1466,9 @@ describe("ClassDetailPanel", () => {
       expect(screen.getAllByText("NewEntity").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("Unsaved")).not.toBeNull();
     });
-    // No parent section
-    expect(screen.queryByText("Parent(s)")).toBeNull();
-    // Should show the warning about unsaved entity
+    expect(screen.queryByText("Parent Class(es)")).toBeNull();
     expect(screen.getByText(/has not been saved yet/)).not.toBeNull();
   });
-
-  // ── Annotations with multiple known icons ──
 
   it("renders annotation with notation icon", async () => {
     mockGetClassDetail.mockResolvedValue(
@@ -1639,8 +1489,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Annotations with unknown property IRI (falls back to FileText icon) ──
-
   it("renders unknown annotation property in read mode", async () => {
     mockGetClassDetail.mockResolvedValue(
       makeClassDetail({
@@ -1660,8 +1508,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Returns null when classDetail is null and no matching fallback ──
-
   it("shows error when classDetail 404s and fallback IRI does not match", async () => {
     mockGetClassDetail.mockRejectedValue(new Error("404 Class not found"));
     const { container } = render(
@@ -1674,11 +1520,8 @@ describe("ClassDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getByText(/Could not load .* as an OWL Class/)).not.toBeNull();
     });
-    // Error state should be visible
     expect(container.querySelector(".border-red-200")).not.toBeNull();
   });
-
-  // ── Manual save stays in edit mode when flushToGit fails ──
 
   it("stays in edit mode when flushDraftToGit flush fails", async () => {
     const user = userEvent.setup();
@@ -1702,16 +1545,12 @@ describe("ClassDetailPanel", () => {
 
     await user.click(screen.getByTestId("manual-save"));
 
-    // Should remain in edit mode — Edit Item button should NOT be visible
     await waitFor(() => {
       expect(mockTriggerSave).toHaveBeenCalled();
       expect(mockFlushToGit).toHaveBeenCalled();
     });
-    // Auto-save bar should still be visible (still editing)
     expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
   });
-
-  // ── Cancel keeps the panel in edit mode ──
 
   it("stays in edit mode after cancel and discards the draft", async () => {
     const user = userEvent.setup();
@@ -1736,8 +1575,6 @@ describe("ClassDetailPanel", () => {
     });
     expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
   });
-
-  // ── Draft restoration auto-enter ──
 
   it("auto-enters edit mode when restoredDraft is available", async () => {
     autoSaveOverrides = {
@@ -1765,8 +1602,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Draft restoration with empty labels ──
-
   it("auto-enters edit mode with empty label placeholder from restored draft", async () => {
     autoSaveOverrides = {
       restoredDraft: {
@@ -1791,8 +1626,6 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByTestId("auto-save-bar")).not.toBeNull();
     });
   });
-
-  // ── InlineAnnotationAdder onAdd adds to existing annotation ──
 
   it("InlineAnnotationAdder adds value to existing annotation property", async () => {
     const onUpdateClass = vi.fn();
@@ -1825,15 +1658,12 @@ describe("ClassDetailPanel", () => {
     });
 
     const onAdd = capturedInlineAnnotationAdderProps!.onAdd as (propertyIri: string, value: string, lang: string) => void;
-    // Add to existing annotation
     onAdd(PREF_LABEL_IRI, "New Value", "fr");
 
     await waitFor(() => {
       expect(mockTriggerSave).toHaveBeenCalled();
     });
   });
-
-  // ── InlineAnnotationAdder onAdd creates new annotation property ──
 
   it("InlineAnnotationAdder creates new annotation property when not existing", async () => {
     const onUpdateClass = vi.fn();
@@ -1864,8 +1694,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── RelationshipSection callbacks in edit mode ──
-
   it("passes relationship callbacks to RelationshipSection in edit mode", async () => {
     const onUpdateClass = vi.fn();
     mockGetClassDetail.mockResolvedValue(
@@ -1895,7 +1723,6 @@ describe("ClassDetailPanel", () => {
       expect(capturedRelationshipSectionProps).not.toBeNull();
     });
 
-    // Test addTarget
     const onAddTarget = capturedRelationshipSectionProps!.onAddTarget as (groupIdx: number, target: { iri: string; label: string }) => void;
     onAddTarget(0, { iri: "http://example.org/ontology#newRelated", label: "newRelated" });
     await waitFor(() => {
@@ -2003,8 +1830,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── RelationshipSection onSaveNeeded callback ──
-
   it("invokes triggerSave via RelationshipSection onSaveNeeded", async () => {
     const onUpdateClass = vi.fn();
     mockGetClassDetail.mockResolvedValue(
@@ -2038,8 +1863,6 @@ describe("ClassDetailPanel", () => {
     onSaveNeeded();
     expect(mockTriggerSave).toHaveBeenCalled();
   });
-
-  // ── Annotation value update and remove callbacks in edit mode ──
 
   it("updates annotation value via AnnotationRow callback in edit mode", async () => {
     const onUpdateClass = vi.fn();
@@ -2136,8 +1959,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Annotation definition update callback via AnnotationRow ──
-
   it("updates definition annotation via AnnotationRow callback", async () => {
     const onUpdateClass = vi.fn();
     const DEFINITION_IRI = "http://www.w3.org/2004/02/skos/core#definition";
@@ -2185,8 +2006,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Definition AnnotationRow onBlur triggers save ──
-
   it("definition AnnotationRow onBlur triggers triggerSave", async () => {
     const onUpdateClass = vi.fn();
     const DEFINITION_IRI = "http://www.w3.org/2004/02/skos/core#definition";
@@ -2228,8 +2047,6 @@ describe("ClassDetailPanel", () => {
     expect(mockTriggerSave).toHaveBeenCalled();
   });
 
-  // ── Does not auto-enter edit mode when canEdit is false ──
-
   it("does not auto-enter edit mode when canEdit is false even with onUpdateClass", async () => {
     render(
       <ClassDetailPanel {...DEFAULT_PROPS} canEdit={false} onUpdateClass={vi.fn()} />
@@ -2240,8 +2057,6 @@ describe("ClassDetailPanel", () => {
     });
     expect(screen.queryByTestId("auto-save-bar")).toBeNull();
   });
-
-  // ── Target label resolution: search fails gracefully ──
 
   it("handles target label resolution when both class and search fail", async () => {
     const SEE_ALSO = "http://www.w3.org/2000/01/rdf-schema#seeAlso";
@@ -2261,7 +2076,6 @@ describe("ClassDetailPanel", () => {
       )
       .mockRejectedValueOnce(new Error("Class not found"));
 
-    // Search also fails
     mockSearchEntities.mockRejectedValueOnce(new Error("Search failed"));
 
     render(<ClassDetailPanel {...DEFAULT_PROPS} />);
@@ -2270,13 +2084,10 @@ describe("ClassDetailPanel", () => {
       expect(screen.getByText("Relationship(s)")).not.toBeNull();
     });
 
-    // Should not crash
     await waitFor(() => {
       expect(mockSearchEntities).toHaveBeenCalled();
     });
   });
-
-  // ── Annotation language change callback ──
 
   it("updates annotation language via AnnotationRow callback", async () => {
     const onUpdateClass = vi.fn();
@@ -2325,8 +2136,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Definition remove callback ──
-
   it("removes definition value via AnnotationRow callback", async () => {
     const onUpdateClass = vi.fn();
     const DEFINITION_IRI = "http://www.w3.org/2004/02/skos/core#definition";
@@ -2374,8 +2183,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  // ── Annotation AnnotationRow onBlur triggers save ──
-
   it("annotation AnnotationRow onBlur triggers triggerSave", async () => {
     const onUpdateClass = vi.fn();
     const PREF_LABEL_IRI = "http://www.w3.org/2004/02/skos/core#prefLabel";
@@ -2417,8 +2224,6 @@ describe("ClassDetailPanel", () => {
     expect(mockTriggerSave).toHaveBeenCalled();
   });
 
-  // ── Navigate to fallback parent ──
-
   it("calls onNavigateToClass when clicking parent in fallback card", async () => {
     const user = userEvent.setup();
     mockGetClassDetail.mockRejectedValue(new Error("404 Class not found"));
@@ -2445,8 +2250,6 @@ describe("ClassDetailPanel", () => {
     expect(onNavigateToClass).toHaveBeenCalledWith("http://example.org/ontology#Agent");
   });
 
-  // ── Returns null when no classDetail and no fallback matching ──
-
   it("shows fallback card when classDetail is null and matching fallback provided", async () => {
     mockGetClassDetail.mockRejectedValue(new Error("404 Class not found"));
     const fallback = {
@@ -2462,8 +2265,6 @@ describe("ClassDetailPanel", () => {
     });
   });
 });
-
-// ── ensureTrailingEmpty helper unit tests ──
 
 describe("ensureTrailingEmpty", () => {
   it("appends empty row to empty array", () => {

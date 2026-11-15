@@ -1,11 +1,3 @@
-/**
- * Ontology index status updates.
- *
- * The old backend pushed index_started / index_complete / index_failed over a WebSocket.
- * OntoKit Full has no websockets, so this polls GET /ontology/index-status and emits the
- * same messages when the status changes. The class keeps its old name and API
- * (connect / disconnect) so callers did not need to change.
- */
 import { projectOntologyApi, type IndexStatus } from "@/lib/api/client";
 
 export interface IndexWebSocketMessage {
@@ -18,7 +10,6 @@ export interface IndexWebSocketMessage {
 
 export const INDEX_POLL_INTERVAL_MS = 3000;
 
-/** Polls the index status and reports transitions as index messages. */
 export class IndexWebSocketManager {
   private projectId: string;
   private onMessage: (message: IndexWebSocketMessage) => void;
@@ -86,7 +77,6 @@ export class IndexWebSocketManager {
         });
       }
     } catch {
-      // Not indexed yet / transient error: keep polling.
     } finally {
       this.schedule();
     }

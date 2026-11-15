@@ -21,7 +21,6 @@ function status(s: string, extra: Record<string, unknown> = {}) {
 }
 
 async function flush() {
-  // let the pending poll promise settle
   await vi.advanceTimersByTimeAsync(0);
 }
 

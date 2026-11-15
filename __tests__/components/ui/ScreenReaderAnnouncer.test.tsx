@@ -6,7 +6,6 @@ import {
   useAnnounce,
 } from "@/components/ui/ScreenReaderAnnouncer";
 
-// Helper component that uses the announce hook
 function AnnounceButton({
   message,
   priority,
@@ -52,7 +51,6 @@ describe("ScreenReaderAnnouncerProvider", () => {
 
     await user.click(screen.getByRole("button", { name: "Announce" }));
 
-    // requestAnimationFrame sets the message
     await vi.waitFor(() => {
       expect(screen.getByRole("status").textContent).toBe("Hello world");
     });
@@ -80,11 +78,9 @@ describe("useAnnounce", () => {
       const { announce } = useAnnounce();
       return <button onClick={() => announce("test")}>Go</button>;
     }
-    // Should not throw when used outside provider
     render(<TestConsumer />);
     const button = screen.getByRole("button");
     expect(button).toBeDefined();
-    // Click the button to exercise the noop announce path
     fireEvent.click(button);
   });
 });

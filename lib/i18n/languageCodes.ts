@@ -1,24 +1,9 @@
-/**
- * Curated list of BCP 47 language codes for the language picker.
- *
- * Codes are split into a "frequently used" group (shown first in the picker)
- * and a comprehensive list that covers ~100 codes including major regional
- * variants.
- */
-
 export interface LanguageOption {
-  /** BCP 47 language tag, e.g. "en", "pt-BR" */
   code: string;
-  /** English name */
   name: string;
-  /** Name in the language itself */
   nativeName: string;
 }
 
-/**
- * Languages shown at the top of the picker for quick access.
- * These are the most common ontology-authoring languages.
- */
 export const FREQUENT_LANGUAGES: LanguageOption[] = [
   { code: "en", name: "English", nativeName: "English" },
   { code: "fr", name: "French", nativeName: "Fran\u00e7ais" },
@@ -38,10 +23,6 @@ export const FREQUENT_LANGUAGES: LanguageOption[] = [
 
 const FREQUENT_CODES = new Set(FREQUENT_LANGUAGES.map((l) => l.code));
 
-/**
- * Full list of supported languages (alphabetical by English name).
- * Includes regional variants like en-GB, pt-BR, zh-CN, etc.
- */
 const ADDITIONAL_LANGUAGES: LanguageOption[] = [
   { code: "af", name: "Afrikaans", nativeName: "Afrikaans" },
   { code: "sq", name: "Albanian", nativeName: "Shqip" },
@@ -123,16 +104,13 @@ const ADDITIONAL_LANGUAGES: LanguageOption[] = [
   { code: "zu", name: "Zulu", nativeName: "isiZulu" },
 ];
 
-/** All available languages: frequent ones first, then the rest alphabetically. */
 export const ALL_LANGUAGES: LanguageOption[] = [
   ...FREQUENT_LANGUAGES,
   ...ADDITIONAL_LANGUAGES.filter((l) => !FREQUENT_CODES.has(l.code)),
 ];
 
-/** O(1) lookup map keyed by lowercase BCP 47 code. */
 const LANG_BY_CODE = new Map(ALL_LANGUAGES.map((l) => [l.code.toLowerCase(), l]));
 
-/** Look up a language option by its BCP 47 code (case-insensitive). */
 export function findLanguageByCode(code: string): LanguageOption | undefined {
   return LANG_BY_CODE.get(code.toLowerCase());
 }

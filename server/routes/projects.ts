@@ -1,7 +1,3 @@
-/**
- * Projects: CRUD, import, source get/save, branches, revisions.
- * Port of ontokit-api/ontokit/api/routes/projects.py (minus members, GitHub, ontology tree).
- */
 import { Hono } from "hono";
 import { DataFactory, Store } from "n3";
 import * as git from "../git";
@@ -37,10 +33,6 @@ const r = new Hono();
 
 const MAX_IMPORT_FILE_SIZE = 50 * 1024 * 1024;
 const AUTHOR = { name: LOCAL_USER.name, email: LOCAL_USER.email };
-
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
 
 function validIri(iri: string | null): string | null {
   return iri && /^(https?:\/\/|urn:)\S+$/.test(iri) ? iri : null;
@@ -94,11 +86,6 @@ function starterTurtle(iri: string, name: string, description?: string | null): 
   ].join("\n");
 }
 
-/**
- * Update ontology title / description triples (dc:title > dcterms:title > rdfs:label, and
- * dc:description > dcterms:description > rdfs:comment; dc:* is added when missing).
- * Returns null when there is no owl:Ontology or nothing changed.
- */
 async function updateMetadataTurtle(
   content: string,
   newTitle: string | null,
@@ -216,21 +203,14 @@ function branchInfoResponse(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Project CRUD
-// ---------------------------------------------------------------------------
-
 r.get("/projects", (c) => {
   const skip = queryInt(c, "skip", 0, { min: 0 });
   const limit = queryInt(c, "limit", 20, { min: 1, max: 100 });
-  const filter = c.req.query("filter") || null;
   const search = c.req.query("search") || null;
   if (search && search.length > 200) httpError(422, "search must be at most 200 characters");
 
   const where: string[] = [];
   const params: string[] = [];
-  if (filter === "public") where.push("is_public = 1");
-  else if (filter === "private") where.push("is_public = 0");
   if (search) {
     const escaped = search.replace(/[\\%_]/g, (m) => "\\" + m);
     where.push("(name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')");
@@ -381,7 +361,6 @@ r.patch("/projects/:id", async (c) => {
   set.updated_at = nowIso();
   update("projects", set, { id });
 
-  // Sync name/description into the ontology metadata (best effort, like the old API)
   if ((nameChanged || descChanged) && project.source_file_path && git.repoExists(id)) {
     try {
       const branch = await git.getDefaultBranch(id);
@@ -419,11 +398,6 @@ r.delete("/projects/:id", async (c) => {
   return noContent(c);
 });
 
-// ---------------------------------------------------------------------------
-// Source
-// ---------------------------------------------------------------------------
-
-/** Not in the old API (the UI uses revisions/file); handy for scripts. */
 r.get("/projects/:id/source", async (c) => {
   const id = c.req.param("id");
   const project = requireProject(id);
@@ -477,18 +451,12 @@ r.put("/projects/:id/source", async (c) => {
   return c.json({ success: true, commit_hash: commit.hash, commit_message: commit.message, branch });
 });
 
-// ---------------------------------------------------------------------------
-// Revisions
-// ---------------------------------------------------------------------------
-
 r.get("/projects/:id/revisions", async (c) => {
   const id = c.req.param("id");
   requireProject(id);
   const limit = queryInt(c, "limit", 50, { min: 1, max: 200 });
   if (!git.repoExists(id)) return c.json({ project_id: id, commits: [], total: 0, refs: {} });
   const commits = await git.getHistory(id, { limit, allBranches: true });
-  // PR merges are committed as "Merge pull request #N: ..." — take the merged branch from
-  // the pull request that produced the merge commit.
   const unresolved = commits.filter((cm) => cm.is_merge && !cm.merged_branch);
   if (unresolved.length) {
     const bySha = new Map(
@@ -505,7 +473,6 @@ r.get("/projects/:id/revisions", async (c) => {
       if (b.commit_hash) (refs[b.commit_hash] ??= []).push(b.name);
     }
   } catch {
-    /* ignore */
   }
   return c.json({ project_id: id, commits, total: commits.length, refs });
 });
@@ -548,10 +515,6 @@ r.get("/projects/:id/revisions/diff", async (c) => {
     changes: d.changes,
   });
 });
-
-// ---------------------------------------------------------------------------
-// Branches
-// ---------------------------------------------------------------------------
 
 r.get("/projects/:id/branches", async (c) => {
   const id = c.req.param("id");

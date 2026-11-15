@@ -6,7 +6,7 @@ import { useLintSummary } from "@/lib/hooks/useLintSummary";
 import { useNormalizationStatus } from "@/lib/hooks/useNormalizationStatus";
 import { revisionsApi } from "@/lib/api/revisions";
 import type { TreeNodeFallback } from "@/components/editor/ClassDetailPanel";
-import type { IriPosition } from "@/lib/editor/indexWorker";
+import type { IriPosition } from "@/lib/ontology/iriGeneration";
 
 export interface UseProjectViewerOptions {
   projectId: string;
@@ -21,7 +21,6 @@ export function useProjectViewer({
   sessionStatus,
   activeBranch,
 }: UseProjectViewerOptions) {
-  // Project data from shared React Query cache
   const {
     project, isLoading, error, errorKind,
   } = useProject(projectId, accessToken);
@@ -30,10 +29,8 @@ export function useProjectViewer({
     canManage, canEdit,
     hasValidAccess: _hasValidAccess, hasOntology,
   } = permissions;
-  // Override hasValidAccess to check session status (not just token presence)
   const hasValidAccess = sessionStatus === "authenticated" && !!accessToken;
 
-  // Secondary data via React Query hooks
   const { data: openPRCount = 0 } = useOpenPRCount(projectId, accessToken);
   const { data: lintSummary = null } = useLintSummary(projectId, accessToken);
   const { data: normalizationStatus = null } = useNormalizationStatus(
@@ -42,25 +39,21 @@ export function useProjectViewer({
     { enabled: !!project?.source_file_path },
   );
 
-  // Source state
   const [sourceContent, setSourceContent] = useState<string>("");
   const [isLoadingSource, setIsLoadingSource] = useState(false);
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [isPreloading, setIsPreloading] = useState(false);
   const preloadStartedRef = useRef(false);
 
-  // IRI indexing
   const [sourceIriIndex, setSourceIriIndex] = useState<Map<string, IriPosition>>(new Map());
   const [isIndexing, setIsIndexing] = useState(false);
 
-  // Ontology tree
   const tree = useOntologyTree({
     projectId,
     accessToken,
     branchKey: activeBranch,
   });
 
-  // Derive fallback data for the selected node from the tree
   const { selectedIri, nodes } = tree;
   const selectedNodeFallback = useMemo((): TreeNodeFallback | null => {
     if (!selectedIri) return null;
@@ -81,7 +74,6 @@ export function useProjectViewer({
     return findInTree(nodes);
   }, [selectedIri, nodes]);
 
-  // Load source content
   const loadSourceContent = useCallback(async (isPreload = false) => {
     if (!projectId || !activeBranch) return;
     if (sourceContent) return;
@@ -115,7 +107,6 @@ export function useProjectViewer({
     }
   }, [projectId, accessToken, sourceContent, activeBranch, project?.git_ontology_path]);
 
-  // Background preload source content after initial page load
   useEffect(() => {
     if (!sourceContent && !isLoadingSource && !isPreloading && !preloadStartedRef.current && hasOntology) {
       const timer = setTimeout(() => {
@@ -128,7 +119,6 @@ export function useProjectViewer({
     }
   }, [sourceContent, isLoadingSource, isPreloading, loadSourceContent, hasOntology]);
 
-  // Build IRI index in background
   useEffect(() => {
     if (!sourceContent || sourceIriIndex.size > 0 || isIndexing) return;
 
@@ -213,7 +203,6 @@ export function useProjectViewer({
       });
   }, [sourceContent, sourceIriIndex.size, isIndexing]);
 
-  // Reset source state (used by editor when switching branches)
   const resetSourceState = useCallback(() => {
     setSourceContent("");
     setSourceError(null);
@@ -222,7 +211,6 @@ export function useProjectViewer({
   }, []);
 
   return {
-    // Project
     project,
     isLoading,
     error,
@@ -231,13 +219,11 @@ export function useProjectViewer({
     lintSummary,
     normalizationStatus,
 
-    // Permissions
     canManage,
     canEdit,
     hasValidAccess,
     hasOntology,
 
-    // Tree
     nodes: tree.nodes,
     totalClasses: tree.totalClasses,
     isTreeLoading: tree.isLoading,
@@ -262,7 +248,6 @@ export function useProjectViewer({
     rollbackReparent: tree.rollbackReparent,
     selectedNodeFallback,
 
-    // Source
     sourceContent,
     setSourceContent,
     isLoadingSource,

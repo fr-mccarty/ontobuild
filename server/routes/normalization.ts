@@ -1,17 +1,3 @@
-/**
- * Normalization API — port of ontokit-api/ontokit/api/routes/normalization.py and
- * services/normalization_service.py.
- *
- * Differences from the old backend (contract unchanged):
- *  - The ontology is read from / committed to the project's git repo (default branch).
- *  - "Needs normalization?" is computed on demand and cached per commit in
- *    `normalization_checks`, so GET /status is always accurate (the old status only
- *    knew the answer after a dry run).
- *  - Background jobs (queue / refresh) use server/jobs.ts; job status values are
- *    pending | running | complete | failed | not_found as before.
- *  - Imports are recorded as "import" runs in the history (from the project's
- *    normalization_report) via an ontology "commit" event listener.
- */
 import { Hono } from "hono";
 import * as git from "../git";
 import { all, bool, fromJson, get, insert, newId, nowIso, run, toJson } from "../db";
@@ -59,7 +45,6 @@ interface RunRow {
   commit_hash: string | null;
 }
 
-/** Normalize content to canonical Turtle and build the old NormalizationReport. */
 async function normalize(content: string, filename: string) {
   const format = formatFromFilename(filename) ?? "turtle";
   const n = await normalizeToTurtle(content, formatFromFilename(filename) ? filename : "ontology.ttl");
@@ -94,7 +79,6 @@ async function normalize(content: string, filename: string) {
   return { normalized: n.turtle, report };
 }
 
-/** Current ontology source on the default branch, or null when the project has none. */
 async function readSource(project: ProjectRow) {
   if (!git.repoExists(project.id)) return null;
   const branch = await resolveBranch(project.id, null);
@@ -122,7 +106,6 @@ interface CheckRow {
   checked_at: string;
 }
 
-/** Compute (or reuse) the normalization check for the current head commit. */
 async function checkStatus(project: ProjectRow): Promise<CheckRow | null> {
   const src = await readSource(project);
   if (!src) return null;
@@ -201,7 +184,6 @@ function runToResponse(r: RunRow, extra: { original_content?: string | null; nor
   };
 }
 
-/** NormalizationService.run_normalization */
 async function runNormalization(projectId: string, dryRun: boolean, triggerType = "manual") {
   const project = requireProject(projectId);
   const src = await readSource(project);
@@ -239,10 +221,6 @@ function jobToStatus(job: Job | null, jobId: string) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Import history: record an "import" normalization run when a project is imported.
-// ---------------------------------------------------------------------------
-
 onOntologyEvent("normalization:import-run", (e) => {
   if (e.type !== "commit" || e.origin !== "import") return;
   const project = getProjectRow(e.projectId);
@@ -256,10 +234,6 @@ onOntologyEvent("normalization:import-run", (e) => {
     commitHash: e.commitHash,
   });
 });
-
-// ---------------------------------------------------------------------------
-// Routes
-// ---------------------------------------------------------------------------
 
 r.get("/projects/:id/normalization/status", async (c) => {
   const project = requireProject(c.req.param("id"));

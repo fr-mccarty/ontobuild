@@ -47,7 +47,6 @@ export function AutoSaveAffordanceBar({
       aria-live={effectiveStatus === "error" || effectiveStatus === "validationError" ? "assertive" : "polite"}
     >
       <div className="flex items-center justify-between gap-3 min-h-5">
-        {/* Left side — status */}
         <div className="flex items-center gap-2 min-w-0">
           {effectiveStatus === "validationError" && (
             <span className="text-xs text-red-600 dark:text-red-400">{validationError}</span>
@@ -94,17 +93,15 @@ export function AutoSaveAffordanceBar({
           {effectiveStatus === "idle" && (
             <>
               <Cloud className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-              <span
-                className="text-xs text-slate-400 dark:text-slate-500"
-                title="Changes save as a local draft on blur, and commit to git when you navigate away"
-              >
-                Auto-save on
-              </span>
+              <Tooltip content="Changes save as a local draft on blur, and commit to git when you navigate away">
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  Auto-save on
+                </span>
+              </Tooltip>
             </>
           )}
         </div>
 
-        {/* Right side — save + cancel buttons */}
         <div className="flex shrink-0 items-center gap-2">
           {!hideSaveButton && (
             <>
@@ -147,14 +144,15 @@ export function AutoSaveAffordanceBar({
             </>
           )}
           {onCancel && (
-            <button
-              onClick={onCancel}
-              className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
-              title="Discard changes"
-            >
-              <X className="h-3.5 w-3.5" />
-              Cancel
-            </button>
+            <Tooltip content="Discard changes">
+              <button
+                onClick={onCancel}
+                className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+              >
+                <X className="h-3.5 w-3.5" />
+                Cancel
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>

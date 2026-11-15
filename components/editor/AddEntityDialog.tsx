@@ -18,8 +18,6 @@ import {
   uuidToBase62,
 } from "@/lib/ontology/iriGeneration";
 
-// ── Types ────────────────────────────────────────────────────────────
-
 export interface NewEntityInfo {
   iri: string;
   label: string;
@@ -35,11 +33,9 @@ interface AddEntityDialogProps {
   nextNumeric?: number;
   ontologyNamespace: string;
   parentIri?: string;
-  /** Human-readable label for the parent entity (shown in dialog description) */
   parentLabel?: string;
+  initialType?: EntityType;
 }
-
-// ── Constants ────────────────────────────────────────────────────────
 
 const ENTITY_TYPE_OPTIONS: { value: EntityType; label: string }[] = [
   { value: "class", label: "Class" },
@@ -48,8 +44,6 @@ const ENTITY_TYPE_OPTIONS: { value: EntityType; label: string }[] = [
   { value: "annotationProperty", label: "Annotation Property" },
   { value: "individual", label: "Individual" },
 ];
-
-// ── Component ────────────────────────────────────────────────────────
 
 export function AddEntityDialog({
   open,
@@ -60,6 +54,7 @@ export function AddEntityDialog({
   ontologyNamespace,
   parentIri,
   parentLabel,
+  initialType,
 }: AddEntityDialogProps) {
   const [label, setLabel] = useState("");
   const [entityType, setEntityType] = useState<EntityType>("class");
@@ -68,10 +63,8 @@ export function AddEntityDialog({
   const inputRef = useRef<HTMLInputElement>(null);
   const iriManuallyEdited = useRef(false);
 
-  // Generate a stable UUID IRI once when the dialog opens
   const stableUuidIriRef = useRef("");
 
-  // Generate IRI based on current state
   const generateIri = useCallback(
     (currentLabel: string) => {
       switch (iriPattern) {
@@ -90,18 +83,15 @@ export function AddEntityDialog({
     [iriPattern, nextNumeric, ontologyNamespace],
   );
 
-  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setLabel("");
-      setEntityType(parentIri ? "class" : "class");
+      setEntityType(parentIri && initialType !== "individual" ? "class" : initialType ?? "class");
       setShowAdvanced(false);
       iriManuallyEdited.current = false;
 
-      // Generate a fresh UUID IRI for this dialog session
       stableUuidIriRef.current = ontologyNamespace + uuidToBase62();
 
-      // Set initial IRI
       const initialIri = iriPattern === "uuid"
         ? stableUuidIriRef.current
         : iriPattern === "numeric"
@@ -111,9 +101,8 @@ export function AddEntityDialog({
 
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [open, iriPattern, nextNumeric, ontologyNamespace, parentIri]);
+  }, [open, iriPattern, nextNumeric, ontologyNamespace, parentIri, initialType]);
 
-  // Update IRI reactively when label changes (named pattern only)
   useEffect(() => {
     if (!open) return;
     if (iriPattern === "named" && !iriManuallyEdited.current) {
@@ -162,7 +151,7 @@ export function AddEntityDialog({
               <p>
                 {parentIri ? (
                   <>
-                    Create a new subclass of{" "}
+                    {entityType === "individual" ? "Create a new individual of" : "Create a new subclass of"}{" "}
                     <span className="inline-flex items-center rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
                       {parentDisplayName}
                     </span>
@@ -175,7 +164,6 @@ export function AddEntityDialog({
           </DialogHeader>
 
           <div className="my-4 space-y-4">
-            {/* Label input */}
             <div>
               <label
                 htmlFor="entity-label"
@@ -196,7 +184,6 @@ export function AddEntityDialog({
               />
             </div>
 
-            {/* Entity type select */}
             <div>
               <label
                 htmlFor="entity-type"
@@ -208,10 +195,11 @@ export function AddEntityDialog({
                 id="entity-type"
                 value={entityType}
                 onChange={(e) => setEntityType(e.target.value as EntityType)}
-                disabled={!!parentIri}
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
               >
-                {ENTITY_TYPE_OPTIONS.map((opt) => (
+                {ENTITY_TYPE_OPTIONS.filter(
+                  (opt) => !parentIri || opt.value === "class" || opt.value === "individual",
+                ).map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -219,12 +207,11 @@ export function AddEntityDialog({
               </select>
               {parentIri && (
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Type is locked to Class when creating a subclass.
+                  Class creates a subclass; Individual creates an instance of this class.
                 </p>
               )}
             </div>
 
-            {/* Advanced: IRI */}
             <div>
               <button
                 type="button"

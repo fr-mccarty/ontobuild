@@ -38,7 +38,6 @@ function ToastItem({ toast }: { toast: Toast }) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Trigger enter animation
     requestAnimationFrame(() => setIsVisible(true));
   }, []);
 

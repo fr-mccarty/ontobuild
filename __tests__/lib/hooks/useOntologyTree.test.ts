@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 
-// Mock the API client before importing the hook
 vi.mock("@/lib/api/client", () => ({
   projectOntologyApi: {
     getRootClasses: vi.fn(),
@@ -118,7 +117,6 @@ describe("useOntologyTree", () => {
       await result.current.expandNode("urn:A");
     });
 
-    // Node should not be expanded and should not be loading
     expect(result.current.nodes[0].isExpanded).toBe(false);
     expect(result.current.nodes[0].isLoading).toBe(false);
   });
@@ -139,7 +137,6 @@ describe("useOntologyTree", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // Expand, then collapse
     await act(async () => {
       await result.current.expandNode("urn:A");
     });
@@ -208,7 +205,6 @@ describe("useOntologyTree", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // Expand parent first
     await act(async () => {
       await result.current.expandNode("urn:A");
     });
@@ -308,7 +304,6 @@ describe("useOntologyTree", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // Expand both
     await act(async () => {
       await result.current.expandNode("urn:A");
     });
@@ -328,7 +323,6 @@ describe("useOntologyTree", () => {
   });
 
   it("collapseOneLevel collapses leaf-expanded nodes only", async () => {
-    // Setup: A (expanded) -> C (expanded) -> D (leaf)
     mockedGetRootClasses.mockResolvedValue({
       nodes: [makeApiNode("urn:A", "A", 1)],
       total_classes: 3,
@@ -349,7 +343,6 @@ describe("useOntologyTree", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // Expand A, then C
     await act(async () => {
       await result.current.expandNode("urn:A");
     });
@@ -360,7 +353,6 @@ describe("useOntologyTree", () => {
     expect(result.current.nodes[0].isExpanded).toBe(true);
     expect(result.current.nodes[0].children[0].isExpanded).toBe(true);
 
-    // Collapse one level should collapse C (leaf-expanded) but not A
     act(() => {
       result.current.collapseOneLevel();
     });
@@ -385,7 +377,6 @@ describe("useOntologyTree", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // A has children, is not expanded
     expect(result.current.hasExpandableNodes).toBe(true);
     expect(result.current.hasExpandedNodes).toBe(false);
 
@@ -393,7 +384,6 @@ describe("useOntologyTree", () => {
       await result.current.expandNode("urn:A");
     });
 
-    // A is now expanded, child C has no children
     expect(result.current.hasExpandedNodes).toBe(true);
     expect(result.current.hasExpandableNodes).toBe(false);
   });
@@ -425,7 +415,6 @@ describe("useOntologyTree", () => {
     expect(result.current.selectedIri).toBe("urn:Target");
     expect(mockedGetClassAncestors).toHaveBeenCalledWith("p1", "urn:Target", undefined, undefined);
 
-    // Verify ancestor "urn:Root" is expanded and target is present as its child
     const rootNode = result.current.nodes.find((n) => n.iri === "urn:Root");
     expect(rootNode).toBeDefined();
     expect(rootNode!.children.length).toBeGreaterThan(0);
@@ -473,7 +462,6 @@ describe("useOntologyTree", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // Expand A to load child C
     await act(async () => {
       await result.current.expandNode("urn:A");
     });
@@ -481,24 +469,20 @@ describe("useOntologyTree", () => {
     expect(result.current.nodes[0].children).toHaveLength(1);
     expect(result.current.nodes[0].children[0].iri).toBe("urn:C");
 
-    // Reparent C from A to B
     let snapshot: ReturnType<typeof result.current.reparentOptimistic>;
     act(() => {
       snapshot = result.current.reparentOptimistic("urn:C", "urn:A", "urn:B");
     });
 
-    // C should be removed from A and added to B
-    expect(result.current.nodes[0].children).toHaveLength(0); // A
+    expect(result.current.nodes[0].children).toHaveLength(0);
     const nodeB = result.current.nodes[1];
     expect(nodeB.children).toHaveLength(1);
     expect(nodeB.children[0].iri).toBe("urn:C");
 
-    // Rollback
     act(() => {
       result.current.rollbackReparent(snapshot!);
     });
 
-    // C should be back under A
     expect(result.current.nodes[0].children).toHaveLength(1);
     expect(result.current.nodes[0].children[0].iri).toBe("urn:C");
   });
@@ -527,7 +511,6 @@ describe("useOntologyTree", () => {
       result.current.reparentOptimistic("urn:C", "urn:A", null);
     });
 
-    // C should now be at root level
     expect(result.current.nodes).toHaveLength(2);
     expect(result.current.nodes[1].iri).toBe("urn:C");
     expect(result.current.nodes[0].children).toHaveLength(0);
@@ -550,7 +533,6 @@ describe("useOntologyTree", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.nodes).toHaveLength(1);
 
-    // Change branch
     mockedGetRootClasses.mockResolvedValue({
       nodes: [makeApiNode("urn:X", "X"), makeApiNode("urn:Y", "Y")],
       total_classes: 2,

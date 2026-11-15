@@ -1,11 +1,3 @@
-/**
- * RDF parsing / serialization on top of N3.js.
- *
- * - parseRdf(content, format) -> { store, prefixes } for turtle, n3, n-triples, rdf/xml, json-ld
- * - parseTurtle(content) synchronous Turtle parse (throws RdfParseError)
- * - serializeTurtle(quads | store, prefixes) -> pretty Turtle (subjects grouped, bnodes inlined,
- *   lists as ( ... ), prefixes pruned to the ones used)
- */
 import { DataFactory, Parser, Store, type Quad, type Term } from "n3";
 import { Readable } from "node:stream";
 
@@ -24,7 +16,6 @@ export const NS = {
   vann: "http://purl.org/vocab/vann/",
 } as const;
 
-/** Prefixes always bound with these names when used (mirrors the old backend). */
 export const WELL_KNOWN_PREFIXES: Record<string, string> = { ...NS };
 
 export type RdfFormat = "turtle" | "n3" | "ntriples" | "nquads" | "trig" | "rdfxml" | "jsonld";
@@ -62,18 +53,15 @@ export class RdfParseError extends Error {
   }
 }
 
-/** Lowercased extension including the dot (".ttl"), or "" if none. */
 export function extensionOf(filename: string): string {
   const m = /\.[^./\\]+$/.exec(filename);
   return m ? m[0].toLowerCase() : "";
 }
 
-/** RDF format for a filename (by extension), or null if unsupported. */
 export function formatFromFilename(filename: string): RdfFormat | null {
   return EXT_FORMATS[extensionOf(filename)] ?? null;
 }
 
-/** Media type for a format. */
 export function mediaType(format: RdfFormat): string {
   return {
     turtle: "text/turtle",
@@ -98,7 +86,6 @@ function n3Format(format: RdfFormat): string {
   ];
 }
 
-/** Synchronously parse Turtle (or another N3.js-supported syntax). Throws RdfParseError. */
 export function parseTurtle(content: string, opts: { baseIRI?: string; format?: RdfFormat } = {}): ParsedRdf {
   const prefixes: Record<string, string> = {};
   let quads: Quad[];
@@ -113,7 +100,6 @@ export function parseTurtle(content: string, opts: { baseIRI?: string; format?: 
   return { store: new Store(quads), prefixes, quads };
 }
 
-/** Parse RDF in any supported format into an N3 Store. Throws RdfParseError. */
 export async function parseRdf(
   content: string,
   format: RdfFormat,
@@ -138,7 +124,6 @@ async function parseRdfXml(content: string, baseIRI?: string): Promise<ParsedRdf
   for (const m of content.matchAll(/xmlns:([A-Za-z_][\w.-]*)\s*=\s*["']([^"']+)["']/g)) {
     prefixes[m[1]] = m[2];
   }
-  // Re-create quads via N3's DataFactory to get N3 term instances
   const store = new Store();
   for (const q of quads) store.addQuad(toN3(q.subject), toN3(q.predicate), toN3(q.object));
   return { store, prefixes, quads: store.getQuads(null, null, null, null) };
@@ -159,14 +144,12 @@ async function parseJsonLd(content: string, baseIRI?: string): Promise<ParsedRdf
     throw new RdfParseError((e as Error).message);
   }
   const parsed = parseTurtle(nquads, { format: "nquads" });
-  // collect prefixes from a top-level @context object
   const ctx = (doc as { "@context"?: unknown })?.["@context"];
   if (ctx && typeof ctx === "object" && !Array.isArray(ctx)) {
     for (const [k, v] of Object.entries(ctx as Record<string, unknown>)) {
       if (typeof v === "string" && /[#/]$/.test(v) && !k.startsWith("@")) parsed.prefixes[k] = v;
     }
   }
-  // drop graph names (ontology content is a single graph)
   const store = new Store();
   for (const q of parsed.quads) store.addQuad(q.subject, q.predicate, q.object);
   return { store, prefixes: parsed.prefixes, quads: store.getQuads(null, null, null, null) };
@@ -183,10 +166,6 @@ function toN3(t: Term): never {
   return t as never;
 }
 
-// ---------------------------------------------------------------------------
-// Serialization
-// ---------------------------------------------------------------------------
-
 const RDF_TYPE = NS.rdf + "type";
 const RDF_FIRST = NS.rdf + "first";
 const RDF_REST = NS.rdf + "rest";
@@ -194,7 +173,6 @@ const RDF_NIL = NS.rdf + "nil";
 const OWL_ONTOLOGY = NS.owl + "Ontology";
 const XSD_STRING = NS.xsd + "string";
 
-/** Find the ontology IRI (subject of `rdf:type owl:Ontology`), or null. */
 export function findOntologyIri(store: Store): string | null {
   for (const q of store.getQuads(null, RDF_TYPE, OWL_ONTOLOGY, null)) {
     if (q.subject.termType === "NamedNode") return q.subject.value;
@@ -202,12 +180,6 @@ export function findOntologyIri(store: Store): string | null {
   return null;
 }
 
-/**
- * Serialize to readable, deterministic Turtle: ontology header first, then named subjects
- * sorted by IRI, then remaining blank nodes; singly-referenced blank nodes are inlined as
- * `[ ... ]`, well-formed RDF lists as `( ... )`. Prefixes: the given ones plus the
- * well-known ones, limited to the ones actually used.
- */
 export async function serializeTurtle(
   input: Store | Quad[],
   prefixes: Record<string, string> = {},
@@ -215,7 +187,6 @@ export async function serializeTurtle(
   const store = input instanceof Store ? input : new Store(input);
   const quads = store.getQuads(null, null, null, null);
 
-  // prefixes: well-known names win; one prefix per namespace
   const nsToPrefix = new Map<string, string>();
   const taken = new Set<string>();
   for (const [p, ns] of Object.entries(WELL_KNOWN_PREFIXES)) {
@@ -273,7 +244,6 @@ export async function serializeTurtle(
     return `${str(l.value)}^^${iri(dt)}`;
   };
 
-  // blank-node bookkeeping
   const bySubject = new Map<string, Quad[]>();
   const objectRefs = new Map<string, number>();
   for (const q of quads) {
@@ -366,12 +336,12 @@ export async function serializeTurtle(
   const blocks: string[] = [];
   for (const key of subjects) {
     if (emitted.has(key)) continue;
-    if (key.startsWith("_:") && inlineable(key.slice(2))) continue; // inlined where referenced
+    if (key.startsWith("_:") && inlineable(key.slice(2))) continue;
     emitted.add(key);
     blocks.push(subjectBlock(key));
   }
   for (const key of subjects) {
-    if (emitted.has(key)) continue; // leftovers (e.g. blank-node cycles)
+    if (emitted.has(key)) continue;
     emitted.add(key);
     blocks.push(subjectBlock(key));
   }
@@ -413,7 +383,6 @@ function objectSortKey(t: Term): string {
   return (t.termType === "NamedNode" ? "0" : "1") + t.value;
 }
 
-/** Parse any supported format and return Turtle + statistics (used for import/normalization). */
 export async function normalizeToTurtle(
   content: string,
   filename: string,

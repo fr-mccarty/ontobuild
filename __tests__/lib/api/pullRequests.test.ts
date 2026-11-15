@@ -36,8 +36,6 @@ describe("pullRequestsApi", () => {
     mockFetch.mockReset();
   });
 
-  // --- getOpenSummary ---
-
   describe("getOpenSummary", () => {
     it("calls GET /api/v1/projects/pull-requests/open-summary", async () => {
       const summary = { total_open: 3, by_project: [] };
@@ -51,8 +49,6 @@ describe("pullRequestsApi", () => {
       expect(options.headers.get("Authorization")).toBeNull();
     });
   });
-
-  // --- list ---
 
   describe("list", () => {
     it("calls GET with default pagination params", async () => {
@@ -107,8 +103,6 @@ describe("pullRequestsApi", () => {
     });
   });
 
-  // --- get ---
-
   describe("get", () => {
     it("calls GET /api/v1/projects/:id/pull-requests/:number", async () => {
       const pr = { id: "pr1", pr_number: 5, title: "Add class" };
@@ -131,8 +125,6 @@ describe("pullRequestsApi", () => {
     });
   });
 
-  // --- create ---
-
   describe("create", () => {
     it("calls POST with PR data and auth", async () => {
       const pr = { id: "pr1", title: "New PR" };
@@ -153,8 +145,6 @@ describe("pullRequestsApi", () => {
     });
   });
 
-  // --- update ---
-
   describe("update", () => {
     it("calls PATCH with update data", async () => {
       mockOk({ id: "pr1", title: "Updated" });
@@ -166,8 +156,6 @@ describe("pullRequestsApi", () => {
       expect(options.method).toBe("PATCH");
     });
   });
-
-  // --- close ---
 
   describe("close", () => {
     it("calls POST /close endpoint", async () => {
@@ -181,8 +169,6 @@ describe("pullRequestsApi", () => {
     });
   });
 
-  // --- reopen ---
-
   describe("reopen", () => {
     it("calls POST /reopen endpoint", async () => {
       mockOk({ id: "pr1", status: "open" });
@@ -194,8 +180,6 @@ describe("pullRequestsApi", () => {
       expect(options.method).toBe("POST");
     });
   });
-
-  // --- merge ---
 
   describe("merge", () => {
     it("calls POST /merge with merge data", async () => {
@@ -217,8 +201,6 @@ describe("pullRequestsApi", () => {
     });
   });
 
-  // --- getCommits ---
-
   describe("getCommits", () => {
     it("calls GET /commits endpoint", async () => {
       mockOk({ items: [], total: 0 });
@@ -230,8 +212,6 @@ describe("pullRequestsApi", () => {
     });
   });
 
-  // --- getDiff ---
-
   describe("getDiff", () => {
     it("calls GET /diff endpoint", async () => {
       mockOk({ files: [], total_additions: 0, total_deletions: 0, files_changed: 0 });
@@ -242,8 +222,6 @@ describe("pullRequestsApi", () => {
       expect(url).toContain("/api/v1/projects/p1/pull-requests/1/diff");
     });
   });
-
-  // --- reviews ---
 
   describe("listReviews", () => {
     it("calls GET /reviews endpoint", async () => {
@@ -268,8 +246,6 @@ describe("pullRequestsApi", () => {
       expect(JSON.parse(options.body).status).toBe("approved");
     });
   });
-
-  // --- comments ---
 
   describe("listComments", () => {
     it("calls GET /comments endpoint", async () => {

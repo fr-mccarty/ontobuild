@@ -9,7 +9,6 @@ import {
   ContextMenuLabel,
 } from "@/components/ui/context-menu";
 
-// Radix context menus open on right-click (contextmenu event)
 function rightClick(element: Element) {
   fireEvent.contextMenu(element);
 }
@@ -40,7 +39,6 @@ describe("ContextMenu", () => {
   });
 
   it("renders ContextMenuItem with text", () => {
-    // Test the item component renders in isolation as part of an open menu
     render(
       <ContextMenu>
         <ContextMenuTrigger>Trigger</ContextMenuTrigger>
@@ -51,8 +49,6 @@ describe("ContextMenu", () => {
       </ContextMenu>
     );
     rightClick(screen.getByText("Trigger"));
-    // Radix portals content - items may or may not be visible based on jsdom support
-    // We test the component renders without errors
   });
 
   it("renders ContextMenuLabel", () => {
@@ -65,7 +61,6 @@ describe("ContextMenu", () => {
         </ContextMenuContent>
       </ContextMenu>
     );
-    // Verify it renders without error
     expect(screen.getByText("Trigger")).toBeDefined();
   });
 
@@ -84,7 +79,6 @@ describe("ContextMenu", () => {
   });
 
   it("applies destructive styling class to destructive items", () => {
-    // We can test the component renders with the destructive prop
     const { container } = render(
       <ContextMenu>
         <ContextMenuTrigger>Trigger</ContextMenuTrigger>

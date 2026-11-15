@@ -1,16 +1,3 @@
-/**
- * Ontology editor endpoints: class tree (roots / children / ancestors), class detail,
- * class delete, entity search, index status / reindex, entity cross-references.
- *
- * Port of the ontology/* and entities/* parts of ontokit-api routes/projects.py and
- * routes/quality.py (references), services/ontology.py, ontology_index.py and
- * cross_reference_service.py. Instead of a PostgreSQL index everything is computed from
- * the N3 store cached per commit by server/ontology.ts; the "index" is a per-branch
- * entity count memo that is refreshed lazily (and by POST /reindex, as a background job).
- *
- * Property / individual details and form-based edits are handled client-side from the
- * Turtle source (GET/PUT /projects/:id/source, owned by routes/projects.ts).
- */
 import { Hono, type Context } from "hono";
 import { Store, type Term } from "n3";
 import { httpError, noContent } from "../http";
@@ -53,11 +40,6 @@ import { serializeTurtle } from "../rdf";
 
 const r = new Hono();
 
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
-
-/** Local name as the old API computed it: after '#', else after the last '/'. */
 function localName(iri: string): string {
   return iri.includes("#") ? iri.split("#").pop()! : iri.slice(iri.lastIndexOf("/") + 1);
 }
@@ -76,7 +58,6 @@ function isClass(store: Store, iri: string): boolean {
   return iri !== OWL_THING && (hasType(store, iri, OWL_CLASS) || hasType(store, iri, RDFS_CLASS));
 }
 
-/** Direct named subclasses that are declared classes. */
 function childClasses(store: Store, iri: string): string[] {
   const out = new Set<string>();
   for (const s of store.getSubjects(RDFS_SUBCLASS_OF, iri, null)) {
@@ -109,7 +90,6 @@ function sortByLabel(nodes: TreeNode[]): TreeNode[] {
   });
 }
 
-/** Decoded IRI path param (the frontend encodes it with encodeURIComponent). */
 function iriParam(c: Context, name = "iri"): string {
   const raw = c.req.param(name) ?? "";
   try {
@@ -134,10 +114,6 @@ async function loadCtx(c: Context): Promise<Ctx> {
   const onto = await loadOntology(projectId, branch);
   return { projectId, branch, prefs: projectLabelPreferences(project), onto, store: onto.store };
 }
-
-// ---------------------------------------------------------------------------
-// Tree
-// ---------------------------------------------------------------------------
 
 function rootClasses(store: Store): string[] {
   const classes = new Set(listClasses(store));
@@ -172,7 +148,6 @@ r.get("/projects/:id/ontology/tree/:iri{.+}/ancestors", async (c) => {
         .filter((p) => p !== OWL_THING)
         .sort();
       if (!parents.length) break;
-      // Prefer a parent that is not already on the path (cycle guard)
       const parent = parents.find((p) => !visited.has(p)) ?? parents[0];
       if (visited.has(parent)) break;
       path.push(parent);
@@ -184,11 +159,6 @@ r.get("/projects/:id/ontology/tree/:iri{.+}/ancestors", async (c) => {
   return c.json({ nodes, total_classes: listClasses(store).length });
 });
 
-// ---------------------------------------------------------------------------
-// Class detail / delete
-// ---------------------------------------------------------------------------
-
-/** Annotation properties shown in class details (label-like properties excluded). */
 const ANNOTATION_PROPERTIES: [string, string][] = [
   ...[
     "contributor", "coverage", "creator", "date", "description", "format", "identifier",
@@ -238,6 +208,9 @@ function classDetail(store: Store, iri: string, prefs: string[] | null) {
     disjoint_iris: getObjectIris(store, iri, OWL_DISJOINT_WITH),
     child_count: childClasses(store, iri).length,
     instance_count: instances.size,
+    instances: [...instances]
+      .map((i) => ({ iri: i, label: displayLabel(store, i, prefs) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
     is_defined: true,
     source_ontology: null,
     annotations,
@@ -251,19 +224,8 @@ r.get("/projects/:id/ontology/classes/:iri{.+}", async (c) => {
   return c.json(classDetail(store, iri, prefs));
 });
 
-/**
- * Delete a class: removes every triple about it, every triple pointing at it from a
- * named subject, and whole anonymous class expressions (restrictions, unions, ...)
- * that mention it. Subclasses lose that parent (and become roots if it was the only one).
- */
-r.delete("/projects/:id/ontology/classes/:iri{.+}", async (c) => {
-  const { projectId, branch, onto, store: shared } = await loadCtx(c);
-  const iri = iriParam(c);
-  if (!isClass(shared, iri)) httpError(404, `Class not found: ${iri}`);
-  const message = c.req.query("commit_message") || `Delete class ${localName(iri)}`;
-  if (message.length > 500) httpError(422, "commit_message must be at most 500 characters");
-
-  const store = new Store(shared.getQuads(null, null, null, null));
+function removeEntityTriples(source: Store, iri: string): Store {
+  const store = new Store(source.getQuads(null, null, null, null));
 
   const removeBnodeClosure = (bnode: Term, seen = new Set<string>()) => {
     if (seen.has(bnode.value)) return;
@@ -273,7 +235,6 @@ r.delete("/projects/:id/ontology/classes/:iri{.+}", async (c) => {
       if (q.object.termType === "BlankNode") removeBnodeClosure(q.object, seen);
     }
   };
-  /** Remove the anonymous expression containing `bnode` up to its named owner. */
   const removeExpression = (bnode: Term) => {
     let top = bnode;
     const seen = new Set<string>();
@@ -301,16 +262,33 @@ r.delete("/projects/:id/ontology/classes/:iri{.+}", async (c) => {
     if (q.subject.termType === "BlankNode") removeExpression(q.subject);
     else store.removeQuad(q);
   }
+  return store;
+}
 
-  const content = await serializeTurtle(store, onto.prefixes);
-  await commitOntology({ projectId, branch, content, message, origin: "editor" });
-  update("projects", { updated_at: nowIso() }, { id: projectId });
+async function deleteEntityAndCommit(c: Context, ctx: Ctx, iri: string, defaultMessage: string) {
+  const message = c.req.query("commit_message") || defaultMessage;
+  if (message.length > 500) httpError(422, "commit_message must be at most 500 characters");
+  const store = removeEntityTriples(ctx.store, iri);
+  const content = await serializeTurtle(store, ctx.onto.prefixes);
+  await commitOntology({ projectId: ctx.projectId, branch: ctx.branch, content, message, origin: "editor" });
+  update("projects", { updated_at: nowIso() }, { id: ctx.projectId });
   return noContent(c);
+}
+
+r.delete("/projects/:id/ontology/classes/:iri{.+}", async (c) => {
+  const ctx = await loadCtx(c);
+  const iri = iriParam(c);
+  if (!isClass(ctx.store, iri)) httpError(404, `Class not found: ${iri}`);
+  return deleteEntityAndCommit(c, ctx, iri, `Delete class ${localName(iri)}`);
 });
 
-// ---------------------------------------------------------------------------
-// Search
-// ---------------------------------------------------------------------------
+r.delete("/projects/:id/ontology/entities/:iri{.+}", async (c) => {
+  const ctx = await loadCtx(c);
+  const iri = iriParam(c);
+  if (ctx.store.countQuads(iri, null, null, null) === 0) httpError(404, `Entity not found: ${iri}`);
+  const kind = rdfEntityType(ctx.store, iri);
+  return deleteEntityAndCommit(c, ctx, iri, `Delete ${kind === "unknown" ? "entity" : kind} ${localName(iri)}`);
+});
 
 const SEARCH_LABEL_PROPS = [
   RDFS_LABEL,
@@ -323,7 +301,6 @@ const SEARCH_LABEL_PROPS = [
 type EntityKind = "class" | "property" | "individual";
 type PropertyKind = "object" | "data" | "annotation" | null;
 
-/** Every entity with its search type (first matching type wins, like the old index). */
 function allEntities(store: Store): Map<string, { type: EntityKind; kind: PropertyKind }> {
   const out = new Map<string, { type: EntityKind; kind: PropertyKind }>();
   const add = (iris: Iterable<string>, type: EntityKind, kind: PropertyKind = null) => {
@@ -336,7 +313,7 @@ function allEntities(store: Store): Map<string, { type: EntityKind; kind: Proper
   add(subjectsOf(OWL_OBJECT_PROPERTY), "property", "object");
   add(subjectsOf(OWL_DATATYPE_PROPERTY), "property", "data");
   add(subjectsOf(OWL_ANNOTATION_PROPERTY), "property", "annotation");
-  add(subjectsOf(RDF_PROPERTY), "property", "object");
+  add(subjectsOf(RDF_PROPERTY), "property", null);
   add(subjectsOf(OWL_NAMED_INDIVIDUAL), "individual");
   add(listIndividuals(store), "individual");
   return out;
@@ -385,12 +362,9 @@ r.get("/projects/:id/ontology/search", async (c) => {
     const [pb, lb] = key(b);
     return pa - pb || (la < lb ? -1 : la > lb ? 1 : 0);
   });
-  return c.json({ results: results.slice(0, 50), total: results.length });
+  const page = needle === "*" ? results : results.slice(0, 50);
+  return c.json({ results: page, total: results.length });
 });
-
-// ---------------------------------------------------------------------------
-// Index status / reindex (no separate index: memo of entity count per commit)
-// ---------------------------------------------------------------------------
 
 const INDEX_JOB = "ontology_index";
 
@@ -463,10 +437,6 @@ r.post("/projects/:id/ontology/reindex", async (c) => {
   }
   return c.json({ status: "accepted", branch }, 202);
 });
-
-// ---------------------------------------------------------------------------
-// Cross-references (port of services/cross_reference_service.py)
-// ---------------------------------------------------------------------------
 
 const PREDICATE_CONTEXT: Record<string, string> = {
   [RDFS_SUBCLASS_OF]: "parent_iris",

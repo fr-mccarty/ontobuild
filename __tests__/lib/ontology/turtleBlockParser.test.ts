@@ -8,8 +8,6 @@ import {
   TURTLE_LONG_STRINGS,
 } from "./fixtures";
 
-// ── parseBlockTriples ──────────────────────────────────────────────────
-
 describe("parseBlockTriples", () => {
   it("returns null when entity is not found", () => {
     expect(
@@ -24,7 +22,6 @@ describe("parseBlockTriples", () => {
     );
     expect(triples).not.toBeNull();
 
-    // rdf:type owl:Class
     const typeTriple = triples!.find(
       (t) =>
         t.predicate === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
@@ -35,7 +32,6 @@ describe("parseBlockTriples", () => {
       value: "http://www.w3.org/2002/07/owl#Class",
     });
 
-    // rdfs:label
     const labelTriple = triples!.find(
       (t) => t.predicate === "http://www.w3.org/2000/01/rdf-schema#label",
     );
@@ -46,7 +42,6 @@ describe("parseBlockTriples", () => {
       lang: "en",
     });
 
-    // rdfs:comment
     const commentTriple = triples!.find(
       (t) => t.predicate === "http://www.w3.org/2000/01/rdf-schema#comment",
     );
@@ -135,7 +130,6 @@ describe("parseBlockTriples", () => {
     );
     expect(triples).not.toBeNull();
 
-    // Should have NamedIndividual type and Dog type
     const typeTriples = triples!.filter(
       (t) =>
         t.predicate === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
@@ -146,7 +140,6 @@ describe("parseBlockTriples", () => {
     expect(typeIris).toContain("http://www.w3.org/2002/07/owl#NamedIndividual");
     expect(typeIris).toContain("http://example.org/ont#Dog");
 
-    // hasAge with datatype
     const ageTriple = triples!.find(
       (t) => t.predicate === "http://example.org/ont#hasAge",
     );

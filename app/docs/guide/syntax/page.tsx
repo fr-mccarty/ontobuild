@@ -12,7 +12,6 @@ export default function SyntaxPage() {
       </p>
 
       <div className="space-y-8">
-        {/* Overview */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Why Multiple Syntaxes?
@@ -28,7 +27,6 @@ export default function SyntaxPage() {
           </div>
         </section>
 
-        {/* Manchester Syntax */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Manchester Syntax
@@ -63,7 +61,6 @@ Class: MargheritaPizza
           </div>
         </section>
 
-        {/* Functional Syntax */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             OWL Functional Syntax
@@ -98,7 +95,6 @@ SubClassOf(
           </div>
         </section>
 
-        {/* OWL/XML */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             OWL/XML
@@ -126,7 +122,6 @@ SubClassOf(
           </div>
         </section>
 
-        {/* Turtle/RDF for OWL */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Turtle for OWL
@@ -154,7 +149,6 @@ ex:Pizza owl:disjointWith ex:Pasta .`}</pre>
           </div>
         </section>
 
-        {/* Description Logic */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Description Logic Notation
@@ -176,7 +170,6 @@ MargheritaPizza ⊑ Pizza
           </div>
         </section>
 
-        {/* Comparison */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Syntax Comparison
@@ -227,7 +220,6 @@ MargheritaPizza ⊑ Pizza
           </div>
         </section>
 
-        {/* W3C References */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             W3C References

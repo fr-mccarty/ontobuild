@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AddEntityDialog } from "@/components/editor/AddEntityDialog";
 
@@ -72,18 +72,31 @@ describe("AddEntityDialog", () => {
     expect(screen.getByText("SomeClass")).toBeDefined();
   });
 
-  it("disables type select when parentIri is set", () => {
+  it("limits type to Class or Individual when parentIri is set", () => {
     render(
       <AddEntityDialog
         {...defaultProps}
         parentIri="http://example.org/ontology#Animal"
       />
     );
-    const select = screen.getByLabelText("Type");
-    expect((select as HTMLSelectElement).disabled).toBe(true);
-    expect(
-      screen.getByText("Type is locked to Class when creating a subclass.")
-    ).toBeDefined();
+    const select = screen.getByLabelText("Type") as HTMLSelectElement;
+    expect(select.disabled).toBe(false);
+    expect([...select.options].map((o) => o.value)).toEqual(["class", "individual"]);
+    expect(select.value).toBe("class");
+    expect(screen.getByText(/Create a new subclass of/)).toBeDefined();
+    fireEvent.change(select, { target: { value: "individual" } });
+    expect(screen.getByText(/Create a new individual of/)).toBeDefined();
+  });
+
+  it("preselects Individual when opened with initialType", () => {
+    render(
+      <AddEntityDialog
+        {...defaultProps}
+        parentIri="http://example.org/ontology#Animal"
+        initialType="individual"
+      />
+    );
+    expect((screen.getByLabelText("Type") as HTMLSelectElement).value).toBe("individual");
   });
 
   it("renders all entity type options", () => {
@@ -201,7 +214,6 @@ describe("AddEntityDialog", () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<AddEntityDialog {...defaultProps} />);
 
-    // Try to submit form directly via Enter on blank input
     const input = screen.getByPlaceholderText("e.g., Privileged Altar");
     await user.type(input, "{Enter}");
 

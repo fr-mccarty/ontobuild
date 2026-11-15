@@ -25,6 +25,7 @@ import {
   Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface CommitDetailViewProps {
   commit: RevisionCommit;
@@ -51,7 +52,6 @@ export function CommitDetailView({
 
   const loadDiff = useCallback(async () => {
     if (!commit.parent_hashes.length) {
-      // Initial commit - no parent to diff against
       setDiff(null);
       return;
     }
@@ -60,7 +60,6 @@ export function CommitDetailView({
     setDiffError(null);
 
     try {
-      // Diff from first parent to this commit
       const response = await revisionsApi.getDiff(
         projectId,
         commit.parent_hashes[0],
@@ -68,7 +67,6 @@ export function CommitDetailView({
         accessToken
       );
       setDiff(response);
-      // Expand all files by default
       setExpandedFiles(new Set(response.changes.map((c) => c.path)));
     } catch (err) {
       const message =
@@ -124,7 +122,6 @@ export function CommitDetailView({
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
-      {/* Header with back button */}
       <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
         <Button
           variant="ghost"
@@ -140,9 +137,7 @@ export function CommitDetailView({
         </span>
       </div>
 
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Commit message */}
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             {commit.message.split("\n")[0]}
@@ -154,7 +149,6 @@ export function CommitDetailView({
           )}
         </div>
 
-        {/* Merge badge */}
         {commit.is_merge && commit.merged_branch && (
           <div className="mb-4">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1 text-sm font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
@@ -164,9 +158,7 @@ export function CommitDetailView({
           </div>
         )}
 
-        {/* Metadata section */}
         <div className="mb-6 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-          {/* Author */}
           <div className="flex items-start gap-3">
             <User className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400" />
             <div>
@@ -180,7 +172,6 @@ export function CommitDetailView({
             </div>
           </div>
 
-          {/* Date */}
           <div className="flex items-center gap-3">
             <Calendar className="h-4 w-4 flex-shrink-0 text-slate-400" />
             <span className="text-sm text-slate-700 dark:text-slate-300">
@@ -188,28 +179,28 @@ export function CommitDetailView({
             </span>
           </div>
 
-          {/* Commit hash */}
           <div className="flex items-center gap-3">
             <Hash className="h-4 w-4 flex-shrink-0 text-slate-400" />
             <div className="flex items-center gap-2">
               <code className="rounded-sm bg-slate-200 px-2 py-0.5 font-mono text-xs text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                 {commit.hash}
               </code>
-              <button
-                onClick={copyHash}
-                className="rounded-sm p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-600 dark:hover:text-slate-300"
-                title="Copy full hash"
-              >
-                {copiedHash ? (
-                  <Check className="h-3.5 w-3.5 text-green-500" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </button>
+              <Tooltip content="Copy full hash">
+                <button
+                  onClick={copyHash}
+                  className="rounded-sm p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-600 dark:hover:text-slate-300"
+                  aria-label="Copy full hash"
+                >
+                  {copiedHash ? (
+                    <Check className="h-3.5 w-3.5 text-green-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </Tooltip>
             </div>
           </div>
 
-          {/* Parent commits */}
           {commit.parent_hashes.length > 0 && (
             <div className="flex items-start gap-3">
               <GitBranch className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400" />
@@ -239,7 +230,6 @@ export function CommitDetailView({
           )}
         </div>
 
-        {/* Changes section */}
         <div>
           <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
             <FileText className="h-4 w-4" />
@@ -260,7 +250,6 @@ export function CommitDetailView({
             </div>
           ) : diff && diff.changes.length > 0 ? (
             <div className="space-y-2">
-              {/* Summary */}
               <div className="mb-3 flex items-center gap-4 text-sm">
                 <span className="text-slate-500">
                   {diff.files_changed} file{diff.files_changed !== 1 ? "s" : ""}{" "}
@@ -280,7 +269,6 @@ export function CommitDetailView({
                 )}
               </div>
 
-              {/* File list with expandable diffs */}
               <div className="space-y-2">
                 {diff.changes.map((change) => {
                   const typeInfo = getChangeTypeLabel(change.change_type);
@@ -302,7 +290,6 @@ export function CommitDetailView({
                       key={change.path}
                       className="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 overflow-hidden"
                     >
-                      {/* File header */}
                       <button
                         onClick={toggleExpanded}
                         className="flex w-full items-center justify-between px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50"
@@ -353,7 +340,6 @@ export function CommitDetailView({
                         </div>
                       </button>
 
-                      {/* Diff content with syntax highlighting */}
                       {isExpanded && change.patch && (
                         <div className="border-t border-slate-200 dark:border-slate-700 overflow-x-auto">
                           <pre className="text-xs leading-relaxed">

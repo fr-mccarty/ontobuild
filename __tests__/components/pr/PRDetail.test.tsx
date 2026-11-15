@@ -8,8 +8,6 @@ import type {
   PRDiffResponse,
 } from "@/lib/api/pullRequests";
 
-// ---- mocks (must precede component import) ----
-
 vi.mock("@/lib/api/pullRequests", () => ({
   pullRequestsApi: {
     get: vi.fn(),
@@ -46,8 +44,6 @@ vi.mock("@/components/ui/button", () => ({
 
 import { PRDetail } from "@/components/pr/PRDetail";
 import { pullRequestsApi } from "@/lib/api/pullRequests";
-
-// ---- helpers ----
 
 function makePR(overrides: Partial<PullRequest> = {}): PullRequest {
   return {
@@ -128,17 +124,12 @@ function setupSuccessfulLoad(
   mockApi.listComments.mockResolvedValue({ items: comments, total: comments.length });
 }
 
-// ---- tests ----
-
 describe("PRDetail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  // -- loading / error states --
-
   it("shows a loading spinner initially", () => {
-    // Never resolve so we stay in loading state
     mockApi.get.mockReturnValue(new Promise(() => {}));
     const { container } = render(<PRDetail projectId="proj-1" prNumber={7} />);
     expect(container.querySelector(".animate-spin")).toBeTruthy();
@@ -161,8 +152,6 @@ describe("PRDetail", () => {
       expect(screen.getByText("Pull request not found")).toBeDefined();
     });
   });
-
-  // -- header rendering --
 
   it("renders PR title and number", async () => {
     setupSuccessfulLoad();
@@ -196,8 +185,6 @@ describe("PRDetail", () => {
       expect(screen.getByText("Closed")).toBeDefined();
     });
   });
-
-  // -- metadata --
 
   it("shows branch names", async () => {
     setupSuccessfulLoad();
@@ -242,8 +229,6 @@ describe("PRDetail", () => {
     });
   });
 
-  // -- description --
-
   it("renders PR description when present", async () => {
     setupSuccessfulLoad(makePR({ description: "Some details here." }));
     render(<PRDetail projectId="proj-1" prNumber={7} />);
@@ -261,8 +246,6 @@ describe("PRDetail", () => {
     expect(screen.queryByText("Some details here.")).toBeNull();
   });
 
-  // -- PRActions --
-
   it("renders PRActions when accessToken is provided", async () => {
     setupSuccessfulLoad();
     render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok-123" />);
@@ -279,8 +262,6 @@ describe("PRDetail", () => {
     });
     expect(screen.queryByTestId("pr-actions")).toBeNull();
   });
-
-  // -- tab navigation --
 
   it("defaults to conversation tab", async () => {
     setupSuccessfulLoad(makePR(), [], [makeComment()]);
@@ -425,8 +406,6 @@ describe("PRDetail", () => {
     });
   });
 
-  // -- reviews in conversation tab --
-
   it("renders reviews in conversation tab", async () => {
     const reviews = [
       makeReview({ status: "approved", body: "Looks good!", reviewer: { id: "u2", name: "Bob" } }),
@@ -463,8 +442,6 @@ describe("PRDetail", () => {
     });
   });
 
-  // -- add comment --
-
   it("shows comment form when accessToken is provided", async () => {
     setupSuccessfulLoad(makePR(), [], []);
     render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
@@ -486,7 +463,6 @@ describe("PRDetail", () => {
   it("submits a new comment and reloads comments", async () => {
     setupSuccessfulLoad(makePR(), [], []);
     mockApi.createComment.mockResolvedValue(makeComment({ body: "New comment" }));
-    // After comment is created, listComments is called again
     mockApi.listComments.mockResolvedValueOnce({ items: [], total: 0 });
     mockApi.listComments.mockResolvedValue({
       items: [makeComment({ body: "New comment" })],
@@ -523,8 +499,6 @@ describe("PRDetail", () => {
     expect(commentBtn.hasAttribute("disabled")).toBe(true);
   });
 
-  // -- file diff expand/collapse --
-
   it("collapses file diff when header is clicked", async () => {
     setupSuccessfulLoad();
     const diffData: PRDiffResponse = {
@@ -552,16 +526,13 @@ describe("PRDetail", () => {
 
     await waitFor(() => {
       expect(screen.getByText("ontology.ttl")).toBeDefined();
-      // Patch is visible (expanded by default)
       expect(screen.getByText("+new line")).toBeDefined();
     });
 
-    // Click the file header to collapse
     await act(async () => {
       fireEvent.click(screen.getByText("ontology.ttl"));
     });
 
-    // Patch should no longer be visible
     expect(screen.queryByText("+new line")).toBeNull();
   });
 });

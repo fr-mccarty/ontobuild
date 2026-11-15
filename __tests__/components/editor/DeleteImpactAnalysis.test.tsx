@@ -21,7 +21,7 @@ describe("DeleteImpactAnalysis", () => {
   });
 
   it("shows loading state while fetching", () => {
-    mockGetCrossReferences.mockReturnValue(new Promise(() => {})); // never resolves
+    mockGetCrossReferences.mockReturnValue(new Promise(() => {}));
     render(
       <DeleteImpactAnalysis
         projectId="p1"
@@ -44,7 +44,6 @@ describe("DeleteImpactAnalysis", () => {
     await waitFor(() => {
       expect(container.querySelector(".animate-spin")).toBeNull();
     });
-    // After loading is done and total is 0, component returns null
     expect(container.textContent).toBe("");
   });
 

@@ -109,13 +109,10 @@ describe("ConfirmDialog", () => {
       () => new Promise<void>((resolve) => { resolveConfirm = resolve; })
     );
     render(<ConfirmDialog {...defaultProps} onConfirm={onConfirm} />);
-    // Click confirm but don't await resolution
     await act(async () => {
       await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
     });
-    // Wait for "Processing..." to appear
     await screen.findByText("Processing...");
-    // Resolve the promise
     await act(async () => {
       resolveConfirm!();
     });

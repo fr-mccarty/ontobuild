@@ -1,10 +1,4 @@
-/**
- * Pull Requests API client
- */
-
 import { api } from "./client";
-
-// Types
 
 export type PRStatus = "open" | "merged" | "closed";
 export type ReviewStatus = "approved" | "changes_requested" | "commented";
@@ -156,7 +150,6 @@ export interface PRSettingsUpdate {
   pr_approval_required: number;
 }
 
-// Open PR summary types (for notification bell)
 export interface ProjectOpenPRCount {
   project_id: string;
   project_name: string;
@@ -168,11 +161,7 @@ export interface OpenPRsSummary {
   by_project: ProjectOpenPRCount[];
 }
 
-// API functions
 export const pullRequestsApi = {
-  /**
-   * Get summary of open PRs across projects the user manages
-   */
   getOpenSummary: (token: string) =>
     api.get<OpenPRsSummary>(
       `/api/v1/projects/pull-requests/open-summary`,
@@ -181,9 +170,6 @@ export const pullRequestsApi = {
       }
     ),
 
-  /**
-   * List pull requests for a project
-   */
   list: (
     projectId: string,
     token?: string,
@@ -205,9 +191,6 @@ export const pullRequestsApi = {
     );
   },
 
-  /**
-   * Get a pull request by number
-   */
   get: (projectId: string, prNumber: number, token?: string) => {
     const headers: HeadersInit = {};
     if (token) {
@@ -219,9 +202,6 @@ export const pullRequestsApi = {
     );
   },
 
-  /**
-   * Create a new pull request
-   */
   create: (projectId: string, data: PRCreate, token: string) =>
     api.post<PullRequest>(
       `/api/v1/projects/${projectId}/pull-requests`,
@@ -231,9 +211,6 @@ export const pullRequestsApi = {
       }
     ),
 
-  /**
-   * Update a pull request
-   */
   update: (
     projectId: string,
     prNumber: number,
@@ -248,9 +225,6 @@ export const pullRequestsApi = {
       }
     ),
 
-  /**
-   * Close a pull request
-   */
   close: (projectId: string, prNumber: number, token: string) =>
     api.post<PullRequest>(
       `/api/v1/projects/${projectId}/pull-requests/${prNumber}/close`,
@@ -260,9 +234,6 @@ export const pullRequestsApi = {
       }
     ),
 
-  /**
-   * Reopen a closed pull request
-   */
   reopen: (projectId: string, prNumber: number, token: string) =>
     api.post<PullRequest>(
       `/api/v1/projects/${projectId}/pull-requests/${prNumber}/reopen`,
@@ -272,9 +243,6 @@ export const pullRequestsApi = {
       }
     ),
 
-  /**
-   * Merge a pull request
-   */
   merge: (
     projectId: string,
     prNumber: number,
@@ -289,9 +257,6 @@ export const pullRequestsApi = {
       }
     ),
 
-  /**
-   * Get commits for a pull request
-   */
   getCommits: (projectId: string, prNumber: number, token?: string) => {
     const headers: HeadersInit = {};
     if (token) {
@@ -303,9 +268,6 @@ export const pullRequestsApi = {
     );
   },
 
-  /**
-   * Get diff for a pull request
-   */
   getDiff: (projectId: string, prNumber: number, token?: string) => {
     const headers: HeadersInit = {};
     if (token) {
@@ -317,11 +279,6 @@ export const pullRequestsApi = {
     );
   },
 
-  // Reviews
-
-  /**
-   * List reviews for a pull request
-   */
   listReviews: (projectId: string, prNumber: number, token?: string) => {
     const headers: HeadersInit = {};
     if (token) {
@@ -333,9 +290,6 @@ export const pullRequestsApi = {
     );
   },
 
-  /**
-   * Create a review
-   */
   createReview: (
     projectId: string,
     prNumber: number,
@@ -350,11 +304,6 @@ export const pullRequestsApi = {
       }
     ),
 
-  // Comments
-
-  /**
-   * List comments for a pull request
-   */
   listComments: (projectId: string, prNumber: number, token?: string) => {
     const headers: HeadersInit = {};
     if (token) {
@@ -366,9 +315,6 @@ export const pullRequestsApi = {
     );
   },
 
-  /**
-   * Create a comment
-   */
   createComment: (
     projectId: string,
     prNumber: number,
@@ -383,9 +329,6 @@ export const pullRequestsApi = {
       }
     ),
 
-  /**
-   * Update a comment
-   */
   updateComment: (
     projectId: string,
     prNumber: number,
@@ -401,9 +344,6 @@ export const pullRequestsApi = {
       }
     ),
 
-  /**
-   * Delete a comment
-   */
   deleteComment: (
     projectId: string,
     prNumber: number,
@@ -418,19 +358,12 @@ export const pullRequestsApi = {
     ),
 };
 
-// PR Settings API
 export const prSettingsApi = {
-  /**
-   * Get PR settings for a project
-   */
   get: (projectId: string, token: string) =>
     api.get<PRSettings>(`/api/v1/projects/${projectId}/pr-settings`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  /**
-   * Update PR settings
-   */
   update: (projectId: string, data: PRSettingsUpdate, token: string) =>
     api.patch<PRSettings>(`/api/v1/projects/${projectId}/pr-settings`, data, {
       headers: { Authorization: `Bearer ${token}` },

@@ -76,7 +76,6 @@ export function PRList({
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Filters */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
           {statusTabs.map((tab) => (
@@ -100,7 +99,6 @@ export function PRList({
         </span>
       </div>
 
-      {/* Loading state */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
@@ -127,14 +125,12 @@ export function PRList({
         </div>
       ) : (
         <>
-          {/* PR List */}
           <div className="space-y-3">
             {prs.map((pr) => (
               <PRListItem key={pr.id} pr={pr} projectId={projectId} />
             ))}
           </div>
 
-          {/* Pagination */}
           {total > limit && (
             <div className="flex items-center justify-between border-t border-slate-200 pt-4 dark:border-slate-700">
               <button

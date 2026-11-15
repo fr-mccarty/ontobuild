@@ -31,14 +31,12 @@ export function ScreenReaderAnnouncerProvider({
 
       if (priority === "assertive") {
         setAssertiveMessage("");
-        // Force re-render by clearing first then setting
         requestAnimationFrame(() => setAssertiveMessage(message));
       } else {
         setPoliteMessage("");
         requestAnimationFrame(() => setPoliteMessage(message));
       }
 
-      // Clear after a few seconds to prevent stale announcements
       clearRef.current = setTimeout(() => {
         setPoliteMessage("");
         setAssertiveMessage("");

@@ -12,6 +12,7 @@ import {
 } from "@/lib/hooks/useProjectAnalytics";
 import { useProjectHomeHref } from "@/lib/hooks/useProjectHomeHref";
 import { cn, getLocalName } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export default function ProjectAnalyticsPage() {
   const { data: session } = useSession();
@@ -59,7 +60,6 @@ export default function ProjectAnalyticsPage() {
           Project Analytics
         </h1>
 
-        {/* Activity Chart */}
         <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
           <div className="mb-4 flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-slate-500" />
@@ -80,21 +80,17 @@ export default function ProjectAnalyticsPage() {
           ) : activity ? (
             <div className="flex h-40 items-end gap-1">
               {activity.daily_counts.map((day) => (
-                <div
-                  key={day.date}
-                  className="group relative flex flex-1 flex-col items-center"
-                >
-                  <div
-                    className="w-full rounded-t bg-primary-500 transition-colors hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-500"
-                    style={{
-                      height: `${Math.max((day.count / maxDailyCount) * 100, 2)}%`,
-                      minHeight: day.count > 0 ? 4 : 1,
-                    }}
-                  />
-                  <div className="pointer-events-none absolute -top-8 hidden rounded-sm bg-slate-800 px-2 py-1 text-xs text-white group-hover:block dark:bg-slate-600">
-                    {day.date}: {day.count}
+                <Tooltip key={day.date} content={`${day.date}: ${day.count}`}>
+                  <div className="flex flex-1 flex-col items-center">
+                    <div
+                      className="w-full rounded-t bg-primary-500 transition-colors hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-500"
+                      style={{
+                        height: `${Math.max((day.count / maxDailyCount) * 100, 2)}%`,
+                        minHeight: day.count > 0 ? 4 : 1,
+                      }}
+                    />
                   </div>
-                </div>
+                </Tooltip>
               ))}
             </div>
           ) : activityError ? (
@@ -109,7 +105,6 @@ export default function ProjectAnalyticsPage() {
         </section>
 
         <div className="grid gap-8 md:grid-cols-2">
-          {/* Hot Entities */}
           <section className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-4 flex items-center gap-2">
               <Flame className="h-5 w-5 text-amber-500" />
@@ -163,7 +158,6 @@ export default function ProjectAnalyticsPage() {
             )}
           </section>
 
-          {/* Contributors */}
           <section className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-4 flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-500" />

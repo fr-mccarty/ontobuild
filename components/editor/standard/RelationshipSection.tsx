@@ -9,8 +9,7 @@ import {
   IS_DEFINED_BY_IRI,
   getAnnotationPropertyInfo,
 } from "@/lib/ontology/annotationProperties";
-
-// ── Types ──
+import { Tooltip } from "@/components/ui/tooltip";
 
 export interface RelationshipTarget {
   iri: string;
@@ -23,21 +22,16 @@ export interface RelationshipGroup {
   targets: RelationshipTarget[];
 }
 
-// Built-in relationship properties for the property picker
 const BUILT_IN_RELATIONSHIP_PROPERTIES = [
   { iri: SEE_ALSO_IRI, label: "See Also", curie: "rdfs:seeAlso" },
   { iri: IS_DEFINED_BY_IRI, label: "Defined By", curie: "rdfs:isDefinedBy" },
 ];
-
-// ── Entity type badges ──
 
 const entityTypeIcons: Record<string, { letter: string; className: string }> = {
   class: { letter: "C", className: "bg-owl-class/10 border-owl-class/50 text-owl-class" },
   property: { letter: "P", className: "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-400" },
   individual: { letter: "I", className: "bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-400" },
 };
-
-// ── Main Component ──
 
 interface RelationshipSectionProps {
   groups: RelationshipGroup[];
@@ -50,7 +44,6 @@ interface RelationshipSectionProps {
   onChangeProperty?: (groupIdx: number, newIri: string, newLabel: string) => void;
   onAddGroup?: () => void;
   onNavigateToClass?: (iri: string) => void;
-  /** Called after add/remove actions — used for auto-save */
   onSaveNeeded?: () => void;
 }
 
@@ -67,38 +60,38 @@ export function RelationshipSection({
   onNavigateToClass,
   onSaveNeeded,
 }: RelationshipSectionProps) {
-  // In read mode, only show groups that have actual targets
   const visibleGroups = isEditing ? groups : groups.filter((g) => g.targets.length > 0);
 
   if (!isEditing && visibleGroups.length === 0) return null;
 
   if (!isEditing) {
-    // Read mode: compact inline layout (no nested columns — Section provides the outer layout)
     return (
       <div className="space-y-1">
         {visibleGroups.map((group, gIdx) => (
           <div key={`${group.property_iri}-${gIdx}`}>
             {group.targets.map((target) => (
               <div key={target.iri} className="flex items-center gap-2">
-                <span
-                  className="shrink-0 text-xs text-slate-500 dark:text-slate-400"
-                  title={getAnnotationPropertyInfo(group.property_iri).curie}
-                >
-                  {group.property_label}
-                </span>
-                <button
-                  onClick={() => onNavigateToClass?.(target.iri)}
-                  className={cn(
-                    "min-w-0 truncate text-sm",
-                    onNavigateToClass
-                      ? "text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
-                      : "text-slate-700 dark:text-slate-300"
-                  )}
-                  title={target.iri}
-                  disabled={!onNavigateToClass}
-                >
-                  {target.label || getLocalName(target.iri)}
-                </button>
+                <Tooltip content={getAnnotationPropertyInfo(group.property_iri).curie}>
+                  <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                    {group.property_label}
+                  </span>
+                </Tooltip>
+                <Tooltip content={target.iri}>
+                  <span className="inline-flex min-w-0">
+                    <button
+                      onClick={() => onNavigateToClass?.(target.iri)}
+                      className={cn(
+                        "min-w-0 truncate text-sm",
+                        onNavigateToClass
+                          ? "text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
+                          : "text-slate-700 dark:text-slate-300"
+                      )}
+                      disabled={!onNavigateToClass}
+                    >
+                      {target.label || getLocalName(target.iri)}
+                    </button>
+                  </span>
+                </Tooltip>
               </div>
             ))}
           </div>
@@ -107,12 +100,10 @@ export function RelationshipSection({
     );
   }
 
-  // Edit mode: two-column layout with property picker and entity search
   return (
     <div className="space-y-3">
       {visibleGroups.map((group, gIdx) => (
         <div key={`${group.property_iri}-${gIdx}`} className="flex gap-4">
-          {/* Property label (left column) */}
           <div className="w-40 shrink-0 pt-1">
             <RelationshipPropertyPicker
               currentIri={group.property_iri}
@@ -124,28 +115,29 @@ export function RelationshipSection({
             />
           </div>
 
-          {/* Targets (right column) */}
           <div className="min-w-0 flex-1 space-y-2">
             {group.targets.map((target, tIdx) => (
               <div key={target.iri} className="flex items-center gap-2">
-                <button
-                  onClick={() => onNavigateToClass?.(target.iri)}
-                  className="flex min-w-0 flex-1 items-center gap-2 text-sm text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
-                  title={target.iri}
-                >
-                  <span className="truncate">{target.label || getLocalName(target.iri)}</span>
-                </button>
-                <button
-                  onClick={() => { onRemoveTarget?.(gIdx, tIdx); onSaveNeeded?.(); }}
-                  className="shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                  title="Remove"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <Tooltip content={target.iri}>
+                  <button
+                    onClick={() => onNavigateToClass?.(target.iri)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-sm text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
+                  >
+                    <span className="truncate">{target.label || getLocalName(target.iri)}</span>
+                  </button>
+                </Tooltip>
+                <Tooltip content="Remove">
+                  <button
+                    onClick={() => { onRemoveTarget?.(gIdx, tIdx); onSaveNeeded?.(); }}
+                    className="shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                    aria-label="Remove"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </Tooltip>
               </div>
             ))}
 
-            {/* Ghost row: inline entity search for adding new target */}
             <RelationshipEntitySearch
               projectId={projectId}
               accessToken={accessToken}
@@ -163,7 +155,6 @@ export function RelationshipSection({
         </div>
       ))}
 
-      {/* Add relationship group button */}
       <button
         onClick={onAddGroup}
         className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20"
@@ -174,8 +165,6 @@ export function RelationshipSection({
     </div>
   );
 }
-
-// ── Property Picker (dropdown in the left column) ──
 
 interface RelationshipPropertyPickerProps {
   currentIri: string;
@@ -218,7 +207,6 @@ function RelationshipPropertyPicker({
     }
   }, [isOpen]);
 
-  // Search for ontology properties when query changes
   useEffect(() => {
     if (!query.trim()) {
       setApiResults([]);
@@ -279,7 +267,6 @@ function RelationshipPropertyPicker({
             />
           </div>
           <div className="max-h-48 overflow-y-auto py-1">
-            {/* Built-in relationship properties */}
             {filteredBuiltIn.length > 0 && (
               <div>
                 <p className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -306,7 +293,6 @@ function RelationshipPropertyPicker({
               </div>
             )}
 
-            {/* Ontology properties from search */}
             {query.trim() && (
               <div>
                 {isSearching ? (
@@ -349,8 +335,6 @@ function RelationshipPropertyPicker({
     </div>
   );
 }
-
-// ── Inline Entity Search (ghost row for adding targets) ──
 
 interface RelationshipEntitySearchProps {
   projectId: string;
@@ -440,7 +424,6 @@ function RelationshipEntitySearch({
         placeholder="Search entities to add..."
         className="flex-1 rounded-md border border-dashed border-slate-300 bg-white px-2.5 py-1.5 text-sm placeholder:text-slate-400 focus:border-primary-500 focus:border-solid focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-500"
       />
-      {/* Placeholder to align with the delete button column */}
       <div className="shrink-0 rounded-sm p-1">
         <div className="h-3.5 w-3.5" />
       </div>

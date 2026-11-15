@@ -1,12 +1,3 @@
-/**
- * Bare git repositories (one per project) driven through the `git` CLI.
- *
- * Repos live at `data/repos/<projectId>.git`. There is never a working tree: commits are
- * built with a temporary index (GIT_INDEX_FILE) + hash-object / write-tree / commit-tree /
- * update-ref. Writes to a repo are serialized with an in-process lock.
- *
- * All functions are async and take the projectId as first argument.
- */
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -24,7 +15,7 @@ export interface CommitInfo {
   message: string;
   author_name: string;
   author_email: string;
-  timestamp: string; // ISO-8601 UTC
+  timestamp: string;
   is_merge: boolean;
   merged_branch: string | null;
   parent_hashes: string[];
@@ -43,7 +34,7 @@ export interface BranchInfo {
 
 export interface FileChange {
   path: string;
-  change_type: string; // A | D | M | R | C
+  change_type: string;
   old_path: string | null;
   additions: number;
   deletions: number;
@@ -71,7 +62,6 @@ export interface Author {
   email?: string | null;
 }
 
-/** Error thrown when a git command fails. `stderr` holds git's message. */
 export class GitError extends Error {
   constructor(
     message: string,
@@ -82,10 +72,6 @@ export class GitError extends Error {
     this.name = "GitError";
   }
 }
-
-// ---------------------------------------------------------------------------
-// Low level
-// ---------------------------------------------------------------------------
 
 export function repoPath(projectId: string): string {
   if (!/^[A-Za-z0-9_-]+$/.test(projectId)) throw new ApiError(400, "Invalid project id");
@@ -99,11 +85,9 @@ export function repoExists(projectId: string): boolean {
 interface RunOpts {
   input?: string | Buffer;
   env?: Record<string, string>;
-  /** Exit codes that should not throw (stdout is still returned). */
   okCodes?: number[];
 }
 
-/** Run a git command in the project's bare repo and return stdout (utf8). */
 export function git(projectId: string, args: string[], opts: RunOpts = {}): Promise<string> {
   return gitRaw(repoPath(projectId), args, opts).then((r) => r.stdout);
 }
@@ -143,11 +127,9 @@ function gitRaw(
   });
 }
 
-// Per-repo write lock (promise chain), survives HMR via globalThis.
 const g = globalThis as typeof globalThis & { __ontokitGitLocks?: Map<string, Promise<unknown>> };
 const locks = (g.__ontokitGitLocks ??= new Map());
 
-/** Serialize write operations on one repository. */
 export async function withRepoLock<T>(projectId: string, fn: () => Promise<T>): Promise<T> {
   const prev = locks.get(projectId) ?? Promise.resolve();
   const next = prev.catch(() => undefined).then(fn);
@@ -159,11 +141,6 @@ export async function withRepoLock<T>(projectId: string, fn: () => Promise<T>): 
   }
 }
 
-// ---------------------------------------------------------------------------
-// Repository lifecycle
-// ---------------------------------------------------------------------------
-
-/** Create an empty bare repo with HEAD -> refs/heads/main (no-op if it exists). */
 export async function initRepo(projectId: string): Promise<void> {
   const dir = repoPath(projectId);
   if (repoExists(projectId)) return;
@@ -171,14 +148,9 @@ export async function initRepo(projectId: string): Promise<void> {
   await gitRaw(dir, ["init", "--bare", "--quiet", `--initial-branch=${DEFAULT_BRANCH}`, dir]);
 }
 
-/** Delete the project's repo directory. */
 export async function deleteRepo(projectId: string): Promise<void> {
   fs.rmSync(repoPath(projectId), { recursive: true, force: true });
 }
-
-// ---------------------------------------------------------------------------
-// Refs
-// ---------------------------------------------------------------------------
 
 export async function branchExists(projectId: string, name: string): Promise<boolean> {
   return (await resolveRefOrNull(projectId, `refs/heads/${name}`)) !== null;
@@ -193,10 +165,6 @@ async function resolveRefOrNull(projectId: string, ref: string): Promise<string 
   }
 }
 
-/**
- * Resolve a branch name, "HEAD", full/partial commit hash or other revision to a full
- * commit sha. Branch names win over other interpretations. Throws GitError if unknown.
- */
 export async function resolveRef(projectId: string, ref: string): Promise<string> {
   if (ref === "HEAD") {
     const head = await resolveRefOrNull(projectId, "HEAD");
@@ -215,7 +183,6 @@ export async function resolveRef(projectId: string, ref: string): Promise<string
   throw new GitError(`Cannot resolve reference: ${ref}`, "", null);
 }
 
-/** Name of the default branch: main, else master, else first branch, else "main". */
 export async function getDefaultBranch(projectId: string): Promise<string> {
   const names = await listBranchNames(projectId);
   if (names.includes("main")) return "main";
@@ -223,14 +190,12 @@ export async function getDefaultBranch(projectId: string): Promise<string> {
   return names[0] ?? DEFAULT_BRANCH;
 }
 
-/** Branch HEAD points to (falls back to default branch). */
 export async function getCurrentBranch(projectId: string): Promise<string> {
   try {
     const out = (await git(projectId, ["symbolic-ref", "--quiet", "HEAD"])).trim();
     const name = out.replace(/^refs\/heads\//, "");
     if (name && (await resolveRefOrNull(projectId, `refs/heads/${name}`))) return name;
   } catch {
-    /* fall through */
   }
   return getDefaultBranch(projectId);
 }
@@ -240,7 +205,6 @@ export async function listBranchNames(projectId: string): Promise<string[]> {
   return out.split("\n").filter(Boolean);
 }
 
-/** Validate a branch name with `git check-ref-format --branch`. */
 export async function isValidBranchName(name: string): Promise<boolean> {
   if (!name || name.startsWith("-")) return false;
   try {
@@ -251,20 +215,17 @@ export async function isValidBranchName(name: string): Promise<boolean> {
   }
 }
 
-/** [ahead, behind] of `a` relative to `b`. */
 export async function aheadBehind(projectId: string, a: string, b: string): Promise<[number, number]> {
   const out = await git(projectId, ["rev-list", "--left-right", "--count", `${a}...${b}`]);
   const [ahead, behind] = out.trim().split(/\s+/).map(Number);
   return [ahead || 0, behind || 0];
 }
 
-/** Merge base of two refs (null if unrelated). */
 export async function mergeBase(projectId: string, a: string, b: string): Promise<string | null> {
   const out = await git(projectId, ["merge-base", a, b], { okCodes: [1] });
   return out.trim() || null;
 }
 
-/** All branches with metadata; ahead/behind are relative to the default branch. */
 export async function listBranches(projectId: string): Promise<BranchInfo[]> {
   const def = await getDefaultBranch(projectId);
   const current = await getCurrentBranch(projectId);
@@ -282,7 +243,6 @@ export async function listBranches(projectId: string): Promise<BranchInfo[]> {
       try {
         [ahead, behind] = await aheadBehind(projectId, `refs/heads/${name}`, `refs/heads/${def}`);
       } catch {
-        /* ignore */
       }
     }
     result.push({
@@ -299,19 +259,16 @@ export async function listBranches(projectId: string): Promise<BranchInfo[]> {
   return result;
 }
 
-/** Info for a single branch (null if it does not exist). */
 export async function getBranch(projectId: string, name: string): Promise<BranchInfo | null> {
   return (await listBranches(projectId)).find((b) => b.name === name) ?? null;
 }
 
-/** Create a branch from a ref (default HEAD). Throws if it exists or the name is invalid. */
 export async function createBranch(projectId: string, name: string, fromRef = "HEAD"): Promise<BranchInfo> {
   if (!(await isValidBranchName(name))) throw new GitError(`Invalid branch name: ${name}`, "", null);
   return withRepoLock(projectId, async () => {
     if (await resolveRefOrNull(projectId, `refs/heads/${name}`))
       throw new GitError(`Branch already exists: ${name}`, "", null);
     const sha = await resolveRef(projectId, fromRef);
-    // empty old-value => only create if it does not exist
     await git(projectId, ["update-ref", `refs/heads/${name}`, sha, ""]);
     const info = await getCommit(projectId, sha);
     return {
@@ -327,11 +284,6 @@ export async function createBranch(projectId: string, name: string, fromRef = "H
   });
 }
 
-/**
- * Delete a branch. Refuses the default branch, unknown branches (both throw
- * `Error` with a user-facing message) and — unless `force` — branches with commits
- * not in the default branch.
- */
 export async function deleteBranch(projectId: string, name: string, force = false): Promise<void> {
   return withRepoLock(projectId, async () => {
     const def = await getDefaultBranch(projectId);
@@ -348,23 +300,16 @@ export async function deleteBranch(projectId: string, name: string, force = fals
       if (head === `refs/heads/${name}`)
         await git(projectId, ["symbolic-ref", "HEAD", `refs/heads/${def}`]);
     } catch {
-      /* ignore */
     }
     await git(projectId, ["update-ref", "-d", `refs/heads/${name}`]);
   });
 }
 
-// ---------------------------------------------------------------------------
-// Reading
-// ---------------------------------------------------------------------------
-
-/** Read a file (utf8) at a branch / commit / ref. Throws GitError if missing. */
 export async function readFile(projectId: string, ref: string, filePath: string): Promise<string> {
   const sha = await resolveRef(projectId, ref);
   return git(projectId, ["cat-file", "blob", `${sha}:${filePath}`]);
 }
 
-/** Like readFile but returns null when the ref or file does not exist. */
 export async function readFileOrNull(projectId: string, ref: string, filePath: string): Promise<string | null> {
   try {
     return await readFile(projectId, ref, filePath);
@@ -373,7 +318,6 @@ export async function readFileOrNull(projectId: string, ref: string, filePath: s
   }
 }
 
-/** List all file paths at a ref. */
 export async function listFiles(projectId: string, ref = "HEAD"): Promise<string[]> {
   const sha = await resolveRef(projectId, ref);
   const out = await git(projectId, ["ls-tree", "-r", "--name-only", "-z", sha]);
@@ -407,17 +351,12 @@ function parseLog(out: string): CommitInfo[] {
     });
 }
 
-/** Info for one commit. */
 export async function getCommit(projectId: string, ref: string): Promise<CommitInfo> {
   const sha = await resolveRef(projectId, ref);
   const out = await git(projectId, ["log", "-1", `--format=${LOG_FORMAT}`, sha]);
   return parseLog(out)[0];
 }
 
-/**
- * Commit history, newest first. With `allBranches` (default when no branch given) the
- * history of every branch is merged; otherwise only `branch` (or HEAD).
- */
 export async function getHistory(
   projectId: string,
   opts: { branch?: string; limit?: number; skip?: number; allBranches?: boolean; path?: string } = {},
@@ -435,11 +374,10 @@ export async function getHistory(
   try {
     return parseLog(await git(projectId, args));
   } catch {
-    return []; // empty repo
+    return [];
   }
 }
 
-/** Number of commits reachable from a ref (or all branches). */
 export async function countCommits(projectId: string, ref?: string): Promise<number> {
   try {
     const out = await git(projectId, ["rev-list", "--count", ref ? await resolveRef(projectId, ref) : "--branches"]);
@@ -449,7 +387,6 @@ export async function countCommits(projectId: string, ref?: string): Promise<num
   }
 }
 
-/** Commits reachable from `toRef` but not from `fromRef` (newest first). */
 export async function getCommitsBetween(projectId: string, fromRef: string, toRef = "HEAD"): Promise<CommitInfo[]> {
   try {
     const from = await resolveRef(projectId, fromRef);
@@ -460,7 +397,6 @@ export async function getCommitsBetween(projectId: string, fromRef: string, toRe
   }
 }
 
-/** File-level diff between two refs (with unified patches). */
 export async function diff(projectId: string, fromVersion: string, toVersion = "HEAD"): Promise<DiffInfo> {
   const from = await resolveRef(projectId, fromVersion);
   const to = await resolveRef(projectId, toVersion);
@@ -468,7 +404,6 @@ export async function diff(projectId: string, fromVersion: string, toVersion = "
   const numstat = await git(projectId, ["diff", "-M", "--numstat", "-z", from, to]);
   const patchOut = await git(projectId, ["diff", "-M", from, to]);
 
-  // name-status -z: STATUS\0path\0 (or Rxx\0old\0new\0)
   const ns = nameStatus.split("\0").filter((s) => s !== "");
   const entries: { status: string; path: string; oldPath: string | null }[] = [];
   for (let i = 0; i < ns.length; ) {
@@ -482,7 +417,6 @@ export async function diff(projectId: string, fromVersion: string, toVersion = "
     }
   }
 
-  // numstat -z: "add\tdel\tpath\0" or "add\tdel\t\0old\0new\0"
   const stats = new Map<string, { add: number; del: number }>();
   const nsParts = numstat.split("\0");
   for (let i = 0; i < nsParts.length; i++) {
@@ -491,13 +425,12 @@ export async function diff(projectId: string, fromVersion: string, toVersion = "
     const [a, d, p] = part.split("\t");
     let file = p;
     if (p === "") {
-      i++; // old path
+      i++;
       file = nsParts[++i];
     }
     stats.set(file, { add: Number(a) || 0, del: Number(d) || 0 });
   }
 
-  // split unified patch per file
   const patches = new Map<string, string>();
   const chunks = patchOut.split(/^(?=diff --git )/m).filter((s) => s.startsWith("diff --git "));
   entries.forEach((e, idx) => {
@@ -525,10 +458,6 @@ export async function diff(projectId: string, fromVersion: string, toVersion = "
   };
 }
 
-// ---------------------------------------------------------------------------
-// Writing
-// ---------------------------------------------------------------------------
-
 function authorEnv(author?: Author): Record<string, string> {
   return {
     GIT_AUTHOR_NAME: author?.name || COMMITTER_NAME,
@@ -547,16 +476,11 @@ async function withTempIndex<T>(fn: (env: Record<string, string>) => Promise<T>)
   }
 }
 
-/** One file to write (`content: null` deletes it). */
 export interface FileWrite {
   path: string;
   content: string | Buffer | null;
 }
 
-/**
- * Commit a set of file writes on top of `branch` (created if missing; if the repo
- * is empty the commit becomes the root commit). Initializes the repo if needed.
- */
 export async function commitFiles(
   projectId: string,
   opts: { branch: string; files: FileWrite[]; message: string; author?: Author },
@@ -590,7 +514,6 @@ export async function commitFiles(
   });
 }
 
-/** Commit a single file to a branch. */
 export function commitFile(
   projectId: string,
   opts: { branch: string; path: string; content: string | Buffer; message: string; author?: Author },
@@ -603,10 +526,6 @@ export function commitFile(
   });
 }
 
-/**
- * Merge `source` branch into `target` branch without a working tree
- * (uses `git merge-tree --write-tree`, git >= 2.38).
- */
 export async function mergeBranch(
   projectId: string,
   source: string,

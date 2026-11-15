@@ -49,7 +49,6 @@ function GraphLegend() {
         </button>
         {expanded && (
           <div className="border-t border-slate-200 px-2.5 pb-2 pt-1.5 dark:border-slate-700">
-            {/* Node types */}
             <div className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Nodes
             </div>
@@ -62,7 +61,6 @@ function GraphLegend() {
               <LegendNodeItem color="border border-slate-200 bg-slate-50 dark:bg-slate-900" label="External" />
               <LegendNodeItem color="border border-dashed border-slate-300 bg-white dark:bg-slate-800" label="Unexplored" />
             </div>
-            {/* Edge types */}
             <div className="mb-1 mt-2 text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Edges
             </div>
@@ -152,7 +150,6 @@ export function OntologyGraph({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [colorMode, setColorMode] = useState<ColorMode>("light");
 
-  // Detect dark mode
   useEffect(() => {
     const check = () => {
       const isDark = document.documentElement.classList.contains("dark");
@@ -181,7 +178,6 @@ export function OntologyGraph({
     [expandNode],
   );
 
-  // SVG marker definitions for arrows
   const arrowMarker = useMemo(
     () => (
       <svg style={{ position: "absolute", width: 0, height: 0 }}>
@@ -203,7 +199,6 @@ export function OntologyGraph({
     [],
   );
 
-  // Apply layout when graph data changes
   useEffect(() => {
     if (!graphData || graphData.nodes.length === 0) {
       setNodes([]);
@@ -270,7 +265,6 @@ export function OntologyGraph({
 
   return (
     <div className="relative flex h-full flex-col">
-      {/* Toolbar */}
       <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800">
         <button
           onClick={toggleDirection}
@@ -302,7 +296,6 @@ export function OntologyGraph({
         </span>
       </div>
 
-      {/* Graph */}
       <div className="relative flex-1">
         {arrowMarker}
         {isLoading && (
@@ -335,7 +328,6 @@ export function OntologyGraph({
           <Controls showInteractive={false}>
             <button
               onClick={() => {
-                // Fit view is handled by Controls built-in, but add a toolbar one too
               }}
               className="react-flow__controls-button"
               aria-label="Fit view"

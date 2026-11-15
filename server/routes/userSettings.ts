@@ -1,16 +1,3 @@
-/**
- * User settings for the local user.
- *
- * The old ontokit-api /users routes (routes/user_settings.py) only covered GitHub token
- * management, GitHub repo listing and Zitadel user search — all dropped in OntoKit Full.
- * What remains is a small local preferences store (JSON object in SQLite) plus the
- * current-user profile:
- *
- *   GET   /users/me            -> {id, name, email}
- *   GET   /users/me/settings   -> {user_id, settings: {...}, created_at, updated_at}
- *   PUT   /users/me/settings   body {...} (or {settings: {...}}) replaces the settings object
- *   PATCH /users/me/settings   body {...} (or {settings: {...}}) shallow-merges into it
- */
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { fromJson, get, insert, nowIso, toJson, update } from "../db";

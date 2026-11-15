@@ -3,8 +3,6 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
-// ── Hoisted mock data (shared references for .includes() checks) ──
-
 const { mockRdfsLabel, mockSkosPrefLabel, mockSkosDefinition } = vi.hoisted(() => ({
   mockRdfsLabel: {
     iri: "http://www.w3.org/2000/01/rdf-schema#label",
@@ -64,8 +62,6 @@ vi.mock("@/lib/ontology/annotationProperties", () => ({
 
 import { InlineAnnotationAdder } from "@/components/editor/standard/InlineAnnotationAdder";
 
-// ── Tests ──────────────────────────────────────────────────────────
-
 describe("InlineAnnotationAdder", () => {
   const defaultProps = {
     excludeIris: [] as string[],
@@ -98,7 +94,6 @@ describe("InlineAnnotationAdder", () => {
     render(<InlineAnnotationAdder {...defaultProps} />);
     const input = screen.getByPlaceholderText("Select property...");
     fireEvent.focus(input);
-    // Should show vocabulary groups
     expect(screen.getByText("RDFS")).toBeDefined();
     expect(screen.getByText("SKOS")).toBeDefined();
   });
@@ -146,9 +141,7 @@ describe("InlineAnnotationAdder", () => {
     fireEvent.focus(screen.getByPlaceholderText("Select property..."));
     fireEvent.click(screen.getByText("Preferred Label"));
 
-    // Property button should show the selected label
     expect(screen.getByText("Preferred Label")).toBeDefined();
-    // Value input should now be enabled
     const valueInput = screen.getByLabelText("Annotation value") as HTMLInputElement;
     expect(valueInput.disabled).toBe(false);
     expect(valueInput.placeholder).toBe("Enter value...");
@@ -168,11 +161,9 @@ describe("InlineAnnotationAdder", () => {
     const user = userEvent.setup();
     render(<InlineAnnotationAdder {...defaultProps} onAdd={onAdd} />);
 
-    // Select property
     fireEvent.focus(screen.getByPlaceholderText("Select property..."));
     fireEvent.click(screen.getByText("Label"));
 
-    // Type a value and press Enter
     const valueInput = screen.getByLabelText("Annotation value");
     await user.type(valueInput, "Test Value{Enter}");
 
@@ -229,7 +220,6 @@ describe("InlineAnnotationAdder", () => {
     const valueInput = screen.getByLabelText("Annotation value");
     await user.type(valueInput, "Test{Enter}");
 
-    // After commit, should reset to initial state
     expect(screen.getByPlaceholderText("Select property...")).toBeDefined();
     const newValueInput = screen.getByLabelText("Annotation value") as HTMLInputElement;
     expect(newValueInput.disabled).toBe(true);
@@ -259,21 +249,17 @@ describe("InlineAnnotationAdder", () => {
     expect(screen.getByText("RDFS")).toBeDefined();
 
     await user.type(input, "{Escape}");
-    // Dropdown should close
     expect(screen.queryByText("RDFS")).toBeNull();
   });
 
   it("re-opens property selector when selected property button is clicked", () => {
     render(<InlineAnnotationAdder {...defaultProps} />);
 
-    // Select a property
     fireEvent.focus(screen.getByPlaceholderText("Select property..."));
     fireEvent.click(screen.getByText("Label"));
 
-    // Click the selected property button to change it
     fireEvent.click(screen.getByText("Label"));
 
-    // Dropdown should be open again
     expect(screen.getByText("RDFS")).toBeDefined();
     expect(screen.getByText("SKOS")).toBeDefined();
   });

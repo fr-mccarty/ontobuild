@@ -60,7 +60,6 @@ export function useTreeSearch({
     [onSearchSelect, closeSearch],
   );
 
-  // Debounced search
   useEffect(() => {
     if (!showSearch) return;
     if (!searchQuery.trim()) {

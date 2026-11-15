@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render as rtlRender, screen, within, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import userEvent from "@testing-library/user-event";
 import { LabelPreferences } from "@/components/projects/label-preferences";
 
@@ -55,7 +60,6 @@ describe("LabelPreferences", () => {
     const user = userEvent.setup();
     render(<LabelPreferences preferences={[]} onChange={mockOnChange} />);
 
-    // Default property is rdfs:label, default language is "Any language" (empty)
     await user.click(screen.getByRole("button", { name: /Add/ }));
 
     expect(mockOnChange).toHaveBeenCalledWith(["rdfs:label"]);
@@ -65,7 +69,6 @@ describe("LabelPreferences", () => {
     const user = userEvent.setup();
     render(<LabelPreferences preferences={[]} onChange={mockOnChange} />);
 
-    // Select a language
     const languageSelect = screen.getAllByRole("combobox")[1];
     await user.selectOptions(languageSelect, "en");
 
@@ -95,7 +98,6 @@ describe("LabelPreferences", () => {
       />
     );
 
-    // Try to add rdfs:label again (default selections)
     await user.click(screen.getByRole("button", { name: /Add/ }));
 
     expect(mockOnChange).not.toHaveBeenCalled();
@@ -110,8 +112,7 @@ describe("LabelPreferences", () => {
       />
     );
 
-    // Click the first remove button
-    const removeButtons = screen.getAllByTitle("Remove");
+    const removeButtons = screen.getAllByLabelText("Remove");
     await user.click(removeButtons[0]);
 
     expect(mockOnChange).toHaveBeenCalledWith(["skos:prefLabel"]);
@@ -126,9 +127,8 @@ describe("LabelPreferences", () => {
       />
     );
 
-    // Click the second item's "Move up" button
-    const moveUpButtons = screen.getAllByTitle("Move up");
-    await user.click(moveUpButtons[1]); // Second item's move up
+    const moveUpButtons = screen.getAllByLabelText("Move up");
+    await user.click(moveUpButtons[1]);
 
     expect(mockOnChange).toHaveBeenCalledWith(["skos:prefLabel", "rdfs:label@en"]);
   });
@@ -142,8 +142,7 @@ describe("LabelPreferences", () => {
       />
     );
 
-    // Click the first item's "Move down" button
-    const moveDownButtons = screen.getAllByTitle("Move down");
+    const moveDownButtons = screen.getAllByLabelText("Move down");
     await user.click(moveDownButtons[0]);
 
     expect(mockOnChange).toHaveBeenCalledWith(["skos:prefLabel", "rdfs:label@en"]);
@@ -157,7 +156,7 @@ describe("LabelPreferences", () => {
       />
     );
 
-    const moveUpButtons = screen.getAllByTitle("Move up");
+    const moveUpButtons = screen.getAllByLabelText("Move up");
     expect((moveUpButtons[0] as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -169,7 +168,7 @@ describe("LabelPreferences", () => {
       />
     );
 
-    const moveDownButtons = screen.getAllByTitle("Move down");
+    const moveDownButtons = screen.getAllByLabelText("Move down");
     expect((moveDownButtons[moveDownButtons.length - 1] as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -182,17 +181,14 @@ describe("LabelPreferences", () => {
       />
     );
 
-    // Selects should be disabled
     const selects = screen.getAllByRole("combobox");
     selects.forEach((select) => {
       expect((select as HTMLSelectElement).disabled).toBe(true);
     });
 
-    // Add button should be disabled
     expect((screen.getByRole("button", { name: /Add/ }) as HTMLButtonElement).disabled).toBe(true);
 
-    // Remove button should be disabled
-    expect((screen.getByTitle("Remove") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Remove") as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("renders all label property options in the property select", () => {

@@ -16,7 +16,7 @@ const _SUPPORTED_MIME_TYPES = [
   "text/xml",
   "application/xml",
 ];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 interface FileUploadProps {
   onFileSelect: (file: File | null) => void;
@@ -35,13 +35,11 @@ export function FileUpload({
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const validateFile = useCallback((file: File): string | null => {
-    // Check file extension
     const extension = "." + file.name.split(".").pop()?.toLowerCase();
     if (!SUPPORTED_EXTENSIONS.includes(extension)) {
       return `Unsupported file format. Supported formats: ${SUPPORTED_EXTENSIONS.join(", ")}`;
     }
 
-    // Check file size
     if (file.size > MAX_FILE_SIZE) {
       return `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)} MB`;
     }

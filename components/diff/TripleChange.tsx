@@ -3,6 +3,7 @@
 import { type TripleChange as TripleChangeType } from "@/lib/api/revisions";
 import { cn } from "@/lib/utils";
 import { Plus, Minus } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface TripleChangeProps {
   change: TripleChangeType;
@@ -12,9 +13,7 @@ interface TripleChangeProps {
 export function TripleChange({ change, className }: TripleChangeProps) {
   const isAdded = change.change_type === "added";
 
-  // Shorten IRIs for display
   const shortenIRI = (iri: string) => {
-    // Extract the local part after # or last /
     const hashIndex = iri.lastIndexOf("#");
     const slashIndex = iri.lastIndexOf("/");
     const splitIndex = Math.max(hashIndex, slashIndex);
@@ -23,7 +22,6 @@ export function TripleChange({ change, className }: TripleChangeProps) {
       const prefix = iri.substring(0, splitIndex + 1);
       const local = iri.substring(splitIndex + 1);
 
-      // Try to guess a prefix
       if (prefix.includes("rdf-syntax-ns")) {
         return `rdf:${local}`;
       } else if (prefix.includes("rdf-schema")) {
@@ -40,7 +38,6 @@ export function TripleChange({ change, className }: TripleChangeProps) {
         return `skos:${local}`;
       }
 
-      // If IRI is too long, show abbreviated version
       if (iri.length > 60) {
         return `...${local}`;
       }
@@ -59,7 +56,6 @@ export function TripleChange({ change, className }: TripleChangeProps) {
         className
       )}
     >
-      {/* Change indicator */}
       <div
         className={cn(
           "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full",
@@ -71,26 +67,23 @@ export function TripleChange({ change, className }: TripleChangeProps) {
         {isAdded ? <Plus className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
       </div>
 
-      {/* Triple */}
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-x-2">
           <span className="text-slate-500">&lt;</span>
-          <span
-            className="truncate text-blue-600 dark:text-blue-400"
-            title={change.subject}
-          >
-            {shortenIRI(change.subject)}
-          </span>
+          <Tooltip content={change.subject}>
+            <span className="truncate text-blue-600 dark:text-blue-400">
+              {shortenIRI(change.subject)}
+            </span>
+          </Tooltip>
           <span className="text-slate-500">&gt;</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-2 pl-4">
-          <span
-            className="truncate text-purple-600 dark:text-purple-400"
-            title={change.predicate}
-          >
-            {shortenIRI(change.predicate)}
-          </span>
+          <Tooltip content={change.predicate}>
+            <span className="truncate text-purple-600 dark:text-purple-400">
+              {shortenIRI(change.predicate)}
+            </span>
+          </Tooltip>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-2 pl-8">
@@ -98,21 +91,19 @@ export function TripleChange({ change, className }: TripleChangeProps) {
           change.object.startsWith("https://") ? (
             <>
               <span className="text-slate-500">&lt;</span>
-              <span
-                className="truncate text-green-600 dark:text-green-400"
-                title={change.object}
-              >
-                {shortenIRI(change.object)}
-              </span>
+              <Tooltip content={change.object}>
+                <span className="truncate text-green-600 dark:text-green-400">
+                  {shortenIRI(change.object)}
+                </span>
+              </Tooltip>
               <span className="text-slate-500">&gt;</span>
             </>
           ) : (
-            <span
-              className="text-amber-600 dark:text-amber-400"
-              title={change.object}
-            >
-              &ldquo;{change.object}&rdquo;
-            </span>
+            <Tooltip content={change.object}>
+              <span className="text-amber-600 dark:text-amber-400">
+                &ldquo;{change.object}&rdquo;
+              </span>
+            </Tooltip>
           )}
           <span className="text-slate-500">.</span>
         </div>
@@ -140,7 +131,6 @@ export function SemanticDiff({ added, removed, className }: SemanticDiffProps) {
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Summary */}
       <div className="flex items-center gap-4 text-sm">
         {added.length > 0 && (
           <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
@@ -156,7 +146,6 @@ export function SemanticDiff({ added, removed, className }: SemanticDiffProps) {
         )}
       </div>
 
-      {/* Removed triples */}
       {removed.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-red-700 dark:text-red-400">
@@ -170,7 +159,6 @@ export function SemanticDiff({ added, removed, className }: SemanticDiffProps) {
         </div>
       )}
 
-      {/* Added triples */}
       {added.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-green-700 dark:text-green-400">

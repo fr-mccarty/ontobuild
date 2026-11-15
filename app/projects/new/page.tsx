@@ -99,7 +99,6 @@ export default function NewProjectPage() {
     router.push("/");
   };
 
-  // Show loading state while checking auth
   if (isLoading) {
     return (
       <>
@@ -120,7 +119,6 @@ export default function NewProjectPage() {
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
         <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Back link */}
           <Link
             href="/"
             className="mb-6 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
@@ -129,7 +127,6 @@ export default function NewProjectPage() {
             Back to projects
           </Link>
 
-          {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Create a new project
@@ -139,7 +136,6 @@ export default function NewProjectPage() {
             </p>
           </div>
 
-          {/* Tabs */}
           <div className="mb-6 flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
             <button
               type="button"
@@ -169,7 +165,6 @@ export default function NewProjectPage() {
             </button>
           </div>
 
-          {/* Tab Content */}
           <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
             {activeTab === "create" && (
               <ProjectForm
@@ -182,7 +177,6 @@ export default function NewProjectPage() {
 
             {activeTab === "import" && (
               <div className="space-y-6">
-                {/* File Upload */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Ontology File <span className="text-red-500">*</span>
@@ -210,7 +204,6 @@ export default function NewProjectPage() {
                   </p>
                 </div>
 
-                {/* Upload Progress */}
                 {uploadProgress && (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-600 dark:bg-slate-700">
                     <div className="mb-2 flex items-center justify-between text-sm">
@@ -243,7 +236,6 @@ export default function NewProjectPage() {
                   </div>
                 )}
 
-                {/* Project Form (for overrides and visibility) */}
                 <ProjectForm
                   onSubmit={handleImportSubmit}
                   onCancel={handleCancel}

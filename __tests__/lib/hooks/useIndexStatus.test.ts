@@ -4,7 +4,6 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useIndexStatus } from "@/lib/hooks/useIndexStatus";
 
-// Mock the projectOntologyApi
 vi.mock("@/lib/api/client", () => ({
   projectOntologyApi: {
     getIndexStatus: vi.fn(),

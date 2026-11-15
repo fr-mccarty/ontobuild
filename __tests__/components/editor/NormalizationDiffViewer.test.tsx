@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-// Capture beforeMount/onMount callbacks from mock
 let capturedBeforeMount: ((monaco: MockMonaco) => void) | undefined;
 let capturedOnMount: ((editor: MockEditor) => void) | undefined;
 
@@ -16,7 +15,6 @@ interface MockEditor {
   dispose: ReturnType<typeof vi.fn>;
 }
 
-// Mock Monaco DiffEditor since it requires browser APIs
 vi.mock("@monaco-editor/react", () => ({
   DiffEditor: (props: Record<string, unknown>) => {
     capturedBeforeMount = props.beforeMount as typeof capturedBeforeMount;
@@ -103,20 +101,16 @@ describe("NormalizationDiffViewer", () => {
     expect(capturedOnMount).toBeDefined();
     const mockEditor: MockEditor = { dispose: vi.fn() };
     capturedOnMount!(mockEditor);
-    // No error thrown = success; editor is stored internally
   });
 
   it("disposes editor when header X button is clicked", async () => {
     const onClose = vi.fn();
     render(<NormalizationDiffViewer {...defaultProps} onClose={onClose} />);
 
-    // Simulate mounting the editor
     const mockEditor: MockEditor = { dispose: vi.fn() };
     capturedOnMount!(mockEditor);
 
-    // Click the X button (the ghost button in header)
     const buttons = screen.getAllByRole("button");
-    // The X button is the first button (in the header)
     await userEvent.click(buttons[0]);
 
     expect(mockEditor.dispose).toHaveBeenCalled();
@@ -126,7 +120,6 @@ describe("NormalizationDiffViewer", () => {
   it("calls onClose even when no editor was mounted", async () => {
     const onClose = vi.fn();
     render(<NormalizationDiffViewer {...defaultProps} onClose={onClose} />);
-    // Don't call capturedOnMount - editor was never mounted
     await userEvent.click(screen.getByText("Close"));
     expect(onClose).toHaveBeenCalled();
   });

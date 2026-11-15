@@ -5,7 +5,6 @@ import { createRef } from "react";
 import { Button } from "@/components/ui/button";
 
 describe("Button", () => {
-  // ── Variants ──────────────────────────────────────────────────────
   it("renders primary variant classes by default", () => {
     render(<Button>Click</Button>);
     const btn = screen.getByRole("button", { name: "Click" });
@@ -39,7 +38,6 @@ describe("Button", () => {
     expect(btn.className).toContain("text-white");
   });
 
-  // ── Sizes ─────────────────────────────────────────────────────────
   it("renders sm size classes", () => {
     render(<Button size="sm">Small</Button>);
     const btn = screen.getByRole("button", { name: "Small" });
@@ -61,7 +59,6 @@ describe("Button", () => {
     expect(btn.className).toContain("px-6");
   });
 
-  // ── cursor-pointer ────────────────────────────────────────────────
   it("always has cursor-pointer class", () => {
     render(<Button>Click</Button>);
     expect(screen.getByRole("button").className).toContain("cursor-pointer");
@@ -72,7 +69,6 @@ describe("Button", () => {
     expect(screen.getByRole("button").className).toContain("cursor-pointer");
   });
 
-  // ── Disabled ──────────────────────────────────────────────────────
   it("sets the disabled attribute", () => {
     render(<Button disabled>Disabled</Button>);
     expect(screen.getByRole("button").hasAttribute("disabled")).toBe(true);
@@ -92,16 +88,13 @@ describe("Button", () => {
     expect(handleClick).not.toHaveBeenCalled();
   });
 
-  // ── className merge ───────────────────────────────────────────────
   it("merges custom className", () => {
     render(<Button className="my-custom-class">Merged</Button>);
     const btn = screen.getByRole("button");
     expect(btn.className).toContain("my-custom-class");
-    // still has base classes
     expect(btn.className).toContain("inline-flex");
   });
 
-  // ── Ref forwarding ────────────────────────────────────────────────
   it("forwards ref to the button element", () => {
     const ref = createRef<HTMLButtonElement>();
     render(<Button ref={ref}>Ref</Button>);
@@ -109,7 +102,6 @@ describe("Button", () => {
     expect(ref.current?.textContent).toBe("Ref");
   });
 
-  // ── onClick ───────────────────────────────────────────────────────
   it("calls onClick handler when clicked", async () => {
     const handleClick = vi.fn();
     render(<Button onClick={handleClick}>Click Me</Button>);

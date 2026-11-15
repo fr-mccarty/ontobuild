@@ -37,8 +37,8 @@ import {
 } from "@/lib/ontology/entityDetailExtractors";
 import { type PropertyDraftEntry } from "@/lib/stores/draftStore";
 import { useIriLabels } from "@/lib/hooks/useIriLabels";
+import { Tooltip } from "@/components/ui/tooltip";
 
-/** Ensure an array of localized strings always ends with an empty placeholder row */
 function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
     return [...arr, { value: "", lang: "en" }];
@@ -49,6 +49,7 @@ function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
 const PROPERTY_TYPE_LABELS: Record<PropertyType, { label: string; letter: string; color: string }> = {
   object: { label: "Object Property", letter: "O", color: "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-400" },
   data: { label: "Data Property", letter: "D", color: "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-400" },
+  other: { label: "Property", letter: "P", color: "bg-slate-100 border-slate-300 text-slate-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300" },
   annotation: { label: "Annotation Property", letter: "A", color: "bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-400" },
 };
 
@@ -79,13 +80,11 @@ export function PropertyDetailPanel({
   accessToken,
   labelHints,
 }: PropertyDetailPanelProps) {
-  // Parse property detail from source
   const detail = useMemo((): ParsedPropertyDetail | null => {
     if (!propertyIri || !sourceContent) return null;
     return extractPropertyDetail(sourceContent, propertyIri);
   }, [propertyIri, sourceContent, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Collect all IRIs that need label resolution
   const allDisplayedIris = useMemo(() => {
     if (!detail) return [];
     const iris: string[] = [
@@ -98,7 +97,6 @@ export function PropertyDetailPanel({
       ...detail.isDefinedByIris,
     ];
     if (detail.inverseOf) iris.push(detail.inverseOf);
-    // Annotation property IRIs
     for (const ann of detail.annotations) {
       iris.push(ann.property_iri);
     }
@@ -107,7 +105,6 @@ export function PropertyDetailPanel({
 
   const resolvedLabels = useIriLabels(allDisplayedIris, { projectId, accessToken, branch, labelHints });
 
-  // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editLabels, setEditLabels] = useState<LocalizedString[]>([]);
   const [editComments, setEditComments] = useState<LocalizedString[]>([]);
@@ -124,7 +121,6 @@ export function PropertyDetailPanel({
   const editInitializedRef = useRef(false);
   const toast = useToast();
 
-  // Build draft entry for auto-save
   const buildDraftEntry = useCallback((): PropertyDraftEntry | null => {
     return {
       entityType: "property",
@@ -167,7 +163,6 @@ export function PropertyDetailPanel({
     entityIri: propertyIri,
     canEdit,
     onFlush: onUpdateProperty ? async (iri: string) => {
-      // Build update data from current draft
       const draft = buildDraftEntry();
       if (!draft) return;
 
@@ -205,7 +200,6 @@ export function PropertyDetailPanel({
     validate,
   });
 
-  // Initialize edit state from parsed detail
   const initEditState = useCallback((d: ParsedPropertyDetail) => {
     setEditPropertyType(d.propertyType);
     setEditLabels(d.labels.length > 0 ? d.labels.map((l) => ({ ...l })) : [{ value: "", lang: "en" }]);
@@ -237,23 +231,16 @@ export function PropertyDetailPanel({
     }
     setEditRelationships(relationships);
 
-    // Annotations: filter out definition (shown in its own section)
     const regularAnnotations = d.annotations
       .filter((a) => a.property_iri !== DEFINITION_IRI)
       .map((a) => ({ ...a, values: ensureTrailingEmpty(a.values.map((v) => ({ ...v }))) }));
 
     if (!regularAnnotations.find((a) => a.property_iri === DEFINITION_IRI)) {
-      // Don't add definition here — it has its own section
     }
 
     setEditAnnotations(regularAnnotations);
   }, []);
 
-  // Flush any pending draft to git when this panel unmounts. The flush
-  // closure captures props that can change between mount and unmount, so
-  // route the call through a ref that we keep up to date in an effect — the
-  // cleanup then sees the latest closure rather than the one captured on
-  // first render.
   const flushToGitRef = useRef(flushToGit);
   useEffect(() => {
     flushToGitRef.current = flushToGit;
@@ -271,19 +258,16 @@ export function PropertyDetailPanel({
     setIsEditing(true);
   }, [detail, initEditState]);
 
-  // Cancel: discard draft, re-init from server. Stay in edit mode.
   const cancelEditMode = useCallback(() => {
     discardDraft();
     if (detail) initEditState(detail);
   }, [detail, discardDraft, initEditState]);
 
-  // Manual save: flush the current draft to git. Stays in edit mode.
   const flushDraftToGit = useCallback(async () => {
     triggerSave();
     await flushToGit();
   }, [triggerSave, flushToGit]);
 
-  // Auto-enter edit mode
   useEffect(() => {
     if (isEditing || editInitializedRef.current) return;
     if (!canEdit || !onUpdateProperty || !detail) return;
@@ -310,7 +294,6 @@ export function PropertyDetailPanel({
     enterEditMode();
   }, [detail, canEdit, restoredDraft, propertyIri, clearRestoredDraft, onUpdateProperty, isEditing, enterEditMode]);
 
-  // ── Edit helpers ──
   const updateLabel = useCallback((index: number, field: "value" | "lang", val: string) => {
     setEditLabels((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: val } : l)));
   }, []);
@@ -397,7 +380,6 @@ export function PropertyDetailPanel({
     requestAnimationFrame(() => triggerSave());
   }, [triggerSave]);
 
-  // ── Render ──
   if (!propertyIri) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
@@ -428,7 +410,9 @@ export function PropertyDetailPanel({
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{getLocalName(propertyIri)}</h2>
-            <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={propertyIri}>{propertyIri}</p>
+            <Tooltip content={propertyIri}>
+              <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{propertyIri}</p>
+            </Tooltip>
           </div>
         </div>
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-900/10">
@@ -445,7 +429,6 @@ export function PropertyDetailPanel({
 
   return (
     <div className="flex h-full w-full flex-col">
-      {/* Header — pinned, always visible */}
       <div className="shrink-0 border-b border-slate-200 p-4 dark:border-slate-700">
         <div className="flex items-start gap-3">
           <div className={cn("mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border", typeInfo.color)}>
@@ -467,18 +450,21 @@ export function PropertyDetailPanel({
               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium border", typeInfo.color)}>
                 {typeInfo.label}
               </span>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400" title={propertyIri}>{propertyIri}</p>
+              <Tooltip content={propertyIri}>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">{propertyIri}</p>
+              </Tooltip>
               {onCopyIri && (
-                <button onClick={() => onCopyIri(propertyIri)} className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700" title="Copy IRI">
-                  <Copy className="h-3 w-3" />
-                </button>
+                <Tooltip content="Copy IRI">
+                  <button onClick={() => onCopyIri(propertyIri)} className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700" aria-label="Copy IRI">
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Auto-save affordance bar — pinned edit toolbar */}
       {isEditing && (
         <AutoSaveAffordanceBar
           status={saveStatus}
@@ -491,9 +477,7 @@ export function PropertyDetailPanel({
       )}
 
       <div className="flex-1 overflow-y-auto">
-        {/* Content */}
         <div className="p-4 space-y-3">
-          {/* Labels */}
           {isEditing ? (
             <Section title="Label(s)" icon={<Tag className="h-4 w-4" />}>
               <div className="space-y-2">
@@ -502,7 +486,9 @@ export function PropertyDetailPanel({
                     <input type="text" value={label.value} onChange={(e) => updateLabel(index, "value", e.target.value)} onBlur={() => triggerSave()} placeholder="Label text" className="flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white" />
                     <LanguagePicker value={label.lang} onChange={(code) => { updateLabel(index, "lang", code); triggerSave(); }} />
                     {editLabels.length > 1 ? (
-                      <button onClick={() => removeLabel(index)} className="rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400" title="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
+                      <Tooltip content="Remove">
+                        <button onClick={() => removeLabel(index)} className="rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400" aria-label="Remove"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </Tooltip>
                     ) : (
                       <div className="rounded-sm p-1"><div className="h-3.5 w-3.5" /></div>
                     )}
@@ -522,7 +508,6 @@ export function PropertyDetailPanel({
             </Section>
           ) : null}
 
-          {/* Definitions */}
           {isEditing ? (
             <Section title="Definition" icon={<Lightbulb className="h-4 w-4" />}>
               <div className="space-y-2">
@@ -555,7 +540,6 @@ export function PropertyDetailPanel({
             </Section>
           ) : null}
 
-          {/* Comments */}
           {isEditing ? (
             <Section title="Comment(s)" icon={<MessageSquare className="h-4 w-4" />}>
               <div className="space-y-2">
@@ -588,7 +572,6 @@ export function PropertyDetailPanel({
             </Section>
           ) : null}
 
-          {/* Domain */}
           {(isEditing || detail.domainIris.length > 0) && (
             <Section title="Domain" icon={<ArrowRight className="h-4 w-4" />}>
               {isEditing ? (
@@ -610,7 +593,6 @@ export function PropertyDetailPanel({
             </Section>
           )}
 
-          {/* Range */}
           {(isEditing || detail.rangeIris.length > 0) && (
             <Section title="Range" icon={<ArrowRight className="h-4 w-4 rotate-180" />}>
               {isEditing ? (
@@ -632,7 +614,6 @@ export function PropertyDetailPanel({
             </Section>
           )}
 
-          {/* Parent Properties */}
           {(isEditing || detail.parentIris.length > 0) && (
             <Section title="Parent Properties" icon={<ArrowUp className="h-4 w-4" />}>
               {isEditing ? (
@@ -654,7 +635,6 @@ export function PropertyDetailPanel({
             </Section>
           )}
 
-          {/* Inverse Of (object properties only) */}
           {(isEditing || detail.inverseOf) && detail.propertyType === "object" && (
             <Section title="Inverse Of" icon={<ArrowLeftRight className="h-4 w-4" />}>
               {isEditing ? (
@@ -677,7 +657,6 @@ export function PropertyDetailPanel({
             </Section>
           )}
 
-          {/* Characteristics (object properties only) */}
           {(isEditing || detail.characteristics.length > 0) && detail.propertyType === "object" && (
             <Section title="Characteristics" icon={<CheckSquare className="h-4 w-4" />}>
               {isEditing ? (
@@ -709,7 +688,6 @@ export function PropertyDetailPanel({
             </Section>
           )}
 
-          {/* Annotations */}
           {isEditing ? (
             <Section title="Annotations" icon={<StickyNote className="h-4 w-4" />}>
               <div className="space-y-3">
@@ -763,7 +741,9 @@ export function PropertyDetailPanel({
                   return (
                     <div key={`${ann.property_iri}-${vi}`} className="flex gap-4">
                       <div className="w-40 shrink-0 flex items-center">
-                        <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300" title={curie}>{effectiveLabel}</span>
+                        <Tooltip content={curie}>
+                          <span className="rounded-sm bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">{effectiveLabel}</span>
+                        </Tooltip>
                       </div>
                       <div className="min-w-0 flex-1 flex items-center gap-2">
                         {v.lang && <LanguageFlag lang={v.lang} />}
@@ -776,7 +756,6 @@ export function PropertyDetailPanel({
             </div>
           ) : null}
 
-          {/* Relationships */}
           {(isEditing || detail.seeAlsoIris.length > 0 || detail.isDefinedByIris.length > 0) && (
             <Section title="Relationships" icon={<Link2 className="h-4 w-4" />}>
               <RelationshipSection
@@ -795,14 +774,12 @@ export function PropertyDetailPanel({
             </Section>
           )}
 
-          {/* Equivalents (read-only) */}
           {detail.equivalentIris.length > 0 && (
             <Section title="Equivalent Properties" icon={<Equal className="h-4 w-4" />}>
               <IriLinks iris={detail.equivalentIris} onNavigate={onNavigateToEntity} resolvedLabels={resolvedLabels} />
             </Section>
           )}
 
-          {/* Disjoint (read-only) */}
           {detail.disjointIris.length > 0 && (
             <Section title="Disjoint Properties" icon={<Ban className="h-4 w-4" />}>
               <IriLinks iris={detail.disjointIris} onNavigate={onNavigateToEntity} resolvedLabels={resolvedLabels} />
@@ -815,18 +792,15 @@ export function PropertyDetailPanel({
   );
 }
 
-// ── Shared sub-components ──
-
 function Section({ title, tooltip, icon, children }: { title: string; tooltip?: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex gap-4">
-      <div
-        className="w-40 shrink-0 flex items-start gap-1.5 pt-1"
-        title={tooltip}
-      >
-        {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</span>
-      </div>
+      <Tooltip content={tooltip}>
+        <div className="w-40 shrink-0 flex items-start gap-1.5 pt-1">
+          {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</span>
+        </div>
+      </Tooltip>
       <div className="min-w-0 flex-1">
         {children}
       </div>
@@ -839,19 +813,22 @@ function IriLinks({ iris, onNavigate, resolvedLabels }: { iris: string[]; onNavi
     <div className="space-y-1">
       {iris.map((iri) => (
         <div key={iri}>
-          <button
-            onClick={() => onNavigate?.(iri)}
-            className={cn(
-              "text-sm truncate max-w-full",
-              onNavigate
-                ? "text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400"
-                : "text-slate-700 dark:text-slate-300"
-            )}
-            title={iri}
-            disabled={!onNavigate}
-          >
-            {resolvedLabels?.[iri] || getLocalName(iri)}
-          </button>
+          <Tooltip content={iri}>
+            <span className="inline-flex max-w-full">
+              <button
+                onClick={() => onNavigate?.(iri)}
+                className={cn(
+                  "text-sm truncate max-w-full",
+                  onNavigate
+                    ? "text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400"
+                    : "text-slate-700 dark:text-slate-300"
+                )}
+                disabled={!onNavigate}
+              >
+                {resolvedLabels?.[iri] || getLocalName(iri)}
+              </button>
+            </span>
+          </Tooltip>
         </div>
       ))}
     </div>
@@ -917,12 +894,16 @@ function IriList({
     <div className="space-y-2">
       {iris.map((iri) => (
         <div key={iri} className="flex items-center gap-2">
-          <button onClick={() => onNavigate?.(iri)} className="flex-1 truncate text-sm text-primary-600 hover:underline dark:text-primary-400" title={iri}>
-            {resolvedLabels?.[iri] || getLocalName(iri)}
-          </button>
-          <button onClick={() => onRemove(iri)} className="shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400" title="Remove">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip content={iri}>
+            <button onClick={() => onNavigate?.(iri)} className="flex-1 truncate text-sm text-primary-600 hover:underline dark:text-primary-400">
+              {resolvedLabels?.[iri] || getLocalName(iri)}
+            </button>
+          </Tooltip>
+          <Tooltip content="Remove">
+            <button onClick={() => onRemove(iri)} className="shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400" aria-label="Remove">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
         </div>
       ))}
       {canAddMore && (

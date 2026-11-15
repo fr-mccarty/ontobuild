@@ -4,7 +4,6 @@ import type { LocalizedString, AnnotationUpdate } from "@/lib/api/client";
 import type { RelationshipGroup } from "@/components/editor/standard/RelationshipSection";
 import type { PropertyType, PropertyAssertion } from "@/lib/ontology/entityDetailExtractors";
 
-/** Class draft entry (backward-compatible: drafts without entityType are treated as class) */
 export interface DraftEntry {
   entityType?: "class";
   labels: LocalizedString[];
@@ -16,7 +15,6 @@ export interface DraftEntry {
   updatedAt: number;
 }
 
-/** Property draft entry */
 export interface PropertyDraftEntry {
   entityType: "property";
   propertyType: PropertyType;
@@ -36,7 +34,6 @@ export interface PropertyDraftEntry {
   updatedAt: number;
 }
 
-/** Individual draft entry */
 export interface IndividualDraftEntry {
   entityType: "individual";
   labels: LocalizedString[];
@@ -55,7 +52,6 @@ export interface IndividualDraftEntry {
 
 export type AnyDraftEntry = DraftEntry | PropertyDraftEntry | IndividualDraftEntry;
 
-/** Composite key: "projectId:branch:classIri" */
 export function draftKey(projectId: string, branch: string, classIri: string): string {
   return `${projectId}:${branch}:${classIri}`;
 }

@@ -1,7 +1,3 @@
-/**
- * Quality-related type definitions for ontology consistency checks and cross-references
- */
-
 export type ConsistencySeverity = "error" | "warning" | "info";
 
 export type ConsistencyRuleId =

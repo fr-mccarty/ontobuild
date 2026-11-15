@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render as rtlRender, screen, fireEvent, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import { LanguageFlag } from "@/components/editor/LanguageFlag";
 
 describe("LanguageFlag", () => {
@@ -22,9 +27,11 @@ describe("LanguageFlag", () => {
     expect(el.getAttribute("aria-label")).toBe("Language: de");
   });
 
-  it("sets title to the language code", () => {
+  it("shows the language code in a tooltip", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     render(<LanguageFlag lang="it" />);
-    expect(screen.getByTitle("it")).toBeDefined();
+    fireEvent.focus(screen.getByRole("img"));
+    expect((await screen.findAllByText("it")).length).toBeGreaterThan(0);
   });
 
   it("renders aria-hidden when lang is empty string", () => {

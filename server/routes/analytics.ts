@@ -1,14 +1,3 @@
-/**
- * Analytics: entity change events (activity, contributors, hot entities, entity history).
- * Port of ontokit-api/ontokit/{models/change_event.py, services/change_event_service.py,
- * api/routes/analytics.py}.
- *
- * Events are derived like the old service did on source saves: the ontology at the parent
- * commit is compared with the new commit at the entity level (created / deleted entities,
- * label / parent / deprecation / comment / other changes). Here this runs for every
- * "commit" ontology event that has a parent, except merges (whose changes were already
- * recorded on the source branch) and imports.
- */
 import { Hono } from "hono";
 import type { Store, Term } from "n3";
 import { all, get, insert, newId, nowIso, toJson, fromJson, transaction } from "../db";
@@ -34,11 +23,6 @@ import {
 
 const r = new Hono();
 
-// ---------------------------------------------------------------------------
-// Diffing
-// ---------------------------------------------------------------------------
-
-/** Same order as ontokit-api services/rdf_utils.py _TYPE_CHECKS. */
 const TYPE_CHECKS: [string, string][] = [
   [NS.owl + "Class", "class"],
   [NS.rdfs + "Class", "class"],
@@ -68,7 +52,6 @@ const sortedEq = (a: string[], b: string[]) => {
   return x.every((v, i) => v === y[i]);
 };
 
-/** Stable signature of a term; blank nodes are expanded (their ids differ between parses). */
 function termSig(store: Store, t: Term, depth = 0): string {
   if (t.termType === "BlankNode") {
     if (depth > 8) return "[]";
@@ -98,7 +81,6 @@ export interface EntityChange {
   new_values: Record<string, unknown> | null;
 }
 
-/** Entity-level diff of two ontology stores (port of record_events_from_diff). */
 export function diffEntities(oldStore: Store | null, newStore: Store): EntityChange[] {
   const oldEntities = oldStore ? declaredEntities(oldStore) : new Map<string, string>();
   const newEntities = declaredEntities(newStore);
@@ -169,7 +151,6 @@ export function diffEntities(oldStore: Store | null, newStore: Store): EntityCha
   return changes;
 }
 
-/** Store change events for a commit (diffing parent vs. new commit). Returns the count. */
 export async function recordCommitChangeEvents(e: Extract<OntologyEvent, { type: "commit" }>): Promise<number> {
   if (!e.parentHash || e.parentHash === e.commitHash) return 0;
   if (e.origin === "merge" || e.origin === "import") return 0;
@@ -177,7 +158,7 @@ export async function recordCommitChangeEvents(e: Extract<OntologyEvent, { type:
   try {
     oldStore = (await loadOntology(e.projectId, e.parentHash)).store;
   } catch {
-    oldStore = null; // parent had no (parseable) ontology file
+    oldStore = null;
   }
   const newStore = (await loadOntology(e.projectId, e.commitHash)).store;
   const changes = diffEntities(oldStore, newStore);
@@ -208,10 +189,6 @@ export async function recordCommitChangeEvents(e: Extract<OntologyEvent, { type:
 onOntologyEvent("analytics:change-events", async (e) => {
   if (e.type === "commit") await recordCommitChangeEvents(e);
 });
-
-// ---------------------------------------------------------------------------
-// Routes
-// ---------------------------------------------------------------------------
 
 interface EventRow {
   id: string;
@@ -268,12 +245,10 @@ r.get("/projects/:id/analytics/entity/:iri{.+}/history", (c) => {
   const id = c.req.param("id");
   requireProject(id);
   let iri = c.req.param("iri");
-  // The old API unquoted the (already decoded) path once more.
   if (/%[0-9A-Fa-f]{2}/.test(iri)) {
     try {
       iri = decodeURIComponent(iri);
     } catch {
-      /* keep as is */
     }
   }
   const branch = c.req.query("branch") || null;
@@ -326,7 +301,6 @@ r.get("/projects/:id/analytics/hot-entities", async (c) => {
     cutoffIso(30),
     limit,
   );
-  // Resolve labels from the default branch when possible (the old API returned null).
   let store: Store | null = null;
   if (rows.length) {
     try {

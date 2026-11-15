@@ -11,7 +11,6 @@ import {
   ArrowUp,
   FileText,
   XCircle,
-  Code,
   Clock,
   Copy,
   Plus,
@@ -43,8 +42,8 @@ import { CrossReferencesPanel } from "@/components/editor/CrossReferencesPanel";
 import { EntityHistoryTab } from "@/components/editor/EntityHistoryTab";
 import { useAutoSave } from "@/lib/hooks/useAutoSave";
 import { useToast } from "@/lib/context/ToastContext";
+import { Tooltip } from "@/components/ui/tooltip";
 
-/** Ensure an array of localized strings always ends with an empty placeholder row */
 export function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
     return [...arr, { value: "", lang: "en" }];
@@ -52,7 +51,6 @@ export function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   return arr;
 }
 
-/** Minimal data from the tree node, used as fallback when the API has no data yet */
 export interface TreeNodeFallback {
   label: string;
   iri: string;
@@ -66,13 +64,13 @@ interface ClassDetailPanelProps {
   accessToken?: string;
   branch?: string;
   onNavigateToClass?: (iri: string) => void;
-  onNavigateToSource?: (iri: string) => void;
   onCopyIri?: (iri: string) => void;
   selectedNodeFallback?: TreeNodeFallback | null;
   canEdit?: boolean;
   onUpdateClass?: (classIri: string, data: ClassUpdatePayload) => Promise<void>;
+  onAddIndividual?: (classIri: string) => void;
+  onNavigateToIndividual?: (iri: string) => void;
   refreshKey?: number;
-  /** Extra actions rendered in the header row (e.g. Graph button) */
   headerActions?: ReactNode;
 }
 
@@ -82,24 +80,24 @@ export function ClassDetailPanel({
   accessToken,
   branch,
   onNavigateToClass,
-  onNavigateToSource,
   onCopyIri,
   selectedNodeFallback,
   canEdit,
   onUpdateClass,
+  onAddIndividual,
+  onNavigateToIndividual,
   refreshKey,
   headerActions,
 }: ClassDetailPanelProps) {
   const [classDetail, setClassDetail] = useState<OWLClassDetail | null>(null);
   const [classIssues, setClassIssues] = useState<LintIssue[]>([]);
+  const [showInstances, setShowInstances] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resolvedTargetLabels, setResolvedTargetLabels] = useState<Record<string, string>>({});
 
-  // Edit mode: explicit state (default read-only)
   const [isEditing, setIsEditing] = useState(false);
 
-  // Edit state
   const [editLabels, setEditLabels] = useState<LocalizedString[]>([]);
   const [editComments, setEditComments] = useState<LocalizedString[]>([]);
   const [editParentIris, setEditParentIris] = useState<string[]>([]);
@@ -110,10 +108,8 @@ export function ClassDetailPanel({
 
   const editInitializedRef = useRef(false);
 
-  // Toast for error feedback
   const toast = useToast();
 
-  // Auto-save hook
   const {
     saveStatus,
     saveError,
@@ -134,7 +130,6 @@ export function ClassDetailPanel({
     onError: (msg) => toast.error(msg),
   });
 
-  // Keep editStateRef in sync with current edit state (only when editing)
   useEffect(() => {
     if (!isEditing) return;
     editStateRef.current = {
@@ -147,21 +142,12 @@ export function ClassDetailPanel({
     };
   }, [isEditing, editLabels, editComments, editParentIris, editParentLabels, editAnnotations, editRelationships, editStateRef]);
 
-  // Clear editStateRef when not editing
   useEffect(() => {
     if (!isEditing) {
       editStateRef.current = null;
     }
   }, [isEditing, editStateRef]);
 
-  // Flush any pending draft to git when this panel unmounts (the parent
-  // remounts the panel on classIri change via a key prop, so "navigate
-  // away" maps to "instance unmount" — flushing in the cleanup function is
-  // what carries the user's last edit through to the backend).
-  // The flush function captures closure over canEdit/onUpdateClass/etc. and
-  // can be re-created mid-render; route the unmount call through a ref that
-  // we keep up to date in an effect, so cleanup always sees the latest
-  // closure rather than the one captured on first render.
   const flushToGitRef = useRef(flushToGit);
   useEffect(() => {
     flushToGitRef.current = flushToGit;
@@ -172,9 +158,6 @@ export function ClassDetailPanel({
     };
   }, []);
 
-  // Initialize edit state from OWLClassDetail.
-  // Declared before enterEditMode / cancelEditMode so those callbacks can list
-  // it in their dependency arrays without tripping a use-before-declared error.
   const initEditState = useCallback((detail: OWLClassDetail) => {
     setEditLabels(detail.labels.length > 0 ? detail.labels.map((l) => ({ ...l })) : [{ value: "", lang: "en" }]);
     setEditComments(ensureTrailingEmpty(detail.comments.map((c) => ({ ...c }))));
@@ -215,7 +198,6 @@ export function ClassDetailPanel({
     setEditRelationships(relationships);
   }, [resolvedTargetLabels]);
 
-  // Enter edit mode: initialize edit state from classDetail
   const enterEditMode = useCallback(() => {
     if (!classDetail) return;
     initEditState(classDetail);
@@ -223,14 +205,8 @@ export function ClassDetailPanel({
     setIsEditing(true);
   }, [classDetail, initEditState]);
 
-  // Cancel: discard the in-progress draft and re-init from server state.
-  // The panel stays in edit mode — the editor is always editable.
   const cancelEditMode = useCallback(() => {
     discardDraft();
-    // Explicitly clear the autosave ref so an unmount in the same React
-    // batch as this cancel can't resurrect the discarded edit via flushToGit.
-    // The editStateRef-sync effect would refill this ref after the next
-    // commit anyway, but that's too late if unmount happens first.
     editStateRef.current = null;
     if (classDetail) {
       initEditState(classDetail);
@@ -238,18 +214,15 @@ export function ClassDetailPanel({
     setShowParentPicker(false);
   }, [classDetail, discardDraft, initEditState, editStateRef]);
 
-  // Manual save: flush the current draft to git. Stays in edit mode.
   const flushDraftToGit = useCallback(async () => {
     triggerSave();
     await flushToGit();
   }, [triggerSave, flushToGit]);
 
-  // Auto-enter edit mode based on continuous editing or restored draft
   useEffect(() => {
     if (isEditing || editInitializedRef.current) return;
     if (!canEdit || !onUpdateClass || !classDetail) return;
 
-    // Restored draft → always auto-enter
     if (restoredDraft && classIri) {
       setEditLabels(restoredDraft.labels.length > 0 ? restoredDraft.labels : [{ value: "", lang: "en" }]);
       setEditComments(ensureTrailingEmpty(restoredDraft.comments));
@@ -263,11 +236,9 @@ export function ClassDetailPanel({
       return;
     }
 
-    // In editor context (canEdit + onUpdateClass), always auto-enter edit mode.
     enterEditMode();
   }, [classDetail, canEdit, restoredDraft, classIri, clearRestoredDraft, onUpdateClass, isEditing, enterEditMode]);
 
-  // Fetch class data
   useEffect(() => {
     if (!classIri) {
       setClassDetail(null);
@@ -279,6 +250,7 @@ export function ClassDetailPanel({
     const fetchClassData = async () => {
       setIsLoading(true);
       setError(null);
+      setShowInstances(false);
 
       try {
         const [detail, issuesResponse] = await Promise.all([
@@ -297,7 +269,7 @@ export function ClassDetailPanel({
           setError(null);
         } else if (is404) {
           const localName = getLocalName(classIri);
-          setError(`Could not load "${localName}" as an OWL Class, or a Property, or an Individual. Enable Developer mode to see the entity in the source view.`);
+          setError(`Could not load "${localName}" as an OWL Class, or a Property, or an Individual.`);
         } else {
           setError(err instanceof Error ? err.message : "Failed to load class details");
         }
@@ -316,7 +288,6 @@ export function ClassDetailPanel({
     };
   }, [projectId, classIri, accessToken, branch, selectedNodeFallback, refreshKey]);
 
-  // Resolve labels for relationship target IRIs
   useEffect(() => {
     if (!classDetail?.annotations) return;
 
@@ -338,22 +309,18 @@ export function ClassDetailPanel({
       const newLabels: Record<string, string> = {};
       await Promise.all(
         targetIris.map(async (iri) => {
-          // Try class endpoint first (most common case)
           try {
             const detail = await projectOntologyApi.getClassDetail(projectId, iri, accessToken, branch);
             const label = getPreferredLabel(detail.labels);
             if (label) { newLabels[iri] = label; return; }
           } catch {
-            // Not a class — fall through to entity search
           }
-          // Fallback: search by local name to resolve individuals/properties
           try {
             const localName = getLocalName(iri);
             const searchResult = await projectOntologyApi.searchEntities(projectId, localName, accessToken, branch);
             const match = searchResult.results.find((r) => r.iri === iri);
             if (match?.label) newLabels[iri] = match.label;
           } catch {
-            // Search failed — leave as IRI suffix
           }
         }),
       );
@@ -366,7 +333,6 @@ export function ClassDetailPanel({
     return () => { cancelled = true; };
   }, [classDetail, projectId, accessToken, branch]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Patch relationship target labels when async resolution finishes
   useEffect(() => {
     if (!isEditing || Object.keys(resolvedTargetLabels).length === 0) return;
     setEditRelationships((prev) =>
@@ -380,7 +346,6 @@ export function ClassDetailPanel({
     );
   }, [resolvedTargetLabels, isEditing]);
 
-  // -- Label editing helpers --
   const updateLabel = useCallback((index: number, field: "value" | "lang", newVal: string) => {
     setEditLabels((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: newVal } : l)));
   }, []);
@@ -390,7 +355,6 @@ export function ClassDetailPanel({
     requestAnimationFrame(() => triggerSave());
   }, [triggerSave]);
 
-  // -- Comment editing helpers --
   const updateComment = useCallback((index: number, field: "value" | "lang", newVal: string) => {
     setEditComments((prev) => {
       const updated = prev.map((c, i) => (i === index ? { ...c, [field]: newVal } : c));
@@ -406,7 +370,6 @@ export function ClassDetailPanel({
     requestAnimationFrame(() => triggerSave());
   }, [triggerSave]);
 
-  // -- Parent editing helpers --
   const addParent = useCallback((iri: string, label: string) => {
     setEditParentIris((prev) => [...prev, iri]);
     setEditParentLabels((prev) => ({ ...prev, [iri]: label }));
@@ -418,7 +381,6 @@ export function ClassDetailPanel({
     requestAnimationFrame(() => triggerSave());
   }, [triggerSave]);
 
-  // -- Annotation editing helpers --
   const updateAnnotationValue = useCallback(
     (propertyIri: string, valueIdx: number, field: "value" | "lang", newVal: string) => {
       setEditAnnotations((prev) =>
@@ -446,7 +408,6 @@ export function ClassDetailPanel({
     [triggerSave]
   );
 
-  // -- Relationship editing helpers --
   const addRelationshipTarget = useCallback((groupIdx: number, target: RelationshipTarget) => {
     setEditRelationships((prev) =>
       prev.map((g, i) =>
@@ -481,7 +442,6 @@ export function ClassDetailPanel({
     ]);
   }, []);
 
-  // ── Render: empty state ──
   if (!classIri) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
@@ -514,7 +474,6 @@ export function ClassDetailPanel({
     );
   }
 
-  // No API data — show tree-node fallback if available (unsaved entity)
   if (!classDetail && selectedNodeFallback?.iri === classIri) {
     return (
       <div className="h-full overflow-y-auto">
@@ -531,9 +490,11 @@ export function ClassDetailPanel({
                   Unsaved
                 </span>
               </h2>
-              <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={classIri}>
-                {classIri}
-              </p>
+              <Tooltip content={classIri}>
+                <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                  {classIri}
+                </p>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -544,7 +505,7 @@ export function ClassDetailPanel({
             </div>
           </Section>
           {selectedNodeFallback.parentIri && (
-            <Section title="Parent(s)" tooltip="rdfs:subClassOf" icon={<ArrowUp className="h-4 w-4" />}>
+            <Section title="Parent Class(es)" tooltip="rdfs:subClassOf" icon={<ArrowUp className="h-4 w-4" />}>
               <IriLink
                 iri={selectedNodeFallback.parentIri}
                 label={selectedNodeFallback.parentLabel}
@@ -570,7 +531,6 @@ export function ClassDetailPanel({
 
   return (
     <div className="flex h-full w-full flex-col">
-      {/* Header — pinned, always visible */}
       <div className="shrink-0 border-b border-slate-200 p-4 dark:border-slate-700">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-owl-class/20 border border-owl-class">
@@ -592,34 +552,27 @@ export function ClassDetailPanel({
               </div>
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400" title={classDetail.iri}>
-                {classDetail.iri}
-              </p>
+              <Tooltip content={classDetail.iri}>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {classDetail.iri}
+                </p>
+              </Tooltip>
               {onCopyIri && (
-                <button
-                  onClick={() => onCopyIri(classDetail.iri)}
-                  className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-300"
-                  title="Copy IRI"
-                >
-                  <Copy className="h-3 w-3" />
-                </button>
-              )}
-              {onNavigateToSource && (
-                <button
-                  onClick={() => onNavigateToSource(classDetail.iri)}
-                  className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-primary-600 hover:bg-primary-50 hover:text-primary-700 dark:text-primary-400 dark:hover:bg-primary-900/20 dark:hover:text-primary-300"
-                  title="View in Source"
-                >
-                  <Code className="h-3 w-3" />
-                  <span>Source</span>
-                </button>
+                <Tooltip content="Copy IRI">
+                  <button
+                    onClick={() => onCopyIri(classDetail.iri)}
+                    className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                    aria-label="Copy IRI"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </Tooltip>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ═══ AUTO-SAVE AFFORDANCE BAR — pinned edit toolbar ═══ */}
       {isEditing && (
         <AutoSaveAffordanceBar
           status={saveStatus}
@@ -633,9 +586,7 @@ export function ClassDetailPanel({
 
       <div className="flex-1 overflow-y-auto">
 
-        {/* Content */}
         <div className="p-4 space-y-3">
-          {/* Lint Issues (always read-only) */}
           {classIssues.length > 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-900/10">
               <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
@@ -650,7 +601,6 @@ export function ClassDetailPanel({
             </div>
           )}
 
-          {/* ═══ PRIMARY LABEL ═══ */}
           {isEditing ? (
             <Section title="Primary Label" tooltip="rdfs:label" icon={<Tag className="h-4 w-4" />}>
               <div className="space-y-2">
@@ -672,13 +622,15 @@ export function ClassDetailPanel({
                       }}
                     />
                     {editLabels.length > 1 ? (
-                      <button
-                        onClick={() => removeLabel(index)}
-                        className="rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                        title="Remove label"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <Tooltip content="Remove label">
+                        <button
+                          onClick={() => removeLabel(index)}
+                          className="rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                          aria-label="Remove label"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </Tooltip>
                     ) : (
                       <div className="rounded-sm p-1">
                         <div className="h-3.5 w-3.5" />
@@ -700,7 +652,6 @@ export function ClassDetailPanel({
             </Section>
           ) : null}
 
-          {/* ═══ DEFINITION (skos:definition) ═══ */}
           {(() => {
             const defAnnotation = isEditing
               ? editAnnotations.find((a) => a.property_iri === DEFINITION_IRI)
@@ -751,7 +702,6 @@ export function ClassDetailPanel({
             return null;
           })()}
 
-          {/* ═══ COMMENT (rdfs:comment) ═══ */}
           {isEditing ? (
             <Section title="Comment(s)" tooltip="rdfs:comment" icon={<MessageSquare className="h-4 w-4" />}>
               <div className="space-y-2">
@@ -767,7 +717,7 @@ export function ClassDetailPanel({
                         rows={isGhost ? 1 : 2}
                         className="flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                       />
-                      <div className="mt-1 shrink-0">
+                      <div className="shrink-0">
                         <LanguagePicker
                           value={comment.lang}
                           onChange={(code) => {
@@ -777,13 +727,15 @@ export function ClassDetailPanel({
                         />
                       </div>
                       {!isGhost ? (
-                        <button
-                          onClick={() => removeComment(index)}
-                          className="mt-1 shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                          title="Remove comment"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <Tooltip content="Remove comment">
+                          <button
+                            onClick={() => removeComment(index)}
+                            className="mt-1 shrink-0 rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                            aria-label="Remove comment"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </Tooltip>
                       ) : (
                         <div className="mt-1 shrink-0 rounded-sm p-1">
                           <div className="h-3.5 w-3.5" />
@@ -807,7 +759,6 @@ export function ClassDetailPanel({
             </Section>
           ) : null}
 
-          {/* ═══ ANNOTATIONS — each property as its own first-class section ═══ */}
           {(() => {
             const annotationGroups = (isEditing ? editAnnotations : classDetail.annotations || [])
               .filter((a) => a.property_iri !== DEFINITION_IRI && !RELATIONSHIP_PROPERTY_IRIS.has(a.property_iri) && a.values.length > 0);
@@ -888,25 +839,40 @@ export function ClassDetailPanel({
             );
           })()}
 
-          {/* ═══ PARENT CLASSES ═══ */}
           {isEditing ? (
-            <Section title="Parent(s)" tooltip="rdfs:subClassOf" icon={<ArrowUp className="h-4 w-4" />}>
+            <Section title="Parent Class(es)" tooltip="rdfs:subClassOf" icon={<ArrowUp className="h-4 w-4" />}>
               <div className="space-y-2">
                 {editParentIris.map((parentIri) => (
                   <div key={parentIri} className="flex items-center gap-2">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-owl-class/10 border border-owl-class/50">
                       <span className="text-[9px] font-bold text-owl-class">C</span>
                     </span>
-                    <span className="flex-1 truncate text-sm text-slate-700 dark:text-slate-300" title={parentIri}>
-                      {editParentLabels[parentIri] || getLocalName(parentIri)}
-                    </span>
-                    <button
-                      onClick={() => removeParent(parentIri)}
-                      className="rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                      title="Remove parent"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    {onNavigateToClass ? (
+                      <Tooltip content={`Show ${editParentLabels[parentIri] || getLocalName(parentIri)} in the tree`}>
+                        <button
+                          type="button"
+                          onClick={() => onNavigateToClass(parentIri)}
+                          className="flex-1 truncate text-left text-sm text-slate-700 hover:text-primary-600 hover:underline dark:text-slate-300 dark:hover:text-primary-400"
+                        >
+                          {editParentLabels[parentIri] || getLocalName(parentIri)}
+                        </button>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip content={parentIri}>
+                        <span className="flex-1 truncate text-sm text-slate-700 dark:text-slate-300">
+                          {editParentLabels[parentIri] || getLocalName(parentIri)}
+                        </span>
+                      </Tooltip>
+                    )}
+                    <Tooltip content="Remove parent">
+                      <button
+                        onClick={() => removeParent(parentIri)}
+                        className="rounded-sm p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                        aria-label="Remove parent"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </Tooltip>
                   </div>
                 ))}
                 {showParentPicker ? (
@@ -932,7 +898,7 @@ export function ClassDetailPanel({
               </div>
             </Section>
           ) : classDetail.parent_iris.length > 0 ? (
-            <Section title="Parent(s)" tooltip="rdfs:subClassOf" icon={<ArrowUp className="h-4 w-4" />}>
+            <Section title="Parent Class(es)" tooltip="rdfs:subClassOf" icon={<ArrowUp className="h-4 w-4" />}>
               <div className="space-y-1">
                 {classDetail.parent_iris.map((parentIri) => (
                   <IriLink
@@ -946,7 +912,6 @@ export function ClassDetailPanel({
             </Section>
           ) : null}
 
-          {/* ═══ RELATIONSHIP(S) ═══ */}
           {(() => {
             const readRelationships: RelationshipGroup[] = isEditing
               ? editRelationships
@@ -985,16 +950,61 @@ export function ClassDetailPanel({
             );
           })()}
 
-          {/* Statistics (always read-only) */}
           <Section title="Statistics" icon={<BarChart3 className="h-4 w-4" />}>
-            <div className="flex items-center gap-4">
-              <StatItem label="subclasses" value={classDetail.child_count} />
-              <span className="text-slate-300 dark:text-slate-600">&middot;</span>
-              <StatItem label="instances" value={classDetail.instance_count ?? "—"} />
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center">
+                <StatItem label="subclasses" value={classDetail.child_count} />
+              </div>
+              <div className="flex items-center gap-4">
+                {onNavigateToIndividual && classDetail.instances && classDetail.instances.length > 0 ? (
+                  <Tooltip content={classDetail.instances.length === 1 ? "Show this instance" : "Show instances"}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = classDetail.instances ?? [];
+                        if (list.length === 1) onNavigateToIndividual(list[0].iri);
+                        else setShowInstances((v) => !v);
+                      }}
+                      className="rounded-sm hover:underline focus:outline-hidden focus-visible:ring-1 focus-visible:ring-primary-500"
+                      aria-expanded={classDetail.instances.length > 1 ? showInstances : undefined}
+                    >
+                      <StatItem label="instances" value={classDetail.instance_count ?? classDetail.instances.length} />
+                    </button>
+                  </Tooltip>
+                ) : (
+                  <StatItem label="instances" value={classDetail.instance_count ?? "—"} />
+                )}
+                {canEdit && onAddIndividual && (
+                  <button
+                    type="button"
+                    onClick={() => onAddIndividual(classIri)}
+                    className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add individual
+                  </button>
+                )}
+              </div>
+              {showInstances && onNavigateToIndividual && (classDetail.instances?.length ?? 0) > 1 && (
+                <ul className="ml-1 space-y-0.5 border-l border-slate-200 pl-3 dark:border-slate-700">
+                  {classDetail.instances!.map((inst) => (
+                    <li key={inst.iri}>
+                      <Tooltip content={inst.iri}>
+                        <button
+                          type="button"
+                          onClick={() => onNavigateToIndividual(inst.iri)}
+                          className="text-sm text-primary-600 hover:underline dark:text-primary-400"
+                        >
+                          {inst.label}
+                        </button>
+                      </Tooltip>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </Section>
 
-          {/* Cross-References ("Used By") */}
           <CrossReferencesPanel
             projectId={projectId}
             entityIri={classIri}
@@ -1003,7 +1013,6 @@ export function ClassDetailPanel({
             onNavigateToClass={onNavigateToClass}
           />
 
-          {/* Entity History */}
           <EntityHistoryTab
             projectId={projectId}
             entityIri={classIri}
@@ -1011,7 +1020,6 @@ export function ClassDetailPanel({
             branch={branch}
           />
 
-          {/* Equivalent Classes (read-only) */}
           {classDetail.equivalent_iris && classDetail.equivalent_iris.length > 0 && (
             <Section title="Equivalent Classes" tooltip="owl:equivalentClass" icon={<Equal className="h-4 w-4" />}>
               <div className="space-y-1">
@@ -1022,7 +1030,6 @@ export function ClassDetailPanel({
             </Section>
           )}
 
-          {/* Disjoint Classes (read-only) */}
           {classDetail.disjoint_iris && classDetail.disjoint_iris.length > 0 && (
             <Section title="Disjoint With" tooltip="owl:disjointWith" icon={<Ban className="h-4 w-4" />}>
               <div className="space-y-1">
@@ -1038,8 +1045,6 @@ export function ClassDetailPanel({
     </div>
   );
 }
-
-// ── Helpers ──────────────────────────────────────────────────────────
 
 const ANNOTATION_ICON_MAP: Record<string, React.ReactNode> = {
   "http://www.w3.org/2004/02/skos/core#prefLabel": <Star className="h-4 w-4" />,
@@ -1059,8 +1064,6 @@ function getAnnotationIcon(propertyIri: string): React.ReactNode {
   return ANNOTATION_ICON_MAP[propertyIri] || <FileText className="h-4 w-4" />;
 }
 
-// ── Sub-components ──────────────────────────────────────────────────
-
 interface SectionProps {
   title: string;
   tooltip?: string;
@@ -1071,13 +1074,12 @@ interface SectionProps {
 function Section({ title, tooltip, icon, children }: SectionProps) {
   return (
     <div className="flex gap-4">
-      <div
-        className="w-40 shrink-0 flex items-start gap-1.5 pt-1"
-        title={tooltip}
-      >
-        {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</span>
-      </div>
+      <Tooltip content={tooltip}>
+        <div className="w-40 shrink-0 flex items-start gap-1.5 pt-1">
+          {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</span>
+        </div>
+      </Tooltip>
       <div className="min-w-0 flex-1">
         {children}
       </div>
@@ -1095,21 +1097,24 @@ function IriLink({ iri, label, onClick }: IriLinkProps) {
   const displayLabel = label || getLocalName(iri);
 
   return (
-    <button
-      onClick={() => onClick?.(iri)}
-      className={cn(
-        "flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300",
-        !onClick && "cursor-default hover:no-underline"
-      )}
-      title={iri}
-      disabled={!onClick}
-    >
-      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-owl-class/10 border border-owl-class/50">
-        <span className="text-[9px] font-bold text-owl-class">C</span>
+    <Tooltip content={iri}>
+      <span className="inline-flex">
+        <button
+          onClick={() => onClick?.(iri)}
+          className={cn(
+            "flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300",
+            !onClick && "cursor-default hover:no-underline"
+          )}
+          disabled={!onClick}
+        >
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-owl-class/10 border border-owl-class/50">
+            <span className="text-[9px] font-bold text-owl-class">C</span>
+          </span>
+          {displayLabel}
+          <ExternalLink className="h-3 w-3 opacity-50" />
+        </button>
       </span>
-      {displayLabel}
-      <ExternalLink className="h-3 w-3 opacity-50" />
-    </button>
+    </Tooltip>
   );
 }
 

@@ -1,11 +1,3 @@
-/**
- * Shared Next.js navigation mock for component tests.
- *
- * Usage in test files:
- *   vi.mock("next/navigation", () => nextNavigationMock());
- *   vi.mock("next/link", () => nextLinkMock);
- *   vi.mock("@/lib/localUser", () => nextAuthMock());
- */
 import { vi } from "vitest";
 import React from "react";
 
@@ -26,7 +18,6 @@ export function nextNavigationMock(overrides?: {
     useSearchParams: () => searchParams,
     redirect: vi.fn(),
     notFound: vi.fn(),
-    // Expose for assertions
     __push: push,
     __replace: replace,
     __back: back,

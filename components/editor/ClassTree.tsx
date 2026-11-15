@@ -17,24 +17,16 @@ interface ClassTreeProps {
   onAddChild?: (parentIri: string) => void;
   onCopyIri?: (iri: string) => void;
   onDelete?: (iri: string, label: string) => void;
-  onViewInSource?: (iri: string) => void;
   searchResults?: EntitySearchResult[] | null;
   isSearching?: boolean;
   onSearchSelect?: (iri: string) => void;
   searchQuery?: string;
-  /** IRIs that have uncommitted drafts — shown with amber dot indicator */
   draftIris?: Set<string>;
-  /** Pre-built filtered tree from useFilteredTree (ancestor-path search results) */
   filteredTree?: EntityTreeNode[] | null;
-  /** Whether the filtered tree is still being built */
   isFilteredTreeBuilding?: boolean;
-  /** Whether search results were truncated */
   filteredTreeTruncated?: boolean;
-  /** Drag state for drag-and-drop reparenting. Not passed during search mode. */
   dragState?: DragState;
-  /** Called when drag hovers over a node (for auto-expand) */
   onDragEnterNode?: (iri: string) => void;
-  /** Called when drag leaves a node */
   onDragLeaveNode?: () => void;
 }
 
@@ -47,7 +39,6 @@ export function ClassTree({
   onAddChild,
   onCopyIri,
   onDelete,
-  onViewInSource,
   searchResults,
   isSearching,
   onSearchSelect,
@@ -60,13 +51,11 @@ export function ClassTree({
   onDragEnterNode,
   onDragLeaveNode,
 }: ClassTreeProps) {
-  // Convert ClassTreeNode[] to EntityTreeNode[]
   const entityNodes = useMemo(
     () => classTreeNodesToEntityNodes(nodes),
     [nodes],
   );
 
-  // Show search results when available
   if (searchResults !== null && searchResults !== undefined) {
     const classResults = searchResults.filter((r) => r.entity_type === "class");
     const nonClassResults = searchResults.filter((r) => r.entity_type !== "class");
@@ -85,7 +74,6 @@ export function ClassTree({
           </div>
         ) : (
           <>
-            {/* Filtered tree view for class results */}
             {filteredTree && filteredTree.length > 0 && (
               <>
                 <EntityTree
@@ -105,7 +93,6 @@ export function ClassTree({
               </>
             )}
 
-            {/* Flat list fallback for class results when no filtered tree */}
             {(!filteredTree || filteredTree.length === 0) && classResults.length > 0 && (
               classResults.map((result, index) => (
                 <SearchResultItem
@@ -116,7 +103,6 @@ export function ClassTree({
               ))
             )}
 
-            {/* Non-class results always shown as flat list */}
             {nonClassResults.length > 0 && (
               <>
                 {((filteredTree && filteredTree.length > 0) || classResults.length > 0) && nonClassResults.length > 0 && (
@@ -137,7 +123,6 @@ export function ClassTree({
     );
   }
 
-  // Normal tree view
   return (
     <EntityTree
       nodes={entityNodes}
@@ -148,7 +133,6 @@ export function ClassTree({
       onAddChild={onAddChild}
       onCopyIri={onCopyIri}
       onDelete={onDelete}
-      onViewInSource={onViewInSource}
       draftIris={draftIris}
       enableKeyboardNav
       dragState={dragState}
@@ -179,12 +163,10 @@ function SearchResultItem({ result, onSelect }: SearchResultItemProps) {
       style={{ paddingLeft: "8px" }}
       onClick={() => onSelect(result.iri)}
     >
-      {/* Entity type icon */}
       <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0", typeIcon.color)}>
         <span className="text-[10px] font-bold">{typeIcon.letter}</span>
       </div>
 
-      {/* Label and local name */}
       <div className="flex-1 min-w-0">
         <span className={cn("text-sm truncate block", result.deprecated && "line-through opacity-60")}>
           {result.label}
@@ -196,7 +178,6 @@ function SearchResultItem({ result, onSelect }: SearchResultItemProps) {
         )}
       </div>
 
-      {/* Entity type badge */}
       <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 flex-shrink-0">
         {result.entity_type}
       </span>

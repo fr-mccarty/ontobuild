@@ -6,7 +6,6 @@ import {
   RDF_LANGUAGE_IDS,
 } from "@/lib/editor/languages";
 
-// Mock the registration functions to avoid needing full monaco
 vi.mock("@/lib/editor/languages/turtle", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/editor/languages/turtle")>();
   return {

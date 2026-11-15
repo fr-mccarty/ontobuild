@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 
-// Mock dnd-kit
 vi.mock("@dnd-kit/core", () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="dnd-context">{children}</div>
@@ -12,14 +11,12 @@ vi.mock("@dnd-kit/core", () => ({
   useSensors: () => [],
 }));
 
-// Mock RootDropZone
 vi.mock("@/components/editor/shared/RootDropZone", () => ({
   RootDropZone: (props: Record<string, unknown>) => (
     <div data-testid="root-drop-zone" data-active={String(props.isActive)} />
   ),
 }));
 
-// Mock createPortal to render inline for testing
 vi.mock("react-dom", async () => {
   const actual = await vi.importActual("react-dom");
   return {
@@ -70,7 +67,6 @@ describe("DraggableTreeWrapper", () => {
         <div>Child</div>
       </DraggableTreeWrapper>,
     );
-    // No overlay label should be present
     expect(screen.queryByText("MyClass")).toBeNull();
   });
 
@@ -80,7 +76,6 @@ describe("DraggableTreeWrapper", () => {
         <div>Child</div>
       </DraggableTreeWrapper>,
     );
-    // PointerOverlay won't render until pointermove fires (pos starts at 0,0)
     act(() => {
       window.dispatchEvent(new PointerEvent("pointermove", { clientX: 100, clientY: 100 }));
     });
@@ -93,7 +88,6 @@ describe("DraggableTreeWrapper", () => {
         <div>Child</div>
       </DraggableTreeWrapper>,
     );
-    // PointerOverlay (div.tree-drag-overlay) must not be rendered when draggedLabel is null
     expect(container.querySelector(".tree-drag-overlay")).toBeNull();
   });
 

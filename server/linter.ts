@@ -1,10 +1,3 @@
-/**
- * Ontology linter — port of ontokit-api/ontokit/services/linter.py.
- *
- * All 19 rules, progressive lint levels (1-5), run over an N3 Store (as returned by
- * loadOntology). Rule ids, severities, messages and `details` payloads match the old
- * Python implementation so the frontend renders issues identically.
- */
 import type { Quad, Store, Term } from "n3";
 import { NS } from "./rdf";
 
@@ -85,10 +78,6 @@ export function getAvailableRules(): LintRuleInfo[] {
   return [...LINT_RULES];
 }
 
-// ---------------------------------------------------------------------------
-// Vocabulary
-// ---------------------------------------------------------------------------
-
 const RDF_TYPE = NS.rdf + "type";
 const RDF_FIRST = NS.rdf + "first";
 const RDF_REST = NS.rdf + "rest";
@@ -137,7 +126,6 @@ const ANNOTATION_PREDICATES: [string, string][] = [
   [NS.dcterms + "description", "dcterms:description"],
 ];
 
-/** Namespaces rdflib binds by default (so `graph.namespaces()` contained them in the old backend). */
 const DEFAULT_BOUND_NAMESPACES = [
   NS.rdf,
   NS.rdfs,
@@ -146,10 +134,6 @@ const DEFAULT_BOUND_NAMESPACES = [
   "http://www.w3.org/XML/1998/namespace",
   ...Object.values(NS),
 ];
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 interface Lit {
   value: string;
@@ -166,7 +150,6 @@ function localName(iri: string): string {
   return iri.slice(iri.lastIndexOf("/") + 1);
 }
 
-/** rdflib-style n3() serialization of a term (for duplicate-triple keys). */
 function termN3(t: Term): string {
   if (t.termType === "NamedNode") return `<${t.value}>`;
   if (t.termType === "BlankNode") return `_:${t.value}`;
@@ -195,7 +178,6 @@ class Graph {
   has(s: Term, p: string, o: Term): boolean {
     return this.store.countQuads(s, p, o, null) > 0;
   }
-  /** Members of an RDF collection. */
   items(list: Term): Term[] {
     const out: Term[] = [];
     const seen = new Set<string>();
@@ -208,7 +190,6 @@ class Graph {
     }
     return out;
   }
-  /** rdflib transitive_objects: the node itself plus everything reachable via `p`. */
   transitiveObjects(start: string, p: string): Set<string> {
     const out = new Set<string>([start]);
     const stack = [start];
@@ -255,10 +236,6 @@ function uniqueNamed(terms: Term[]): Term[] {
   }
   return out;
 }
-
-// ---------------------------------------------------------------------------
-// Rules
-// ---------------------------------------------------------------------------
 
 interface Ctx {
   g: Graph;
@@ -406,8 +383,6 @@ const CHECKERS: Record<string, Checker> = {
         const key = l.value.trim().toLowerCase();
         if (!key) continue;
         if (!byLabel.has(key)) byLabel.set(key, []);
-        // One entry per resource (the old code counted a resource twice when it had
-        // two labels differing only in case/language, reporting "shared with 0 others").
         if (!byLabel.get(key)!.includes(s.value)) byLabel.get(key)!.push(s.value);
       }
     }
@@ -505,8 +480,6 @@ const CHECKERS: Record<string, Checker> = {
   },
 
   "duplicate-triple": ({ g }) => {
-    // The store is a set of triples, so (like rdflib) exact duplicates are already
-    // merged on parse; kept for parity with the old rule list.
     const out: LintResult[] = [];
     const bySubject = new Map<string, Map<string, { p: string; o: string; n: number }>>();
     for (const q of g.quads()) {
@@ -800,9 +773,6 @@ const CHECKERS: Record<string, Checker> = {
           if (!isLiteral(o)) continue;
           const l = asLit(o);
           if (l.language) continue;
-          // N3 gives plain literals the xsd:string datatype too, so (unlike rdflib) a
-          // plain literal and an explicit "..."^^xsd:string cannot be told apart; the
-          // old " (typed as xsd:string)" message suffix is therefore never emitted.
           out.push(
             issue("warning", "missing-language-tag", `${predName} has no language tag`, s.value, determineEntityType(g, s), {
               local_name: localName(s.value),
@@ -920,10 +890,6 @@ const CHECKERS: Record<string, Checker> = {
   },
 };
 
-/**
- * Run the enabled rules (all rules when `enabledRules` is null) over the store.
- * `prefixes` are the namespace bindings declared in the source (for undefined-prefix).
- */
 export function lintOntology(
   store: Store,
   opts: { enabledRules?: ReadonlySet<string> | null; prefixes?: Record<string, string> } = {},

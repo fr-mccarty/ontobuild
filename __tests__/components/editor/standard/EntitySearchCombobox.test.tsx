@@ -3,8 +3,6 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
-// ── Mocks ──────────────────────────────────────────────────────────
-
 const mockSearchEntities = vi.fn();
 
 vi.mock("@/lib/api/client", () => ({
@@ -22,8 +20,6 @@ vi.mock("@/lib/utils", () => ({
 }));
 
 import { EntitySearchCombobox } from "@/components/editor/standard/EntitySearchCombobox";
-
-// ── Tests ──────────────────────────────────────────────────────────
 
 describe("EntitySearchCombobox", () => {
   const defaultProps = {
@@ -68,7 +64,6 @@ describe("EntitySearchCombobox", () => {
 
   it("calls onClose when X button is clicked", () => {
     const { container } = render(<EntitySearchCombobox {...defaultProps} />);
-    // X button is the last button
     const buttons = container.querySelectorAll("button");
     const closeButton = buttons[buttons.length - 1];
     fireEvent.click(closeButton);
@@ -89,7 +84,6 @@ describe("EntitySearchCombobox", () => {
       fireEvent.change(input, { target: { value: "Dog" } });
     });
 
-    // Advance past debounce timer
     await act(async () => {
       vi.advanceTimersByTime(350);
     });

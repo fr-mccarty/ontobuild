@@ -1,17 +1,7 @@
-/**
- * Turtle Language Support for Monaco Editor
- *
- * Adapted from stardog-rdf-grammars TextMate definitions.
- * Provides syntax highlighting, tokenization, and language configuration.
- */
-
-// Monaco language ID
 export const TURTLE_LANGUAGE_ID = 'turtle';
 
-// File extensions
 export const TURTLE_EXTENSIONS = ['.ttl', '.turtle', '.n3'];
 
-// Monaco language configuration
 export const turtleLanguageConfiguration = {
   comments: {
     lineComment: '#',
@@ -45,7 +35,6 @@ export const turtleLanguageConfiguration = {
   },
 };
 
-// Monaco monarch tokenizer for Turtle
 export const turtleTokensProvider = {
   defaultToken: '',
   tokenPostfix: '.turtle',
@@ -64,7 +53,6 @@ export const turtleTokensProvider = {
 
   operators: ['^^', '@'],
 
-  // Common namespace prefixes
   namespaces: [
     'rdf:', 'rdfs:', 'owl:', 'xsd:', 'xml:',
     'skos:', 'dc:', 'dcterms:', 'foaf:', 'schema:',
@@ -74,53 +62,39 @@ export const turtleTokensProvider = {
 
   tokenizer: {
     root: [
-      // Comments
       [/#.*$/, 'comment'],
 
-      // Directives (@prefix, @base, PREFIX, BASE)
       [/@?(?:prefix|base)\b/i, 'keyword'],
       [/(?:PREFIX|BASE)\b/, 'keyword'],
 
-      // IRI references <...>
       [/<[^\s<>"{}|^`\\]*>/, 'string.link'],
 
-      // Prefixed names (namespace:localname)
       [/(\w*:)(\w*)/, ['storage.type', 'variable']],
 
-      // The 'a' keyword (rdf:type shorthand)
       [/\ba\b/, 'keyword'],
 
-      // Language tags
       [/@[a-zA-Z]+(-[a-zA-Z0-9]+)*/, 'type'],
 
-      // Datatype annotation
       [/\^\^/, 'operator'],
 
-      // Triple-quoted strings
       [/"""/, 'string', '@tripleDoubleString'],
       [/'''/, 'string', '@tripleSingleString'],
 
-      // Double-quoted strings
-      [/"([^"\\]|\\.)*$/, 'string.invalid'], // non-terminated
+      [/"([^"\\]|\\.)*$/, 'string.invalid'],
       [/"/, 'string', '@doubleString'],
 
-      // Single-quoted strings
-      [/'([^'\\]|\\.)*$/, 'string.invalid'], // non-terminated
+      [/'([^'\\]|\\.)*$/, 'string.invalid'],
       [/'/, 'string', '@singleString'],
 
-      // Numbers
       [/[+-]?\d+\.\d*([eE][+-]?\d+)?/, 'number.float'],
       [/[+-]?\.\d+([eE][+-]?\d+)?/, 'number.float'],
       [/[+-]?\d+[eE][+-]?\d+/, 'number.float'],
       [/[+-]?\d+/, 'number'],
 
-      // Booleans
       [/\b(?:true|false)\b/, 'keyword'],
 
-      // Blank nodes
       [/_:\w+/, 'variable.predefined'],
 
-      // Punctuation
       [/[;,.]/, 'delimiter'],
       [/[\[\]{}()]/, '@brackets'],
     ],
@@ -153,7 +127,6 @@ export const turtleTokensProvider = {
   },
 };
 
-// Common Turtle prefixes for auto-completion
 export const commonPrefixes = [
   { prefix: 'rdf', namespace: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#' },
   { prefix: 'rdfs', namespace: 'http://www.w3.org/2000/01/rdf-schema#' },
@@ -167,13 +140,10 @@ export const commonPrefixes = [
   { prefix: 'schema', namespace: 'https://schema.org/' },
 ];
 
-// Common RDF/OWL properties for auto-completion
 export const commonProperties = [
-  // RDF
   { label: 'rdf:type', detail: 'The type of a resource' },
   { label: 'rdf:first', detail: 'First element of a list' },
   { label: 'rdf:rest', detail: 'Rest of a list' },
-  // RDFS
   { label: 'rdfs:label', detail: 'Human-readable label' },
   { label: 'rdfs:comment', detail: 'Human-readable description' },
   { label: 'rdfs:subClassOf', detail: 'Subclass relationship' },
@@ -182,14 +152,12 @@ export const commonProperties = [
   { label: 'rdfs:range', detail: 'Range of a property' },
   { label: 'rdfs:seeAlso', detail: 'Reference to related resource' },
   { label: 'rdfs:isDefinedBy', detail: 'Defining resource' },
-  // OWL
   { label: 'owl:equivalentClass', detail: 'Equivalent class' },
   { label: 'owl:disjointWith', detail: 'Disjoint class' },
   { label: 'owl:inverseOf', detail: 'Inverse property' },
   { label: 'owl:deprecated', detail: 'Deprecated annotation' },
   { label: 'owl:versionInfo', detail: 'Version information' },
   { label: 'owl:imports', detail: 'Import another ontology' },
-  // SKOS
   { label: 'skos:prefLabel', detail: 'Preferred label' },
   { label: 'skos:altLabel', detail: 'Alternative label' },
   { label: 'skos:definition', detail: 'Definition' },
@@ -197,11 +165,7 @@ export const commonProperties = [
   { label: 'skos:narrower', detail: 'Narrower concept' },
 ];
 
-/**
- * Register Turtle language with Monaco editor
- */
 export function registerTurtleLanguage(monaco: typeof import('monaco-editor')) {
-  // Register the language
   monaco.languages.register({
     id: TURTLE_LANGUAGE_ID,
     extensions: TURTLE_EXTENSIONS,
@@ -209,19 +173,16 @@ export function registerTurtleLanguage(monaco: typeof import('monaco-editor')) {
     mimetypes: ['text/turtle', 'application/x-turtle'],
   });
 
-  // Set language configuration
   monaco.languages.setLanguageConfiguration(
     TURTLE_LANGUAGE_ID,
     turtleLanguageConfiguration
   );
 
-  // Set monarch tokenizer
   monaco.languages.setMonarchTokensProvider(
     TURTLE_LANGUAGE_ID,
     turtleTokensProvider as unknown as import('monaco-editor').languages.IMonarchLanguage
   );
 
-  // Register completion provider
   monaco.languages.registerCompletionItemProvider(TURTLE_LANGUAGE_ID, {
     provideCompletionItems: (model, position) => {
       const word = model.getWordUntilPosition(position);
@@ -233,7 +194,6 @@ export function registerTurtleLanguage(monaco: typeof import('monaco-editor')) {
       };
 
       const suggestions = [
-        // Prefix suggestions
         ...commonPrefixes.map((p) => ({
           label: `@prefix ${p.prefix}:`,
           kind: monaco.languages.CompletionItemKind.Snippet,
@@ -242,7 +202,6 @@ export function registerTurtleLanguage(monaco: typeof import('monaco-editor')) {
           detail: p.namespace,
           range,
         })),
-        // Property suggestions
         ...commonProperties.map((p) => ({
           label: p.label,
           kind: monaco.languages.CompletionItemKind.Property,

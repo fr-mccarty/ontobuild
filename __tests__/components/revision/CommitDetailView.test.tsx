@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import type { RevisionCommit, RevisionDiffResponse } from "@/lib/api/revisions";
+import { render as rtlRender, screen, fireEvent, waitFor, act, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 
-// ── Mocks ──────────────────────────────────────────────────────────
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
+import type { RevisionCommit, RevisionDiffResponse } from "@/lib/api/revisions";
 
 const mockGetDiff = vi.fn();
 
@@ -22,10 +25,7 @@ vi.mock("@/lib/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
-// Import after mocks
 import { CommitDetailView } from "@/components/revision/CommitDetailView";
-
-// ── Fixtures ───────────────────────────────────────────────────────
 
 const mockCommit: RevisionCommit = {
   hash: "abc123def456789012345678901234567890abcd",
@@ -103,19 +103,14 @@ const defaultProps = {
   commits: allCommits,
 };
 
-// ── Tests ──────────────────────────────────────────────────────────
-
 describe("CommitDetailView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetDiff.mockResolvedValue(mockDiffResponse);
-    // clipboard mock
     Object.assign(navigator, {
       clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
   });
-
-  // --- Basic rendering ---
 
   it("renders commit message", async () => {
     await act(async () => {
@@ -143,12 +138,9 @@ describe("CommitDetailView", () => {
     await act(async () => {
       render(<CommitDetailView {...defaultProps} />);
     });
-    // The date should be rendered with toLocaleString - just verify some text is present
     const dateElement = screen.getByText(/2025/);
     expect(dateElement).toBeDefined();
   });
-
-  // --- Back button ---
 
   it("calls onBack when Back button is clicked", async () => {
     const onBack = vi.fn();
@@ -159,20 +151,16 @@ describe("CommitDetailView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  // --- Copy hash ---
-
   it("copies hash to clipboard on click", async () => {
     await act(async () => {
       render(<CommitDetailView {...defaultProps} />);
     });
-    const copyButton = screen.getByTitle("Copy full hash");
+    const copyButton = screen.getByLabelText("Copy full hash");
     await act(async () => {
       fireEvent.click(copyButton);
     });
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockCommit.hash);
   });
-
-  // --- Diff loading ---
 
   it("loads diff when commit has parent hashes", async () => {
     await act(async () => {
@@ -196,9 +184,7 @@ describe("CommitDetailView", () => {
       expect(screen.getByText("ontology.ttl")).toBeDefined();
       expect(screen.getByText("new-file.ttl")).toBeDefined();
     });
-    // Check summary line
     expect(screen.getByText(/2 files changed/)).toBeDefined();
-    // Addition/deletion counts
     expect(screen.getByText("+10")).toBeDefined();
     expect(screen.getByText("-3")).toBeDefined();
   });
@@ -212,8 +198,6 @@ describe("CommitDetailView", () => {
       expect(screen.getByText("Added")).toBeDefined();
     });
   });
-
-  // --- Diff error ---
 
   it("shows error message when diff loading fails", async () => {
     mockGetDiff.mockRejectedValue(new Error("Network error"));
@@ -235,8 +219,6 @@ describe("CommitDetailView", () => {
     });
   });
 
-  // --- Initial commit (no parents) ---
-
   it("shows initial commit message when no parent hashes", async () => {
     await act(async () => {
       render(
@@ -249,8 +231,6 @@ describe("CommitDetailView", () => {
     expect(screen.getByText("Initial commit - no parent to compare")).toBeDefined();
     expect(mockGetDiff).not.toHaveBeenCalled();
   });
-
-  // --- Merge badge ---
 
   it("shows merge badge for merge commits", async () => {
     mockGetDiff.mockResolvedValue({
@@ -266,17 +246,13 @@ describe("CommitDetailView", () => {
     expect(screen.getByText(/Merged from feature\/foo/)).toBeDefined();
   });
 
-  // --- Parent commit display ---
-
   it("shows parent commit message when parent exists in commits list", async () => {
     await act(async () => {
       render(<CommitDetailView {...defaultProps} />);
     });
-    // The parent hash should be sliced to 8 chars
     expect(
       screen.getByText(parentCommit.hash.slice(0, 8))
     ).toBeDefined();
-    // Parent message should be shown
     expect(screen.getByText("Parent commit message")).toBeDefined();
   });
 
@@ -297,8 +273,6 @@ describe("CommitDetailView", () => {
     expect(screen.getByText("Parent")).toBeDefined();
   });
 
-  // --- Expand / collapse file diffs ---
-
   it("collapses a file diff when its header is clicked", async () => {
     await act(async () => {
       render(<CommitDetailView {...defaultProps} />);
@@ -306,20 +280,14 @@ describe("CommitDetailView", () => {
     await waitFor(() => {
       expect(screen.getByText("ontology.ttl")).toBeDefined();
     });
-    // Files are expanded by default - patch content should be visible
     expect(screen.getByText("+new line")).toBeDefined();
 
-    // Click the file header to collapse
     fireEvent.click(screen.getByText("ontology.ttl"));
-    // Patch content should no longer be visible
     expect(screen.queryByText("+new line")).toBeNull();
 
-    // Click again to re-expand
     fireEvent.click(screen.getByText("ontology.ttl"));
     expect(screen.getByText("+new line")).toBeDefined();
   });
-
-  // --- Multiline commit message ---
 
   it("renders multiline commit messages with body", async () => {
     const multilineCommit: RevisionCommit = {
@@ -336,8 +304,6 @@ describe("CommitDetailView", () => {
     expect(screen.getByText(/Detailed body/)).toBeDefined();
   });
 
-  // --- No file changes ---
-
   it("shows 'No file changes' when diff has empty changes", async () => {
     mockGetDiff.mockResolvedValue({
       ...mockDiffResponse,
@@ -352,8 +318,6 @@ describe("CommitDetailView", () => {
     });
   });
 
-  // --- Diff line highlighting ---
-
   it("renders diff patch lines with correct styling classes", async () => {
     await act(async () => {
       render(<CommitDetailView {...defaultProps} />);
@@ -361,20 +325,15 @@ describe("CommitDetailView", () => {
     await waitFor(() => {
       expect(screen.getByText("ontology.ttl")).toBeDefined();
     });
-    // The hunk header line @@...@@
     const hunkHeader = screen.getByText("@@ -1,3 +1,10 @@");
     expect(hunkHeader.className).toContain("bg-blue-50");
 
-    // Addition line
     const addLine = screen.getByText("+new line");
     expect(addLine.className).toContain("bg-green-50");
 
-    // Deletion line
     const delLine = screen.getByText("-old line");
     expect(delLine.className).toContain("bg-red-50");
   });
-
-  // --- Change type labels ---
 
   it("handles all change type labels including delete and rename", async () => {
     mockGetDiff.mockResolvedValue({

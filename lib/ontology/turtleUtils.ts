@@ -1,12 +1,3 @@
-/**
- * Shared Turtle source manipulation utilities.
- *
- * Used by turtleClassUpdater, turtlePropertyUpdater, turtleIndividualUpdater,
- * and turtleBlockParser to parse and generate Turtle source text.
- */
-
-// ── Types ─────────────────────────────────────────────────────────────
-
 export interface PrefixMap {
   [alias: string]: string;
 }
@@ -21,18 +12,14 @@ export interface BlockRange {
   endLine: number;
 }
 
-// ── Prefix / base helpers ─────────────────────────────────────────────
-
 export function parseDeclarations(source: string): ParsedDeclarations {
   const prefixes: PrefixMap = {};
   let base: string | undefined;
 
   for (const line of source.split("\n")) {
-    // @prefix ex: <ns> .  OR  PREFIX ex: <ns>
     const pm = line.match(/@?prefix\s+(\w*):\s*<([^>]+)>/i);
     if (pm) prefixes[pm[1]] = pm[2];
 
-    // @base <ns> .  OR  BASE <ns>
     const bm = line.match(/@?base\s+<([^>]+)>/i);
     if (bm) base = bm[1];
   }
@@ -51,7 +38,6 @@ export function reverseMap(prefixes: PrefixMap): Map<string, string> {
   return rev;
 }
 
-/** Convert a full IRI to shortest Turtle form using available prefixes */
 export function toTurtle(iri: string, rev: Map<string, string>): string {
   for (const [ns, alias] of rev) {
     if (iri.startsWith(ns)) {
@@ -64,14 +50,6 @@ export function toTurtle(iri: string, rev: Map<string, string>): string {
   return `<${iri}>`;
 }
 
-/**
- * Get all possible Turtle representations of an IRI.
- *
- * Covers:
- * - Full IRI:     <https://example.org/Foo>
- * - Prefixed:     ex:Foo  or  :Foo
- * - Relative IRI: <Foo>       (when @base matches)
- */
 export function iriTurtleForms(
   iri: string,
   prefixes: PrefixMap,
@@ -79,7 +57,6 @@ export function iriTurtleForms(
 ): string[] {
   const forms = [`<${iri}>`];
 
-  // Prefixed forms
   for (const [alias, ns] of Object.entries(prefixes)) {
     if (iri.startsWith(ns)) {
       const local = iri.slice(ns.length);
@@ -89,7 +66,6 @@ export function iriTurtleForms(
     }
   }
 
-  // Relative IRI form (from @base)
   if (base && iri.startsWith(base)) {
     const relative = iri.slice(base.length);
     if (relative) {
@@ -100,12 +76,6 @@ export function iriTurtleForms(
   return forms;
 }
 
-// ── Block finder ──────────────────────────────────────────────────────
-
-/**
- * Scan from line `start` forward to find the terminating '.' at bracket
- * depth 0, respecting string literals and comments. Returns the end line.
- */
 export function scanToBlockEnd(lines: string[], start: number): number {
   let depth = 0;
   let inStr = false;
@@ -168,13 +138,6 @@ export function scanToBlockEnd(lines: string[], start: number): number {
   return lines.length - 1;
 }
 
-/**
- * Find the subject block for an entity IRI in Turtle source.
- *
- * Strategy:
- * 1. Try all known Turtle forms (full IRI, prefixed, relative via @base)
- * 2. Fallback: search for the raw IRI string on any subject-position line
- */
 export function findBlock(
   lines: string[],
   iri: string,
@@ -183,7 +146,6 @@ export function findBlock(
 ): BlockRange | null {
   const forms = iriTurtleForms(iri, prefixes, base);
 
-  // Primary: match one of the known Turtle forms at the start of a line
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
 
@@ -203,7 +165,6 @@ export function findBlock(
     });
 
     if (isSubject) {
-      // Verify it's actually a subject position (not an object on a continuation line)
       const prevLine = i > 0 ? lines[i - 1].trim() : "";
       const isContinuation =
         prevLine.endsWith(";") || prevLine.endsWith(",");
@@ -214,8 +175,6 @@ export function findBlock(
     }
   }
 
-  // Fallback: search for the full IRI string inside angle brackets anywhere
-  // as the first token on a non-continuation line
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
     if (
@@ -227,7 +186,6 @@ export function findBlock(
       continue;
     }
 
-    // Check if this line contains the full IRI as a subject
     if (trimmed.includes(iri)) {
       const prevLine = i > 0 ? lines[i - 1].trim() : "";
       const isContinuation =
@@ -239,7 +197,6 @@ export function findBlock(
     }
   }
 
-  // Last resort: extract the local name and search for it as a prefixed subject
   const localName = iri.includes("#")
     ? iri.split("#").pop()
     : iri.split("/").pop();
@@ -256,12 +213,10 @@ export function findBlock(
         continue;
       }
 
-      // Match patterns like  :LocalName  or  prefix:LocalName  at line start
       const localNamePattern = new RegExp(
         `^(\\w*:)?${escapeRegex(localName)}(\\s|$)`,
       );
       if (localNamePattern.test(trimmed)) {
-        // Verify it's not a continuation line
         const prevLine = i > 0 ? lines[i - 1].trim() : "";
         const isContinuation =
           prevLine.endsWith(";") || prevLine.endsWith(",");
@@ -279,8 +234,6 @@ export function findBlock(
 export function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-
-// ── Serialization helpers ─────────────────────────────────────────────
 
 export function esc(s: string): string {
   return s

@@ -2,19 +2,16 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-// Mock dnd-kit with configurable isOver
 let mockIsOver = false;
 vi.mock("@dnd-kit/core", () => ({
   useDraggable: () => ({ attributes: {}, listeners: {}, setNodeRef: vi.fn() }),
   useDroppable: () => ({ setNodeRef: vi.fn(), isOver: mockIsOver }),
 }));
 
-// Mock TreeNodeContextMenu to keep test simple
 vi.mock("@/components/editor/TreeNodeContextMenu", () => ({
   TreeNodeContextMenu: () => <div data-testid="context-menu" />,
 }));
 
-// Mock context-menu to render children directly
 vi.mock("@/components/ui/context-menu", () => ({
   ContextMenu: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   ContextMenuTrigger: ({ children }: { children: React.ReactNode; asChild?: boolean }) => <>{children}</>,
@@ -266,7 +263,6 @@ describe("EntityTreeNodeRow", () => {
       />,
     );
     const items = screen.getAllByRole("treeitem");
-    // Double-click the parent (first treeitem)
     await userEvent.dblClick(items[0]);
     expect(onCollapse).toHaveBeenCalledWith("http://ex.org/A");
   });
@@ -313,7 +309,6 @@ describe("EntityTreeNodeRow", () => {
         node={makeNode({ hasChildren: true, isLoading: true })}
       />,
     );
-    // The loading circle should have animate-pulse
     const pulse = container.querySelector(".animate-pulse");
     expect(pulse).not.toBeNull();
   });
@@ -349,7 +344,6 @@ describe("EntityTreeNodeRow", () => {
         searchQuery=""
       />,
     );
-    // Should render plain text, no <mark>
     expect(screen.getByText("PersonEntity").tagName).not.toBe("MARK");
   });
 
@@ -408,7 +402,6 @@ describe("EntityTreeNodeRow", () => {
         onCopyIri={vi.fn()}
       />,
     );
-    // Context menu wrapper is rendered (via mock)
     expect(screen.getByTestId("context-menu")).not.toBeNull();
   });
 
@@ -436,7 +429,6 @@ describe("EntityTreeNodeRow", () => {
         onCollapse={onCollapse}
       />,
     );
-    // The group header button
     await userEvent.click(screen.getByText("Classes"));
     expect(onCollapse).toHaveBeenCalled();
   });
@@ -475,7 +467,6 @@ describe("EntityTreeNodeRow", () => {
         dragState={dragState}
       />,
     );
-    // The treeitem should still render
     const item = container.querySelector(".tree-item");
     expect(item).not.toBeNull();
   });
@@ -501,7 +492,6 @@ describe("EntityTreeNodeRow", () => {
     );
     const item = container.querySelector(".tree-item");
     expect(item).not.toBeNull();
-    // The pointerEnter handler should be set since isOver=true and isDndEnabled=true
     fireEvent.pointerEnter(item!);
     expect(onDragEnterNode).toHaveBeenCalledWith("http://ex.org/A");
     mockIsOver = false;

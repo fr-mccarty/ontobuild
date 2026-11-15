@@ -92,7 +92,6 @@ export default function PullRequestDetailPage() {
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Breadcrumb */}
           <div className="mb-6 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
             <Link
               href={`/projects/${projectId}/pull-requests`}
@@ -103,7 +102,6 @@ export default function PullRequestDetailPage() {
             </Link>
           </div>
 
-          {/* PR Detail */}
           <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
             <PRDetail
               projectId={projectId}

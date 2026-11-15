@@ -47,8 +47,8 @@ import {
   type LintLevel,
   type LintSummary,
 } from "@/lib/api/lint";
+import { Tooltip } from "@/components/ui/tooltip";
 
-// Dynamically import the diff viewer to avoid SSR issues with Monaco
 const NormalizationDiffViewer = dynamic(
   () => import("@/components/editor/NormalizationDiffViewer").then((mod) => mod.NormalizationDiffViewer),
   {
@@ -73,20 +73,17 @@ export default function ProjectSettingsPage() {
 
   const queryClient = useQueryClient();
 
-  // Keep a ref to the latest accessToken so polling closures never go stale
   const accessTokenRef = useRef(session?.accessToken);
   useEffect(() => {
     accessTokenRef.current = session?.accessToken;
   }, [session?.accessToken]);
 
-  // React Query hooks for data (single source of truth — no local mirrors)
   const {
     project,
     isLoading: isProjectLoading,
     error: projectError,
   } = useProject(projectId, session?.accessToken);
 
-  // Stable query key for optimistic updates via setQueryData
   const projectKey = projectQueryKeys.detail(projectId, !!session?.accessToken);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -94,25 +91,20 @@ export default function ProjectSettingsPage() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Derive displayed error: local mutation errors take priority, then query errors
   const error = localError || projectError || null;
 
-  // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-  // Label preferences state
   const [labelPreferences, setLabelPreferences] = useState<string[]>([]);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [preferencesSaved, setPreferencesSaved] = useState(false);
 
-  // Normalization status via React Query
   const {
     data: normalizationQueryData,
   } = useNormalizationStatus(projectId, session?.accessToken, {
     enabled: !!project?.source_file_path && !!session?.accessToken,
   });
-  // Local normalization state (for optimistic updates during dry run / normalization)
   const [normalizationStatus, setNormalizationStatus] = useState<NormalizationStatusResponse | null>(null);
   useEffect(() => {
     if (normalizationQueryData) setNormalizationStatus(normalizationQueryData);
@@ -129,18 +121,15 @@ export default function ProjectSettingsPage() {
     original: string;
     normalized: string;
   } | null>(null);
-  // Background job state
   const [normalizationJobId, setNormalizationJobId] = useState<string | null>(null);
   const [normalizationJobStatus, setNormalizationJobStatus] = useState<string | null>(null);
   const normalizationPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Ontology index status via React Query
   const {
     data: indexQueryData,
   } = useIndexStatus(projectId, session?.accessToken, {
     enabled: !!project?.source_file_path && !!session?.accessToken,
   });
-  // Local index state (for optimistic updates during reindex)
   const [indexStatus, setIndexStatus] = useState<IndexStatusResponse | null>(null);
   useEffect(() => {
     if (indexQueryData) setIndexStatus(indexQueryData);
@@ -148,7 +137,6 @@ export default function ProjectSettingsPage() {
 
   const [isReindexing, setIsReindexing] = useState(false);
 
-  // WebSocket for real-time index status updates
   useEffect(() => {
     if (!project?.id || !session?.accessToken) return;
 
@@ -169,7 +157,6 @@ export default function ProjectSettingsPage() {
       session.accessToken
     );
 
-    // Small delay to avoid spurious connections during Strict Mode remounts
     const timeoutId = setTimeout(() => manager.connect(), 100);
 
     return () => {
@@ -178,7 +165,6 @@ export default function ProjectSettingsPage() {
     };
   }, [project?.id, session?.accessToken, projectId, queryClient]);
 
-  // Clean up normalization polling on unmount
   useEffect(() => {
     return () => {
       if (normalizationPollRef.current) {
@@ -187,7 +173,6 @@ export default function ProjectSettingsPage() {
     };
   }, []);
 
-  // PR settings state
   const [, setPrSettings] = useState<PRSettings | null>(null);
   const [prApprovalRequired, setPrApprovalRequired] = useState(0);
   const [isSavingPrSettings, setIsSavingPrSettings] = useState(false);
@@ -199,14 +184,12 @@ export default function ProjectSettingsPage() {
     project?.user_role === "owner" || project?.user_role === "admin" || project?.is_superadmin;
   const isOwner = project?.user_role === "owner";
 
-  // Sync label preferences from project data
   useEffect(() => {
     if (project) {
       setLabelPreferences(project.label_preferences || []);
     }
   }, [project]);
 
-  // Admin-only data via React Query (replaces manual useEffect fetch)
   const prSettingsQuery = useQuery({
     queryKey: ["prSettings", projectId],
     queryFn: () => prSettingsApi.get(projectId, session!.accessToken!),
@@ -220,14 +203,12 @@ export default function ProjectSettingsPage() {
     }
   }, [prSettingsQuery.data]);
 
-  // Handle unauthenticated state
   useEffect(() => {
     if (status !== "loading" && !isAuthenticated) {
       setLocalError("You must be signed in to access project settings");
     }
   }, [status, isAuthenticated]);
 
-  // Scroll to hash on page load (for #normalization link from editor)
   useEffect(() => {
     if (!isLoading && typeof window !== "undefined" && window.location.hash) {
       const hash = window.location.hash.substring(1);
@@ -332,7 +313,6 @@ export default function ProjectSettingsPage() {
       );
       setSuccessMessage("Reindex job queued. The index will update in the background.");
       setTimeout(() => setSuccessMessage(null), 5000);
-      // WebSocket will handle status updates automatically
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Failed to trigger reindex");
       setIsReindexing(false);
@@ -364,14 +344,12 @@ export default function ProjectSettingsPage() {
 
     try {
       if (dryRun) {
-        // Dry runs can still be synchronous (just generates preview)
         const result = await normalizationApi.runNormalization(
           project.id,
           true,
           session.accessToken
         );
 
-        // Update the preview status
         setNormalizationStatus({
           needs_normalization: true,
           last_run: normalizationStatus?.last_run || null,
@@ -382,7 +360,6 @@ export default function ProjectSettingsPage() {
           error: null,
         });
 
-        // Show the diff viewer if we have content
         if (result.original_content && result.normalized_content) {
           setDiffContent({
             original: result.original_content,
@@ -390,7 +367,6 @@ export default function ProjectSettingsPage() {
           });
           setShowDiffViewer(true);
         } else {
-          // Fallback to highlighting the stats preview
           setShowPreviewHighlight(true);
           setTimeout(() => {
             previewRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -399,7 +375,6 @@ export default function ProjectSettingsPage() {
         }
         setIsRunningNormalization(false);
       } else {
-        // Actual normalization runs as a background job
         const queueResult = await normalizationApi.queueNormalization(
           project.id,
           false,
@@ -410,7 +385,6 @@ export default function ProjectSettingsPage() {
         setNormalizationJobStatus("queued");
         setSuccessMessage("Normalization job queued - processing in background...");
 
-        // Poll for completion (ref-based so useEffect cleanup can cancel, token from ref to avoid stale closure)
         normalizationPollRef.current = setInterval(async () => {
           try {
             const token = accessTokenRef.current;
@@ -429,7 +403,6 @@ export default function ProjectSettingsPage() {
               setNormalizationJobStatus(null);
               setIsRunningNormalization(false);
 
-              // Refresh status
               const newStatus = await normalizationApi.getStatus(project.id, token);
               setNormalizationStatus(newStatus);
               queryClient.invalidateQueries({ queryKey: normalizationQueryKeys.status(projectId, token) });
@@ -444,10 +417,9 @@ export default function ProjectSettingsPage() {
               setLocalError(jobStatus.error || "Normalization job failed");
             }
           } catch (pollErr) {
-            // Continue polling on error
             console.error("Error polling job status:", pollErr);
           }
-        }, 2000); // Poll every 2 seconds
+        }, 2000);
       }
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Failed to run normalization");
@@ -578,7 +550,6 @@ export default function ProjectSettingsPage() {
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
         <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Back link */}
           <Link
             href={projectHomeHref}
             className="mb-6 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
@@ -587,7 +558,6 @@ export default function ProjectSettingsPage() {
             Back to project
           </Link>
 
-          {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Project Settings
@@ -597,7 +567,6 @@ export default function ProjectSettingsPage() {
             </p>
           </div>
 
-          {/* Success/Error Messages */}
           {successMessage && (
             <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
               {successMessage}
@@ -609,7 +578,6 @@ export default function ProjectSettingsPage() {
             </div>
           )}
 
-          {/* General Settings */}
           <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
               General
@@ -647,11 +615,9 @@ export default function ProjectSettingsPage() {
               onSubmit={handleUpdateProject}
               submitLabel="Save Changes"
               isLoading={isSaving}
-              disableVisibility={!!project.is_exemplar}
             />
           </section>
 
-          {/* Label Preferences Section - only show if project has an ontology */}
           {project.source_file_path && (
             <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
               <div className="mb-4 flex items-center gap-2">
@@ -682,7 +648,6 @@ export default function ProjectSettingsPage() {
             </section>
           )}
 
-          {/* Normalization Report Section - only show if project has an ontology with a report */}
           {project.normalization_report && (
             <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
               <div className="mb-4 flex items-center gap-2">
@@ -697,7 +662,6 @@ export default function ProjectSettingsPage() {
               </p>
 
               <div className="space-y-4">
-                {/* Summary stats */}
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-700/50">
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Original Format</p>
@@ -723,7 +687,6 @@ export default function ProjectSettingsPage() {
                   </div>
                 </div>
 
-                {/* Prefix changes */}
                 {(project.normalization_report.prefixes_removed.length > 0 ||
                   project.normalization_report.prefixes_added.length > 0) && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
@@ -749,7 +712,6 @@ export default function ProjectSettingsPage() {
                   </div>
                 )}
 
-                {/* Notes */}
                 {project.normalization_report.notes.length > 0 && (
                   <div>
                     <h3 className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -769,7 +731,6 @@ export default function ProjectSettingsPage() {
             </section>
           )}
 
-          {/* On-Demand Normalization Section - only show if project has an ontology */}
           {project.source_file_path && (
             <section
               id="normalization"
@@ -819,7 +780,6 @@ export default function ProjectSettingsPage() {
                 to clean up the source file.
               </p>
 
-              {/* Status indicator */}
               {normalizationStatus && (
                 <div className="mb-4">
                   {normalizationStatus.error ? (
@@ -858,7 +818,6 @@ export default function ProjectSettingsPage() {
                 </div>
               )}
 
-              {/* Background job status */}
               {normalizationJobId && (
                 <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
                   <div className="flex items-center gap-2">
@@ -875,7 +834,6 @@ export default function ProjectSettingsPage() {
                 </div>
               )}
 
-              {/* Preview report if available */}
               {normalizationStatus?.preview_report && normalizationStatus.needs_normalization && (
                 <div
                   ref={previewRef}
@@ -940,7 +898,6 @@ export default function ProjectSettingsPage() {
                 </div>
               )}
 
-              {/* Action buttons */}
               {canManage && (
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-3">
@@ -979,7 +936,6 @@ export default function ProjectSettingsPage() {
                 </div>
               )}
 
-              {/* History panel */}
               {showNormalizationHistory && (
                 <div className="mt-4 rounded-lg border border-slate-200 dark:border-slate-600">
                   <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 dark:border-slate-600">
@@ -1035,7 +991,6 @@ export default function ProjectSettingsPage() {
             </section>
           )}
 
-          {/* Ontology Index Section - only for admins/owners with an ontology */}
           {canManage && project.source_file_path && (
             <section
               id="ontology-index"
@@ -1074,7 +1029,6 @@ export default function ProjectSettingsPage() {
                 after imports and edits, but you can trigger a manual rebuild if results seem stale.
               </p>
 
-              {/* Status indicator */}
               {indexStatus ? (
                 <div className="rounded-md border border-slate-200 p-3 dark:border-slate-700">
                   <div className="flex items-center justify-between">
@@ -1126,7 +1080,6 @@ export default function ProjectSettingsPage() {
             </section>
           )}
 
-          {/* PR Settings Section - only for owners */}
           {isOwner && (
             <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
               <div className="mb-4 flex items-center gap-2">
@@ -1175,7 +1128,6 @@ export default function ProjectSettingsPage() {
             </section>
           )}
 
-          {/* Lint Rule Configuration - only for projects with an ontology */}
           {project.source_file_path && (
             <LintConfigSection
               projectId={projectId}
@@ -1184,7 +1136,6 @@ export default function ProjectSettingsPage() {
             />
           )}
 
-          {/* Danger Zone — hidden for exemplar projects unless superadmin */}
           {(isOwner || project?.is_superadmin) && !(project?.is_exemplar && !project?.is_superadmin) && (
             <section className="rounded-lg border border-red-200 bg-white p-6 dark:border-red-900/50 dark:bg-slate-800">
               <h2 className="mb-4 text-lg font-semibold text-red-600 dark:text-red-400">
@@ -1256,7 +1207,6 @@ export default function ProjectSettingsPage() {
         </div>
       </main>
 
-      {/* Normalization Diff Viewer Modal */}
       {showDiffViewer && diffContent && (
         <NormalizationDiffViewer
           originalContent={diffContent.original}
@@ -1270,8 +1220,6 @@ export default function ProjectSettingsPage() {
     </>
   );
 }
-
-// --- Lint Level Presets ---
 
 const SEVERITY_ORDER: Record<string, number> = { error: 0, warning: 1, info: 2 };
 
@@ -1304,30 +1252,25 @@ export function LintConfigSection({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Editable state. `lintLevel === null` means custom mode (explicit rule list).
-  const [lintLevel, setLintLevel] = useState<LintLevel | null>(2); // Default: Standard
+  const [lintLevel, setLintLevel] = useState<LintLevel | null>(2);
   const [enabledRules, setEnabledRules] = useState<Set<string>>(new Set());
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Track saved state to detect changes
   const [savedLevel, setSavedLevel] = useState<LintLevel | null>(2);
   const [savedRules, setSavedRules] = useState<Set<string>>(new Set());
 
-  // Fetch available lint rules
   const rulesQuery = useQuery({
     queryKey: ["lintRules"],
     queryFn: () => lintApi.getRules(),
     retry: false,
   });
 
-  // Fetch lint level definitions from backend
   const levelsQuery = useQuery({
     queryKey: ["lintLevels"],
     queryFn: () => lintApi.getLevels(),
     retry: false,
   });
 
-  // Build a map of level -> rule_ids from backend definitions
   const levelRuleMap = useMemo(() => {
     if (!levelsQuery.data) return new Map<LintLevel, Set<string>>();
     const map = new Map<LintLevel, Set<string>>();
@@ -1344,9 +1287,6 @@ export function LintConfigSection({
     );
   }, [rulesQuery.data]);
 
-  // Fetch project lint config (depends on rules being loaded). The access
-  // token is only used inside the queryFn; keeping it out of the queryKey
-  // means a token rotation does not invalidate the cache.
   const configQuery = useQuery({
     queryKey: ["lintConfig", projectId],
     queryFn: () => lintApi.getLintConfig(projectId, accessToken),
@@ -1354,19 +1294,16 @@ export function LintConfigSection({
     retry: false,
   });
 
-  // Fetch lint status summary
   const statusQuery = useQuery<LintSummary>({
     queryKey: ["lintSummary", projectId],
     queryFn: () => lintApi.getStatus(projectId, accessToken),
     enabled: !!accessToken,
-    // Lint runs in the background: poll while one is pending/running.
     refetchInterval: (query) => {
       const status = query.state.data?.last_run?.status;
       return status === "pending" || status === "running" ? 2000 : false;
     },
   });
 
-  // Sync rules / levels query errors
   useEffect(() => {
     if (rulesQuery.isError) {
       setError("Failed to load lint rules");
@@ -1375,23 +1312,16 @@ export function LintConfigSection({
     }
   }, [rulesQuery.isError, levelsQuery.isError]);
 
-  // Stable ref for hasChanges so the sync effect can read it without re-running
   const hasChangesRef = useRef(hasChanges);
   hasChangesRef.current = hasChanges;
 
-  // Sync config data into local editable state
   useEffect(() => {
     if (!configQuery.data && !configQuery.isError) return;
-    // Don't overwrite in-progress edits from background refetches
     if (hasChangesRef.current) return;
 
     if (configQuery.data) {
       const cfg = configQuery.data;
       const level = cfg.lint_level;
-      // For preset mode, defer until levelsQuery has resolved — otherwise
-      // levelRuleMap.get(level) returns undefined and we'd flash an
-      // all-disabled state until levels load. The effect re-runs when
-      // levelRuleMap changes.
       if (level !== null && levelRuleMap.size === 0) return;
       setLintLevel(level);
       setSavedLevel(level);
@@ -1415,14 +1345,12 @@ export function LintConfigSection({
 
   const isLoading = rulesQuery.isLoading || levelsQuery.isLoading || (!!accessToken && rules.length > 0 && configQuery.isLoading);
 
-  // Detect changes
   useEffect(() => {
     if (lintLevel !== savedLevel) {
       setHasChanges(true);
       return;
     }
     if (lintLevel === null) {
-      // Custom mode: compare rule sets
       const currentIds = [...enabledRules].sort().join(",");
       const savedIds = [...savedRules].sort().join(",");
       setHasChanges(currentIds !== savedIds);
@@ -1441,7 +1369,7 @@ export function LintConfigSection({
   };
 
   const handleRuleToggle = (ruleId: string) => {
-    if (lintLevel !== null) return; // Only toggle in custom mode
+    if (lintLevel !== null) return;
     setError(null);
     setSuccess(null);
     setEnabledRules((prev) => {
@@ -1461,8 +1389,6 @@ export function LintConfigSection({
     setError(null);
     setSuccess(null);
     try {
-      // The backend's enforce_xor validator rejects payloads that set both
-      // lint_level AND enabled_rules — preset mode must omit enabled_rules.
       const config: LintConfig =
         lintLevel === null
           ? { lint_level: null, enabled_rules: [...enabledRules] }
@@ -1472,7 +1398,6 @@ export function LintConfigSection({
       setSavedRules(new Set(enabledRules));
       setHasChanges(false);
       setSuccess("Lint configuration saved");
-      // Invalidate queries so cache stays fresh
       queryClient.invalidateQueries({ queryKey: ["lintConfig", projectId] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save lint configuration");
@@ -1516,8 +1441,6 @@ export function LintConfigSection({
   };
 
   const isCustom = lintLevel === null;
-  // Mirror HealthCheckPanel: offer Clear only when there's something to clear,
-  // otherwise the action button re-prompts a fresh Run Lint.
   const lastRunStatus = statusQuery.data?.last_run?.status;
   const hasResultsToClear =
     lastRunStatus === "completed" && (statusQuery.data?.total_issues ?? 0) > 0;
@@ -1539,7 +1462,6 @@ export function LintConfigSection({
         Choose a preset level or customize individual rules.
       </p>
 
-      {/* Last run summary */}
       {statusQuery.data?.last_run && (
         <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-600 dark:bg-slate-700/50">
           <div className="flex items-center justify-between">
@@ -1583,7 +1505,6 @@ export function LintConfigSection({
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Lint Level Selector */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
               Lint Level
@@ -1635,7 +1556,6 @@ export function LintConfigSection({
             </div>
           </div>
 
-          {/* Rule List */}
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -1674,7 +1594,6 @@ export function LintConfigSection({
                         : "bg-transparent opacity-60"
                     )}
                   >
-                    {/* Toggle */}
                     <button
                       type="button"
                       role="switch"
@@ -1697,7 +1616,6 @@ export function LintConfigSection({
                         )}
                       />
                     </button>
-                    {/* Rule info */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-900 dark:text-white">
@@ -1714,13 +1632,11 @@ export function LintConfigSection({
                         {rule.scope && (
                           <span className="inline-flex gap-0.5">
                             {rule.scope.map((s) => (
-                              <span
-                                key={s}
-                                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[8px] font-bold text-slate-500 dark:border-slate-500 dark:text-slate-400"
-                                title={s}
-                              >
-                                {s[0].toUpperCase()}
-                              </span>
+                              <Tooltip key={s} content={s}>
+                                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 text-[8px] font-bold text-slate-500 dark:border-slate-500 dark:text-slate-400">
+                                  {s[0].toUpperCase()}
+                                </span>
+                              </Tooltip>
                             ))}
                           </span>
                         )}
@@ -1740,12 +1656,10 @@ export function LintConfigSection({
             </div>
           </div>
 
-          {/* Error/success messages — visible to all users */}
           {error && (
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           )}
 
-          {/* Action buttons */}
           {canManage && (
             <div className="flex items-center justify-end gap-3">
               {success && (

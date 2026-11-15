@@ -6,14 +6,8 @@ import "@scalar/api-reference-react/style.css";
 import "./scalar-overrides.css";
 import { Header } from "@/components/layout/header";
 
-// Same-origin by default; the OpenAPI document is generated from the Hono routes.
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-/**
- * Sync Scalar's dark mode (body.dark-mode / body.light-mode) with the app's
- * theme (html.dark).  Scalar reads body classes internally, so we mirror the
- * html class onto body whenever it changes.
- */
 function useSyncScalarDarkMode() {
   useEffect(() => {
     const root = document.documentElement;

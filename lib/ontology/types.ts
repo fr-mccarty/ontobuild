@@ -1,7 +1,3 @@
-/**
- * Type definitions for OWL ontology elements
- */
-
 export interface LocalizedString {
   value: string;
   lang: string;
@@ -24,7 +20,7 @@ export interface OWLClass extends OWLEntity {
   sourceOntology?: string;
 }
 
-export type PropertyType = "object" | "data" | "annotation";
+export type PropertyType = "object" | "data" | "annotation" | "other";
 
 export interface OWLProperty extends OWLEntity {
   propertyType: PropertyType;
@@ -32,7 +28,6 @@ export interface OWLProperty extends OWLEntity {
   rangeIris: string[];
   parentIris: string[];
 
-  // Object property characteristics
   isFunctional: boolean;
   isInverseFunctional: boolean;
   isTransitive: boolean;
@@ -74,7 +69,6 @@ export interface OWLOntology {
   individualCount: number;
 }
 
-// Tree representation for hierarchical display
 export interface ClassTreeNode {
   iri: string;
   label: string;
@@ -84,7 +78,6 @@ export interface ClassTreeNode {
   hasChildren: boolean;
 }
 
-// Shared tree node type used by all entity tabs (Classes, Properties, Individuals)
 export interface EntityTreeNode {
   iri: string;
   label: string;
@@ -98,9 +91,6 @@ export interface EntityTreeNode {
   isSearchMatch?: boolean;
 }
 
-/**
- * Convert ClassTreeNode[] to EntityTreeNode[] for the shared tree renderer.
- */
 export function classTreeNodesToEntityNodes(
   nodes: ClassTreeNode[],
 ): EntityTreeNode[] {
@@ -115,7 +105,6 @@ export function classTreeNodesToEntityNodes(
   }));
 }
 
-// For Manchester syntax support
 export interface ClassExpression {
   type:
     | "class"
@@ -132,7 +121,6 @@ export interface ClassExpression {
   cardinality?: number;
 }
 
-// Validation result
 export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];

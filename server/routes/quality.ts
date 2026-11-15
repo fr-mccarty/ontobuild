@@ -1,15 +1,3 @@
-/**
- * Quality API — port of ontokit-api/ontokit/api/routes/quality.py
- * (consistency checks and duplicate detection).
- *
- * Jobs run in-process via server/jobs.ts; results that the old backend cached in
- * Redis are kept in the `quality_results` table (latest per project+branch) and in the
- * job row (per job id). The `/quality/ws` websocket is gone: clients poll
- * `/quality/jobs/{job_id}` and `/quality/duplicates/jobs/{job_id}` (202 while pending).
- *
- * The cross-reference endpoint (`/entities/{iri}/references`) belongs to the editor
- * routes (routes/ontology.ts) and is not registered here.
- */
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { get, nowIso, run, toJson, fromJson } from "../db";
@@ -61,7 +49,6 @@ function queryThreshold(c: Context): number {
   return n;
 }
 
-/** Shared job-result handler: 200 result, 202 pending, 500 failed, 404 unknown. */
 function jobResult(c: Context, kind: string) {
   const projectId = c.req.param("id")!;
   requireProject(projectId);

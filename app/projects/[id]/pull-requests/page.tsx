@@ -70,7 +70,6 @@ export default function PullRequestsPage() {
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Breadcrumb */}
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
@@ -83,7 +82,6 @@ export default function PullRequestsPage() {
             </div>
           </div>
 
-          {/* Header */}
           <div className="mb-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <GitPullRequest className="h-8 w-8 text-slate-600 dark:text-slate-400" />
@@ -105,10 +103,8 @@ export default function PullRequestsPage() {
             )}
           </div>
 
-          {/* PR List */}
           <PRList projectId={projectId} accessToken={session?.accessToken} />
 
-          {/* Create Modal */}
           {session?.accessToken && (
             <PRCreateModal
               projectId={projectId}

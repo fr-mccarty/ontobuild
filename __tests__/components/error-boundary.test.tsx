@@ -3,7 +3,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ErrorBoundary } from "@/components/error-boundary";
 
-// Component that throws on demand
 function ThrowingComponent({ shouldThrow }: { shouldThrow: boolean }) {
   if (shouldThrow) {
     throw new Error("Test error message");
@@ -14,7 +13,6 @@ function ThrowingComponent({ shouldThrow }: { shouldThrow: boolean }) {
 describe("ErrorBoundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Suppress console.error from React's error boundary logging
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -51,7 +49,6 @@ describe("ErrorBoundary", () => {
   });
 
   it("recovers when Try again is clicked", () => {
-    // Use a ref-like flag so the same component instance stops throwing
     let shouldThrow = true;
     function ConditionalThrower() {
       if (shouldThrow) throw new Error("boom");
@@ -66,7 +63,6 @@ describe("ErrorBoundary", () => {
 
     expect(screen.getByText("Something went wrong")).toBeDefined();
 
-    // Stop throwing, then click Try again which resets the boundary state
     shouldThrow = false;
     fireEvent.click(screen.getByText("Try again"));
 

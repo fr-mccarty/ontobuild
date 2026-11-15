@@ -1,7 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 
-// Mock useBranch context
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
+
 const mockBranchContext = {
   currentBranch: "feature/add-class",
   defaultBranch: "main",
@@ -69,24 +73,24 @@ describe("BranchBadge", () => {
     expect(screen.queryByText(/behind/)).toBeNull();
   });
 
-  it("shows tooltip with commits behind info", () => {
+  it("shows tooltip with commits behind info", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     mockBranchContext.branches = [
       { name: "feature/add-class", commits_ahead: 3, commits_behind: 5 },
     ];
     render(<BranchBadge />);
-    const behindEl = screen.getByText("5 behind");
-    const wrapper = behindEl.closest("span");
-    expect(wrapper?.getAttribute("title")).toBe("5 commits behind main");
+    fireEvent.focus(screen.getByText("5 behind"));
+    expect((await screen.findAllByText("5 commits behind main")).length).toBeGreaterThan(0);
   });
 
-  it("uses singular 'commit' for 1 behind", () => {
+  it("uses singular 'commit' for 1 behind", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     mockBranchContext.branches = [
       { name: "feature/add-class", commits_ahead: 3, commits_behind: 1 },
     ];
     render(<BranchBadge />);
-    const behindEl = screen.getByText("1 behind");
-    const wrapper = behindEl.closest("span");
-    expect(wrapper?.getAttribute("title")).toBe("1 commit behind main");
+    fireEvent.focus(screen.getByText("1 behind"));
+    expect((await screen.findAllByText("1 commit behind main")).length).toBeGreaterThan(0);
   });
 
   it("applies custom className", () => {

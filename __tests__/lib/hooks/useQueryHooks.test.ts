@@ -1,20 +1,7 @@
-/**
- * Tests for the standalone React Query data-fetching hooks:
- *   useOpenPRCount, useLintSummary,
- *   useNormalizationStatus, useIndexStatus
- *
- * Each hook is a thin useQuery wrapper — tests verify:
- *   1. Data is returned when the query resolves
- *   2. The query is disabled when required params are missing
- *   3. The enabled option (where applicable) is respected
- */
-
 import React, { type ReactNode } from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-// ---- Mocks ----
 
 vi.mock("@/lib/api/pullRequests", () => ({
   pullRequestsApi: { list: vi.fn() },
@@ -44,8 +31,6 @@ const mockedLintStatus = lintApi.getStatus as ReturnType<typeof vi.fn>;
 const mockedNormStatus = normalizationApi.getStatus as ReturnType<typeof vi.fn>;
 const mockedIndexStatus = projectOntologyApi.getIndexStatus as ReturnType<typeof vi.fn>;
 
-// ---- Helpers ----
-
 function createWrapper() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   function Wrapper({ children }: { children: ReactNode }) {
@@ -57,8 +42,6 @@ function createWrapper() {
 beforeEach(() => {
   vi.clearAllMocks();
 });
-
-// ---- useOpenPRCount ----
 
 describe("useOpenPRCount", () => {
   it("returns the total open PR count", async () => {
@@ -92,8 +75,6 @@ describe("useOpenPRCount", () => {
   });
 });
 
-// ---- useLintSummary ----
-
 describe("useLintSummary", () => {
   const summary = { project_id: "p1", error_count: 2, warning_count: 1, info_count: 0, total_issues: 3, last_run: null };
 
@@ -118,8 +99,6 @@ describe("useLintSummary", () => {
     expect(mockedLintStatus).not.toHaveBeenCalled();
   });
 });
-
-// ---- useNormalizationStatus ----
 
 describe("useNormalizationStatus", () => {
   const normStatus = { needs_normalization: false, last_run: null, last_run_id: null, last_check: null, preview_report: null, checking: false, error: null };
@@ -155,8 +134,6 @@ describe("useNormalizationStatus", () => {
     expect(mockedNormStatus).not.toHaveBeenCalled();
   });
 });
-
-// ---- useIndexStatus ----
 
 describe("useIndexStatus", () => {
   const idxStatus = { status: "ready", entity_count: 42, last_indexed: "2026-01-01T00:00:00Z" };

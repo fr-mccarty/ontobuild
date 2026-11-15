@@ -1,10 +1,5 @@
-/**
- * Projects API client
- */
-
 import { api, type UploadProgress } from "./client";
 
-// Types
 export type ProjectRole = "owner" | "admin" | "editor" | "viewer";
 
 export interface ProjectOwner {
@@ -38,16 +33,12 @@ export interface Project {
   updated_at?: string;
   member_count: number;
   user_role?: ProjectRole;
-  is_superadmin?: boolean;  // Whether the current user is a superadmin
-  // Import-related fields (optional, only set when project was created via import)
+  is_superadmin?: boolean;
   source_file_path?: string;
   git_ontology_path?: string;
   ontology_iri?: string;
-  // Label preferences for ontology display
   label_preferences?: string[];
-  // Normalization report from initial import
   normalization_report?: NormalizationReport;
-  // Exemplar ontology fields
   is_exemplar?: boolean;
   exemplar_slug?: string;
   exemplar_source_url?: string;
@@ -86,29 +77,18 @@ export interface ProjectImportData {
   description?: string;
 }
 
-// API functions
 export const projectApi = {
-  /**
-   * List accessible projects
-   * @param skip - Pagination offset
-   * @param limit - Maximum results
-   * @param filter - Filter type: 'public', 'private', 'mine', or undefined for all accessible
-   * @param token - Access token for authentication
-   */
-  list: (skip = 0, limit = 20, filter?: "public" | "private" | "mine", token?: string, search?: string) => {
+  list: (skip = 0, limit = 20, token?: string, search?: string) => {
     const headers: HeadersInit = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
     return api.get<ProjectListResponse>("/api/v1/projects", {
-      params: { skip, limit, filter, search: search || undefined },
+      params: { skip, limit, search: search || undefined },
       headers,
     });
   },
 
-  /**
-   * Get a project by ID
-   */
   get: (id: string, token?: string) => {
     const headers: HeadersInit = {};
     if (token) {
@@ -117,20 +97,11 @@ export const projectApi = {
     return api.get<Project>(`/api/v1/projects/${id}`, { headers });
   },
 
-  /**
-   * Create a new project
-   */
   create: (data: ProjectCreate, token: string) =>
     api.post<Project>("/api/v1/projects", data, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  /**
-   * Import a project from an ontology file
-   * @param data - Import data including file and metadata
-   * @param token - Access token
-   * @param onProgress - Optional progress callback for upload tracking
-   */
   import: (
     data: ProjectImportData,
     token: string,
@@ -146,7 +117,6 @@ export const projectApi = {
       formData.append("description", data.description);
     }
 
-    // Use progress-enabled upload if callback provided
     if (onProgress) {
       return api.uploadWithProgress<ProjectImportResponse>(
         "/api/v1/projects/import",
@@ -163,17 +133,11 @@ export const projectApi = {
     });
   },
 
-  /**
-   * Update a project
-   */
   update: (id: string, data: ProjectUpdate, token: string) =>
     api.patch<Project>(`/api/v1/projects/${id}`, data, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  /**
-   * Delete a project
-   */
   delete: (id: string, token: string) =>
     api.delete(`/api/v1/projects/${id}`, {
       headers: { Authorization: `Bearer ${token}` },

@@ -1,12 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "@/lib/localUser";
-import { Globe, Lock } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import type { Project } from "@/lib/api/projects";
-import { derivePermissions } from "@/lib/hooks/useProject";
-import { useEditorModeStore } from "@/lib/stores/editorModeStore";
 
 interface ProjectCardProps {
   project: Project;
@@ -14,15 +10,7 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, className }: ProjectCardProps) {
-  const { data: session } = useSession();
-  const { canEdit } = derivePermissions(project, session?.accessToken);
-  const preferEditMode = useEditorModeStore((s) => s.preferEditMode);
-
-  // When the user has prefer-edit-mode on AND has edit rights, open the
-  // project straight to the editor.
-  const href = preferEditMode && canEdit
-    ? `/projects/${project.id}/editor`
-    : `/projects/${project.id}`;
+  const href = `/projects/${project.id}`;
 
   return (
     <Link
@@ -44,21 +32,6 @@ export function ProjectCard({ project, className }: ProjectCardProps) {
             <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-400">
               {project.description}
             </p>
-          )}
-        </div>
-        <div
-          className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-            project.is_public
-              ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-              : "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-          )}
-          title={project.is_public ? "Public project" : "Private project"}
-        >
-          {project.is_public ? (
-            <Globe className="h-4 w-4" />
-          ) : (
-            <Lock className="h-4 w-4" />
           )}
         </div>
       </div>

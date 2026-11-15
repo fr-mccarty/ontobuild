@@ -30,7 +30,6 @@ interface ToastContextValue {
   removeToast: (id: string) => void;
   clearToasts: () => void;
 
-  // Convenience methods
   success: (title: string, description?: string) => string;
   error: (title: string, description?: string) => string;
   warning: (title: string, description?: string) => string;
@@ -39,7 +38,7 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const DEFAULT_DURATION = 5000; // 5 seconds
+const DEFAULT_DURATION = 5000;
 
 interface ToastProviderProps {
   children: ReactNode;
@@ -60,7 +59,6 @@ export function ToastProvider({ children }: ToastProviderProps) {
 
     setToasts((prev) => [...prev, newToast]);
 
-    // Auto-remove after duration
     if (duration > 0) {
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));

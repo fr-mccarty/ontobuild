@@ -1,17 +1,10 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-/**
- * Merge Tailwind CSS classes with clsx
- */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * Extract the local name from an IRI
- * e.g., "http://example.org/ontology#Person" -> "Person"
- */
 export function getLocalName(iri: string): string {
   const hashIndex = iri.lastIndexOf("#");
   if (hashIndex !== -1) {
@@ -24,10 +17,6 @@ export function getLocalName(iri: string): string {
   return iri;
 }
 
-/**
- * Get the namespace from an IRI
- * e.g., "http://example.org/ontology#Person" -> "http://example.org/ontology#"
- */
 export function getNamespace(iri: string): string {
   const hashIndex = iri.lastIndexOf("#");
   if (hashIndex !== -1) {
@@ -40,9 +29,6 @@ export function getNamespace(iri: string): string {
   return "";
 }
 
-/**
- * Format a date string for display
- */
 export function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString(undefined, {
     year: "numeric",
@@ -51,9 +37,6 @@ export function formatDate(dateString: string): string {
   });
 }
 
-/**
- * Format a date string with time
- */
 export function formatDateTime(dateString: string): string {
   return new Date(dateString).toLocaleString(undefined, {
     year: "numeric",
@@ -64,33 +47,22 @@ export function formatDateTime(dateString: string): string {
   });
 }
 
-/**
- * Get the preferred label from a list of localized strings
- */
 export function getPreferredLabel(
   labels: { value: string; lang: string }[],
   preferredLang = "en"
 ): string {
   if (!labels.length) return "";
 
-  // Try to find the preferred language
   const preferred = labels.find((l) => l.lang === preferredLang);
   if (preferred) return preferred.value;
 
-  // Fall back to first label
   return labels[0].value;
 }
 
-/**
- * Generate a UUID v4
- */
 export function generateId(): string {
   return crypto.randomUUID();
 }
 
-/**
- * Debounce a function
- */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   fn: T,
   delay: number
@@ -103,7 +75,6 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
   };
 }
 
-/** Map bare language codes to their default country code for flag rendering */
 const LANG_TO_COUNTRY: Record<string, string> = {
   en: "US",
   la: "VA",
@@ -145,12 +116,6 @@ const LANG_TO_COUNTRY: Record<string, string> = {
   zu: "ZA",
 };
 
-/**
- * Convert an ISO language tag to a flag emoji.
- * - `xx-YY` → uses YY country code
- * - `xx` bare code → lookup table or self-mapping heuristic (e.g. `de`→`DE`)
- * Returns null if the code can't be mapped.
- */
 export function langToFlag(lang: string): string | null {
   if (!lang) return null;
   const normalized = lang.trim().toLowerCase();

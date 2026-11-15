@@ -1,7 +1,3 @@
-/**
- * API client for analytics: change tracking, activity, contributor stats
- */
-
 import { api } from "./client";
 
 export type ChangeEventType =

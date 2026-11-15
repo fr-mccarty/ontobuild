@@ -1,9 +1,3 @@
-/**
- * Shared ReactFlow mock for graph component tests.
- *
- * Usage in test files:
- *   vi.mock("@xyflow/react", () => reactFlowMock);
- */
 import { vi } from "vitest";
 import React from "react";
 

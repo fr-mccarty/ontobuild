@@ -13,7 +13,6 @@ describe("FileUpload", () => {
     vi.clearAllMocks();
   });
 
-  // ── Drop zone rendering ─────────────────────────────────────────
   it("renders the upload drop zone when no file is selected", () => {
     render(<FileUpload {...defaultProps} />);
     expect(screen.getByText("Click to upload or drag and drop")).toBeDefined();
@@ -32,7 +31,6 @@ describe("FileUpload", () => {
     expect(input.className).toContain("hidden");
   });
 
-  // ── File selection ──────────────────────────────────────────────
   it("calls onFileSelect when a valid file is selected via input", async () => {
     const onFileSelect = vi.fn();
     const { container } = render(
@@ -51,7 +49,6 @@ describe("FileUpload", () => {
     );
     const input = container.querySelector("input[type='file']") as HTMLInputElement;
     const file = new File(["content"], "test.txt", { type: "text/plain" });
-    // Use fireEvent.change since userEvent.upload respects the accept attribute
     fireEvent.change(input, { target: { files: [file] } });
     expect(onFileSelect).toHaveBeenCalledWith(null);
     expect(screen.getByText(/Unsupported file format/)).toBeDefined();
@@ -63,7 +60,6 @@ describe("FileUpload", () => {
       <FileUpload {...defaultProps} onFileSelect={onFileSelect} />
     );
     const input = container.querySelector("input[type='file']") as HTMLInputElement;
-    // Create a file object that reports as > 50MB
     const largeFile = new File(["x"], "big.owl", { type: "application/rdf+xml" });
     Object.defineProperty(largeFile, "size", { value: 51 * 1024 * 1024 });
     fireEvent.change(input, { target: { files: [largeFile] } });
@@ -71,7 +67,6 @@ describe("FileUpload", () => {
     expect(screen.getByText(/File too large/)).toBeDefined();
   });
 
-  // ── Selected file display ───────────────────────────────────────
   it("shows file name when a file is selected", () => {
     const file = new File(["content"], "ontology.ttl", { type: "text/turtle" });
     render(<FileUpload {...defaultProps} selectedFile={file} />);
@@ -95,7 +90,6 @@ describe("FileUpload", () => {
     expect(onFileSelect).toHaveBeenCalledWith(null);
   });
 
-  // ── Drag and drop ──────────────────────────────────────────────
   it("shows drag text on dragover", () => {
     render(<FileUpload {...defaultProps} />);
     const label = screen.getByText("Click to upload or drag and drop").closest("label")!;
@@ -112,7 +106,6 @@ describe("FileUpload", () => {
     expect(screen.getByText("Click to upload or drag and drop")).toBeDefined();
   });
 
-  // ── Disabled state ─────────────────────────────────────────────
   it("applies disabled styling when disabled", () => {
     const { container } = render(<FileUpload {...defaultProps} disabled />);
     const label = container.querySelector("label");
@@ -120,7 +113,6 @@ describe("FileUpload", () => {
     expect(label?.className).toContain("opacity-50");
   });
 
-  // ── Error prop ─────────────────────────────────────────────────
   it("displays external error prop", () => {
     const file = new File(["content"], "test.owl");
     render(

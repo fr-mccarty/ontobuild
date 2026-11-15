@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Copy, Code, Trash2 } from "lucide-react";
+import { Plus, Copy, Trash2 } from "lucide-react";
 import {
   ContextMenuContent,
   ContextMenuItem,
@@ -11,7 +11,6 @@ interface TreeNodeContextMenuProps {
   onAddChild?: (parentIri: string) => void;
   onCopyIri?: (iri: string) => void;
   onDelete?: (iri: string, label: string) => void;
-  onViewInSource?: (iri: string) => void;
 }
 
 export function TreeNodeContextMenu({
@@ -19,7 +18,6 @@ export function TreeNodeContextMenu({
   onAddChild,
   onCopyIri,
   onDelete,
-  onViewInSource,
 }: TreeNodeContextMenuProps) {
   const label = node.label || node.iri;
 
@@ -39,13 +37,6 @@ export function TreeNodeContextMenu({
         <ContextMenuItem onSelect={() => onCopyIri(node.iri)}>
           <Copy className="h-4 w-4" />
           Copy IRI
-        </ContextMenuItem>
-      )}
-
-      {onViewInSource && (
-        <ContextMenuItem onSelect={() => onViewInSource(node.iri)}>
-          <Code className="h-4 w-4" />
-          View in Source
         </ContextMenuItem>
       )}
 

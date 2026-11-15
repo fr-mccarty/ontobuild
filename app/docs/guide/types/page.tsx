@@ -12,7 +12,6 @@ export default function TypesPage() {
       </p>
 
       <div className="space-y-8">
-        {/* Lightweight vs Heavyweight */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Lightweight vs Heavyweight
@@ -36,7 +35,6 @@ export default function TypesPage() {
           </div>
         </section>
 
-        {/* Taxonomy */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Taxonomies
@@ -54,7 +52,6 @@ export default function TypesPage() {
           </div>
         </section>
 
-        {/* Thesauri */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Thesauri & Controlled Vocabularies
@@ -73,7 +70,6 @@ export default function TypesPage() {
           </div>
         </section>
 
-        {/* Formal Ontologies */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Formal Ontologies (OWL)
@@ -92,7 +88,6 @@ export default function TypesPage() {
           </div>
         </section>
 
-        {/* Domain vs Upper-Level */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Domain vs Upper-Level Ontologies
@@ -121,7 +116,6 @@ export default function TypesPage() {
           </div>
         </section>
 
-        {/* Comparison Table */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Comparison

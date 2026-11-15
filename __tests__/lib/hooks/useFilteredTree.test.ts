@@ -3,7 +3,6 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { mergePathsIntoTree, useFilteredTree, type AncestorPath } from "@/lib/hooks/useFilteredTree";
 import type { EntitySearchResult } from "@/lib/api/client";
 
-// Mock the API client
 vi.mock("@/lib/api/client", () => ({
   projectOntologyApi: {
     getClassAncestors: vi.fn(),
@@ -68,8 +67,6 @@ describe("mergePathsIntoTree", () => {
   });
 
   it("merges hasChildren when a node reappears as an ancestor", () => {
-    // First path: urn:node is the match (hasChildren defaults to false)
-    // Second path: urn:node is an ancestor (child_count > 0 → hasChildren: true)
     const paths: AncestorPath[] = [
       {
         matchIri: "urn:node",
@@ -88,11 +85,9 @@ describe("mergePathsIntoTree", () => {
 
     const tree = mergePathsIntoTree(paths);
 
-    // urn:node should have hasChildren: true (merged from the second path)
     const nodeEntry = tree[0].children.find((c) => c.iri === "urn:node");
     expect(nodeEntry).toBeDefined();
     expect(nodeEntry!.hasChildren).toBe(true);
-    // It should also be marked as a search match
     expect(nodeEntry!.isSearchMatch).toBe(true);
   });
 
@@ -112,7 +107,6 @@ describe("mergePathsIntoTree", () => {
 
     const tree = mergePathsIntoTree(paths);
 
-    // Single root with two children
     expect(tree).toHaveLength(1);
     expect(tree[0].iri).toBe("urn:root");
     expect(tree[0].children).toHaveLength(2);
@@ -159,8 +153,6 @@ describe("mergePathsIntoTree", () => {
   });
 
   it("does not duplicate a node as root when ancestor fetch fails but another path attaches it as child", () => {
-    // Path 1: urn:child has ancestors (attached under urn:root)
-    // Path 2: urn:child has empty ancestors (failed fetch) — should NOT become a second root
     const paths: AncestorPath[] = [
       {
         matchIri: "urn:child",
@@ -176,7 +168,6 @@ describe("mergePathsIntoTree", () => {
 
     const tree = mergePathsIntoTree(paths);
 
-    // urn:child should appear only as a child of urn:root, not as a separate root
     expect(tree).toHaveLength(1);
     expect(tree[0].iri).toBe("urn:root");
     expect(tree[0].children).toHaveLength(1);
@@ -225,10 +216,6 @@ describe("mergePathsIntoTree", () => {
     expect(tree[0].children[0].children[0].children[0].isSearchMatch).toBe(true);
   });
 });
-
-// ---------------------------------------------------------------------------
-// useFilteredTree hook
-// ---------------------------------------------------------------------------
 
 function makeClassResult(iri: string, label: string): EntitySearchResult {
   return { iri, label, entity_type: "class", deprecated: false };
@@ -320,7 +307,6 @@ describe("useFilteredTree", () => {
 
     await waitFor(() => expect(result.current.isBuilding).toBe(false));
 
-    // Should still build a tree with the orphan as a root node
     expect(result.current.filteredNodes).not.toBeNull();
     expect(result.current.filteredNodes).toHaveLength(1);
     expect(result.current.filteredNodes![0].iri).toBe("urn:orphan");
@@ -347,13 +333,11 @@ describe("useFilteredTree", () => {
 
     await waitFor(() => expect(result.current.isBuilding).toBe(false));
 
-    // Only the class result should be fetched
     expect(mockedGetClassAncestors).toHaveBeenCalledTimes(1);
     expect(mockedGetClassAncestors).toHaveBeenCalledWith("p1", "urn:cls", undefined, undefined);
   });
 
   it("sets truncated when results exceed MAX_MATCHES (20)", async () => {
-    // Create 21 class results
     const results: EntitySearchResult[] = Array.from({ length: 21 }, (_, i) =>
       makeClassResult(`urn:cls${i}`, `Class ${i}`)
     );
@@ -373,7 +357,6 @@ describe("useFilteredTree", () => {
     await waitFor(() => expect(result.current.isBuilding).toBe(false));
 
     expect(result.current.truncated).toBe(true);
-    // Should only fetch ancestors for 20 results (MAX_MATCHES)
     expect(mockedGetClassAncestors).toHaveBeenCalledTimes(20);
   });
 
@@ -418,7 +401,6 @@ describe("useFilteredTree", () => {
     await waitFor(() => expect(result.current.isBuilding).toBe(false));
     expect(result.current.filteredNodes).not.toBeNull();
 
-    // Change to null
     rerender({ searchResults: null });
 
     expect(result.current.filteredNodes).toBeNull();
@@ -449,15 +431,12 @@ describe("useFilteredTree", () => {
       }
     );
 
-    // Should be building the first query
     expect(result.current.isBuilding).toBe(true);
 
-    // Now change the search results before the first resolves
     rerender({
       searchResults: [makeClassResult("urn:second", "Second")],
     });
 
-    // Resolve the first (stale) request
     resolveFirst!({
       nodes: [{ iri: "urn:stale-root", label: "Stale", child_count: 0 }],
       total_classes: 1,
@@ -465,7 +444,6 @@ describe("useFilteredTree", () => {
 
     await waitFor(() => expect(result.current.isBuilding).toBe(false));
 
-    // The result should be from the second search, not the stale first
     expect(result.current.firstMatchIri).toBe("urn:second");
   });
 });

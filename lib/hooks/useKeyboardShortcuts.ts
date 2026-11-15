@@ -9,9 +9,7 @@ export interface ShortcutDefinition {
   description: string;
   category: string;
   action: () => void;
-  /** If true, fires even when input/textarea is focused */
   global?: boolean;
-  /** If true, does not fire when Monaco editor is focused */
   ignoreWhenEditorFocused?: boolean;
 }
 
@@ -52,14 +50,12 @@ export function useKeyboardShortcuts(shortcuts: ShortcutDefinition[]): void {
     if (shortcuts.length === 0) return;
 
     const handler = (e: KeyboardEvent) => {
-      // Suppress all shortcuts when a Radix dialog is open
       if (isRadixDialogOpen()) return;
 
       const monacoFocused = isMonacoFocused();
       const inputFocused = isInputElement(document.activeElement);
 
       for (const shortcut of shortcuts) {
-        // Check modifiers
         const wantsCtrl = shortcut.modifiers?.ctrl ?? false;
         const wantsShift = shortcut.modifiers?.shift ?? false;
         const wantsAlt = shortcut.modifiers?.alt ?? false;
@@ -68,17 +64,14 @@ export function useKeyboardShortcuts(shortcuts: ShortcutDefinition[]): void {
         const shiftMatch = wantsShift ? e.shiftKey : !e.shiftKey;
         const altMatch = wantsAlt ? e.altKey : !e.altKey;
 
-        // Check key
         const keyMatch =
           e.key.toLowerCase() === shortcut.key.toLowerCase() ||
           e.key === shortcut.key;
 
         if (!keyMatch || !ctrlMatch || !shiftMatch || !altMatch) continue;
 
-        // Skip if Monaco focused and shortcut should be ignored
         if (monacoFocused && shortcut.ignoreWhenEditorFocused !== false) continue;
 
-        // Skip if input focused and shortcut is not global
         if (inputFocused && !shortcut.global) continue;
 
         e.preventDefault();

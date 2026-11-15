@@ -45,7 +45,6 @@ export interface StandardEditorLayoutProps {
   activeBranch?: string;
   canEdit: boolean;
 
-  // Tree state (from useOntologyTree)
   nodes: ClassTreeNode[];
   isTreeLoading: boolean;
   treeError: string | null;
@@ -62,31 +61,26 @@ export interface StandardEditorLayoutProps {
   isExpandingAll: boolean;
   navigateToNode: (iri: string) => Promise<void>;
 
-  // Actions
-  onAddEntity: (parentIri?: string) => void;
+  onAddEntity: (parentIri?: string, entityType?: "individual") => void;
   onDeleteClass?: (iri: string, label: string) => void;
   onCopyIri?: (iri: string) => void;
 
-  // Detail panel
   selectedNodeFallback: TreeNodeFallback | null;
 
-  // Class editing
   onUpdateClass?: (classIri: string, data: ClassUpdatePayload) => Promise<void>;
-  /** Bumped to trigger detail panel re-fetch after an update */
   detailRefreshKey?: number;
 
-  // Property & Individual editing
   sourceContent?: string;
   onUpdateProperty?: (propertyIri: string, data: TurtlePropertyUpdateData) => Promise<void>;
   onUpdateIndividual?: (individualIri: string, data: TurtleIndividualUpdateData) => Promise<void>;
 
-  // Drag-and-drop reparenting
   onReparentClass?: (classIri: string, oldParentIris: string[], newParentIris: string[], mode: DragMode) => Promise<void>;
   reparentOptimistic?: (iri: string, oldParentIri: string | null, newParentIri: string | null) => { previousNodes: ClassTreeNode[] };
   rollbackReparent?: (snapshot: { previousNodes: ClassTreeNode[] }) => void;
 
-  /** Ref populated with a function to navigate to any entity type */
   entityNavigationRef?: React.RefObject<((iri: string, type?: string) => void) | null>;
+
+  onActiveTabChange?: (tab: EntityTab) => void;
 }
 
 export function StandardEditorLayout(props: StandardEditorLayoutProps) {
@@ -127,7 +121,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
   const toast = useToast();
   const { announce } = useAnnounce();
 
-  // Draft badges
   const getDraftIris = useDraftStore((s) => s.getDraftIris);
   const drafts = useDraftStore((s) => s.drafts);
   const draftIris = useMemo(
@@ -136,11 +129,9 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     [getDraftIris, projectId, activeBranch, drafts],
   );
 
-  // Tree label hints for graph nodes and detail panels
   const treeLabelHints = useMemo(() => extractTreeLabelMap(nodes), [nodes]);
   const treeLabelHintsRecord = useMemo(() => Object.fromEntries(treeLabelHints), [treeLabelHints]);
 
-  // Drag-and-drop reparenting
   const handleDndReparent = useCallback(async (
     classIri: string,
     oldParentIris: string[],
@@ -149,7 +140,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
   ) => {
     if (!onReparentClass || !reparentOptimistic || !rollbackReparent) return;
 
-    // Optimistic tree update
     const oldTreeParent = oldParentIris[0] || null;
     const newTreeParent = newParentIris[0] || null;
     const snapshot = reparentOptimistic(classIri, oldTreeParent, newTreeParent);
@@ -184,11 +174,9 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     onAnnounce: announce,
   });
 
-  // Show undo toast when reparent succeeds
   useEffect(() => {
     if (undoAction) {
       const label = undoAction.classLabel || getLocalName(undoAction.classIri);
-      // Capture handleUndo before clearing so the toast closure has a valid reference
       const undoFn = handleUndo;
       toast.addToast({
         type: "success",
@@ -203,27 +191,24 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     }
   }, [undoAction, toast, handleUndo, clearUndo]);
 
-  // Panel width state (default 320px = w-80)
   const [treePanelWidth, setTreePanelWidth] = useState(320);
 
-  // Graph view state
   const [showGraph, setShowGraph] = useState(false);
 
-  // Entity tab state
   const [activeTab, setActiveTab] = useState<EntityTab>("classes");
 
-  // Track selected entity per tab (properties/individuals have their own selection)
   const [selectedPropertyIri, setSelectedPropertyIri] = useState<string | null>(null);
   const [selectedIndividualIri, setSelectedIndividualIri] = useState<string | null>(null);
 
-  // Expose entity navigation to parent via ref
-  const { entityNavigationRef, navigateToNode: navToNode } = props;
+  const { entityNavigationRef, navigateToNode: navToNode, onActiveTabChange } = props;
+
+  useEffect(() => {
+    onActiveTabChange?.(activeTab);
+  }, [activeTab, onActiveTabChange]);
   useEffect(() => {
     if (!entityNavigationRef) return;
 
     const handler = (iri: string, type?: string) => {
-      // Always exit graph view first — otherwise the user clicks a lint issue
-      // and stays staring at the graph instead of the entity they navigated to.
       setShowGraph(false);
       if (type === "property") {
         setActiveTab("properties");
@@ -232,8 +217,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
         setActiveTab("individuals");
         setSelectedIndividualIri(iri);
       } else {
-        // For "other" (untyped) entities, navigate to class tree which
-        // triggers ClassDetailPanel's 404 handler with a helpful message
         setActiveTab("classes");
         navToNode(iri);
       }
@@ -247,16 +230,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     };
   }, [entityNavigationRef, navToNode]);
 
-  // Mirror the active-tab selection into the shared store so cross-page chrome
-  // (e.g. the Viewer/Editor switcher, the side-page Back-to-project link via
-  // useProjectHomeHref) can synthesize the right ?<type>Iri= key without having
-  // to know about local-state plumbing here.
-  //
-  // No unmount cleanup: an unmount-clear races with side-page navigation —
-  // the editor unmounts before settings/PRs/etc render, so reading the store
-  // there returns null and the back-link drops the selection. The next editor
-  // mount (same or different project) overwrites the store from its own URL
-  // params, so stale values are short-lived and harmless.
   const setSelection = useSelectionStore((s) => s.setSelection);
   useEffect(() => {
     if (activeTab === "classes") {
@@ -268,7 +241,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     }
   }, [activeTab, selectedIri, selectedPropertyIri, selectedIndividualIri, setSelection]);
 
-  // Shared search state
   const {
     showSearch,
     searchQuery,
@@ -286,7 +258,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     onSearchSelect: navigateToNode,
   });
 
-  // Filtered tree search for classes
   const { filteredNodes, isBuilding: isFilteredTreeBuilding, truncated: filteredTreeTruncated } = useFilteredTree({
     searchResults: showSearch ? searchResults : null,
     projectId,
@@ -301,12 +272,9 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
 
   return (
     <div className="flex h-full min-w-0 flex-1">
-      {/* Left Panel - Entity Tree/List with tabs */}
       <div className="flex-shrink-0 bg-white dark:bg-slate-800" style={{ width: treePanelWidth }}>
-        {/* Entity Type Tabs */}
         <EntityTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {/* Toolbar: add + expand/collapse + search */}
         <EntityTreeToolbar
           canAdd={canEdit && activeTab === "classes"}
           onAdd={() => onAddEntity()}
@@ -325,7 +293,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
           isExpandingAll={activeTab === "classes" ? isExpandingAll : false}
         />
 
-        {/* Tab Content */}
         <div className="h-[calc(100%-5.5rem)] overflow-y-auto">
           {activeTab === "classes" && (
             <>
@@ -403,7 +370,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
         </div>
       </div>
 
-      {/* Draggable Divider */}
       <ResizablePanelDivider
         width={treePanelWidth}
         onWidthChange={setTreePanelWidth}
@@ -411,7 +377,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
         maxWidth={600}
       />
 
-      {/* Right Panel - Entity Details or Graph */}
       <div className="min-w-0 flex-1 bg-white dark:bg-slate-800">
         {showGraph ? (
           <div className="flex h-full flex-col">
@@ -441,9 +406,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
           </div>
         ) : activeTab === "classes" ? (
           <ClassDetailPanel
-            // Remount on selection change so internal edit-state and refs reset
-            // cleanly — prevents the previous class's edit fields from bleeding
-            // into the newly-selected class while the new fetch is in flight.
             key={selectedIri ?? "no-class"}
             projectId={projectId}
             classIri={selectedIri}
@@ -454,6 +416,8 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
             selectedNodeFallback={selectedNodeFallback}
             canEdit={canEdit}
             onUpdateClass={onUpdateClass}
+            onAddIndividual={canEdit ? (iri: string) => onAddEntity(iri, "individual") : undefined}
+            onNavigateToIndividual={(iri: string) => { setActiveTab("individuals"); setSelectedIndividualIri(iri); }}
             refreshKey={detailRefreshKey}
             headerActions={selectedIri ? (
               <button

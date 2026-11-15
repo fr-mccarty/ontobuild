@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 
-// Provide localStorage before the store module loads (Zustand persist captures it at import time)
 vi.hoisted(() => {
   if (!globalThis.localStorage || typeof globalThis.localStorage.setItem !== "function") {
     const store = new Map<string, string>();
@@ -83,7 +82,6 @@ describe("draftKey", () => {
 
 describe("useDraftStore", () => {
   beforeEach(() => {
-    // Reset the store to a clean state before each test
     useDraftStore.setState({ drafts: {} });
   });
 
@@ -94,7 +92,6 @@ describe("useDraftStore", () => {
       const draft = makeClassDraft();
 
       setDraft(key, draft);
-      // getState again after mutation to read updated state
       const result = useDraftStore.getState().getDraft(key);
       expect(result).toEqual(draft);
     });
@@ -193,7 +190,6 @@ describe("useDraftStore", () => {
       useDraftStore.getState().clearAllDrafts("p1", "main");
 
       expect(useDraftStore.getState().getDraftIris("p1", "main")).toEqual([]);
-      // Draft on the "dev" branch should remain
       expect(useDraftStore.getState().hasDraft(draftKey("p1", "dev", "urn:C"))).toBe(true);
     });
 
@@ -218,7 +214,7 @@ describe("useDraftStore", () => {
       expect(iris).toHaveLength(3);
 
       const classDraft = useDraftStore.getState().getDraft(classKey) as DraftEntry;
-      expect(classDraft.entityType).toBeUndefined(); // backward-compatible: no entityType for class
+      expect(classDraft.entityType).toBeUndefined();
 
       const propDraft = useDraftStore.getState().getDraft(propKey) as PropertyDraftEntry;
       expect(propDraft.entityType).toBe("property");

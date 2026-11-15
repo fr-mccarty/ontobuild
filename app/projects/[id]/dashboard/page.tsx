@@ -6,22 +6,18 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Settings,
-  Globe,
-  Lock,
-  Eye,
   Pencil,
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { useProject, derivePermissions } from "@/lib/hooks/useProject";
-import { cn, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 
 export default function ProjectDashboardPage() {
   const { data: session, status } = useSession();
   const params = useParams();
   const projectId = params.id as string;
 
-  // Project data from shared React Query cache
   const { project, isLoading, error } = useProject(projectId, session?.accessToken);
   const { canEdit, canManage } = derivePermissions(project, session?.accessToken);
 
@@ -73,16 +69,14 @@ export default function ProjectDashboardPage() {
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-          {/* Back link */}
           <Link
             href={`/projects/${project.id}`}
             className="mb-6 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to viewer
+            Back to editor
           </Link>
 
-          {/* Project Header */}
           <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
@@ -90,26 +84,6 @@ export default function ProjectDashboardPage() {
                   <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                     {project.name}
                   </h1>
-                  <div
-                    className={cn(
-                      "flex h-7 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium",
-                      project.is_public
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                    )}
-                  >
-                    {project.is_public ? (
-                      <>
-                        <Globe className="h-3.5 w-3.5" />
-                        Public
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-3.5 w-3.5" />
-                        Private
-                      </>
-                    )}
-                  </div>
                 </div>
 
                 {project.description && (
@@ -136,7 +110,7 @@ export default function ProjectDashboardPage() {
                   </Link>
                 )}
                 {canEdit && (
-                  <Link href={`/projects/${project.id}/editor`}>
+                  <Link href={`/projects/${project.id}`}>
                     <Button size="sm">
                       <Pencil className="mr-2 h-4 w-4" />
                       Open Editor
@@ -147,26 +121,10 @@ export default function ProjectDashboardPage() {
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Link
-              href={`/projects/${project.id}`}
-              className="rounded-lg border border-slate-200 bg-white p-5 transition-all hover:border-primary-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-600"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-                <Eye className="h-5 w-5" />
-              </div>
-              <h3 className="mt-3 font-semibold text-slate-900 dark:text-white">
-                View Ontology
-              </h3>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Browse the ontology structure in read-only mode
-              </p>
-            </Link>
-
             {canEdit && (
               <Link
-                href={`/projects/${project.id}/editor`}
+                href={`/projects/${project.id}`}
                 className="rounded-lg border border-slate-200 bg-white p-5 transition-all hover:border-primary-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-600"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400">

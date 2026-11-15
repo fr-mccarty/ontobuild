@@ -83,12 +83,9 @@ export function PRListItem({ pr, projectId, className }: PRListItemProps) {
       )}
     >
       <div className="flex items-start gap-3">
-        {/* Status Icon */}
         <div className="mt-0.5">{getStatusIcon()}</div>
 
-        {/* Content */}
         <div className="min-w-0 flex-1">
-          {/* Title and number */}
           <div className="flex items-center gap-2">
             <h3 className="truncate font-medium text-slate-900 dark:text-slate-100">
               {pr.title}
@@ -97,22 +94,18 @@ export function PRListItem({ pr, projectId, className }: PRListItemProps) {
             {getStatusBadge()}
           </div>
 
-          {/* Branch info */}
           <div className="mt-1 text-sm text-slate-500">
             <span className="font-mono text-xs">{pr.source_branch}</span>
             <span className="mx-2">into</span>
             <span className="font-mono text-xs">{pr.target_branch}</span>
           </div>
 
-          {/* Meta info */}
           <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-            {/* Author */}
             <span className="flex items-center gap-1">
               <User className="h-3 w-3" />
               {pr.author?.name || pr.author_id}
             </span>
 
-            {/* Opened date */}
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {pr.status === "merged" && pr.merged_at
@@ -120,7 +113,6 @@ export function PRListItem({ pr, projectId, className }: PRListItemProps) {
                 : `opened ${formatDate(pr.created_at)}`}
             </span>
 
-            {/* Comments */}
             {pr.comment_count > 0 && (
               <span className="flex items-center gap-1">
                 <MessageSquare className="h-3 w-3" />
@@ -128,7 +120,6 @@ export function PRListItem({ pr, projectId, className }: PRListItemProps) {
               </span>
             )}
 
-            {/* Approvals */}
             {pr.approval_count > 0 && (
               <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
                 <Check className="h-3 w-3" />
@@ -138,7 +129,6 @@ export function PRListItem({ pr, projectId, className }: PRListItemProps) {
           </div>
         </div>
 
-        {/* Commits ahead */}
         {pr.commits_ahead > 0 && (
           <div className="text-right">
             <span className="text-sm font-medium text-slate-600 dark:text-slate-400">

@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { PullRequest } from "@/lib/api/pullRequests";
 
-// Mock next/link
 vi.mock("next/link", () => ({
   __esModule: true,
   default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: unknown }) => (
@@ -98,11 +97,7 @@ describe("PRListItem", () => {
     render(
       <PRListItem pr={makePR({ comment_count: 0 })} projectId="proj-1" />
     );
-    // Only the PR number "42" and commits count should be rendered, not a standalone "0"
-    // for comments
     const allText = screen.queryAllByText("0");
-    // Comment count should not contribute a "0" element
-    // (commits_ahead is 1, so no "0" for that either)
     expect(allText.length).toBe(0);
   });
 
@@ -155,9 +150,7 @@ describe("PRListItem", () => {
         projectId="proj-1"
       />
     );
-    // Verify merged status badge is shown
     expect(screen.getAllByText(/merged/i).length).toBeGreaterThan(0);
-    // Verify the merged date is rendered alongside the status
     expect(screen.getByText(/merged.*15/)).toBeDefined();
   });
 });

@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
+
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
 import userEvent from "@testing-library/user-event";
 
 vi.mock("@/lib/hooks/useEntityHistory", () => ({
@@ -227,7 +232,6 @@ describe("EntityHistoryTab", () => {
       <EntityHistoryTab projectId="p1" entityIri="http://example.org/A" />
     );
     await userEvent.click(screen.getByText("History (1)"));
-    // Should show a locale date string (e.g., "1/8/2026" or "8.1.2026" etc.)
     const date = new Date(ninetyDaysAgo);
     expect(screen.getByText(date.toLocaleDateString())).toBeDefined();
   });
@@ -276,10 +280,8 @@ describe("EntityHistoryTab", () => {
     render(
       <EntityHistoryTab projectId="p1" entityIri="http://example.org/A" />
     );
-    // Expand
     await userEvent.click(screen.getByText("History (1)"));
     expect(screen.getByText("Hank")).toBeDefined();
-    // Collapse
     await userEvent.click(screen.getByText("History (1)"));
     expect(screen.queryByText("Hank")).toBeNull();
   });
@@ -305,7 +307,6 @@ describe("EntityHistoryTab", () => {
       <EntityHistoryTab projectId="p1" entityIri="http://example.org/A" />
     );
     await userEvent.click(screen.getByText("History (1)"));
-    // Falls back to event_type string as label
     expect(screen.getByText("unknown_type")).toBeDefined();
   });
 });

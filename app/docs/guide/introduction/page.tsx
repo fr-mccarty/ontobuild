@@ -11,7 +11,6 @@ export default function IntroductionPage() {
       </p>
 
       <div className="space-y-8">
-        {/* Definition */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Definition
@@ -32,7 +31,6 @@ export default function IntroductionPage() {
           </div>
         </section>
 
-        {/* Why Ontologies Matter */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Why Ontologies Matter
@@ -73,7 +71,6 @@ export default function IntroductionPage() {
           </div>
         </section>
 
-        {/* Real-World Use Cases */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Real-World Use Cases
@@ -118,7 +115,6 @@ export default function IntroductionPage() {
           </div>
         </section>
 
-        {/* The Semantic Web Stack */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             The Semantic Web Stack
@@ -153,7 +149,6 @@ export default function IntroductionPage() {
           </p>
         </section>
 
-        {/* Key Terms */}
         <section>
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-200 mb-4">
             Key Terms Glossary

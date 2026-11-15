@@ -20,7 +20,6 @@ export function KeyboardShortcutDialog({
   onOpenChange,
   shortcuts,
 }: KeyboardShortcutDialogProps) {
-  // Group shortcuts by category
   const grouped = new Map<string, ShortcutDefinition[]>();
   for (const s of shortcuts) {
     const group = grouped.get(s.category) || [];

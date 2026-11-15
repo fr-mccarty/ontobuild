@@ -1,10 +1,3 @@
-/**
- * Generic auto-save hook for properties and individuals.
- *
- * Similar to useAutoSave but works with any entity type. The existing
- * useAutoSave hook remains untouched (no regressions for classes).
- */
-
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useDraftStore, draftKey, type AnyDraftEntry } from "@/lib/stores/draftStore";
 
@@ -17,9 +10,7 @@ interface UseEntityAutoSaveOptions {
   canEdit: boolean;
   onFlush?: (iri: string) => Promise<void>;
   onError?: (msg: string) => void;
-  /** Build a draft entry from the current edit state */
   buildDraftEntry: () => AnyDraftEntry | null;
-  /** Validate before saving — return error message or null */
   validate?: () => string | null;
 }
 
@@ -62,7 +53,6 @@ export function useEntityAutoSave({
   const flushingRef = useRef(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Check for restored draft on entity change
   useEffect(() => {
     if (!entityIri || !branch) return;
     const key = draftKey(projectId, branch, entityIri);
@@ -91,11 +81,9 @@ export function useEntityAutoSave({
     setRestoredDraft(null);
   }, [entityIri, branch, projectId, clearDraft]);
 
-  // Save edit state to draft store (Tier 1: instant, local)
   const triggerSave = useCallback(() => {
     if (!entityIri || !branch || !canEdit) return;
 
-    // Validate
     const error = validateRef.current?.();
     if (error) {
       setValidationError(error);
@@ -114,14 +102,10 @@ export function useEntityAutoSave({
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
   }, [entityIri, branch, projectId, canEdit, setDraft]);
 
-  // Flush draft to git (Tier 2: commit on navigate away)
-  // Returns true on success, false on error or no-op
   const flushToGit = useCallback(async (): Promise<boolean> => {
     if (flushingRef.current) return false;
     if (!entityIri || !branch || !canEdit || !onFlushRef.current) return false;
 
-    // Re-validate current edit state to prevent flushing a stale draft
-    // after triggerSave() aborted on validation
     const error = validateRef.current?.();
     if (error) {
       setValidationError(error);
@@ -155,7 +139,6 @@ export function useEntityAutoSave({
     }
   }, [entityIri, branch, projectId, canEdit, getDraft, clearDraft]);
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);

@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, ExternalLink, Link } from "lucide-react";
 import { useCrossReferences } from "@/lib/hooks/useCrossReferences";
 import { cn, getLocalName } from "@/lib/utils";
 import type { CrossReferenceGroup, ReferenceContext } from "@/lib/ontology/qualityTypes";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const CONTEXT_LABELS: Record<ReferenceContext, string> = {
   parent_iris: "As parent class",
@@ -112,29 +113,29 @@ function ReferenceGroup({
         {group.references.map((ref) => {
           const badge = entityTypeBadges[ref.source_type] || entityTypeBadges.class;
           return (
-            <button
-              key={`${ref.source_iri}-${ref.reference_context}`}
-              onClick={() => onNavigate?.(ref.source_iri)}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm",
-                "text-primary-600 hover:bg-slate-50 hover:text-primary-700",
-                "dark:text-primary-400 dark:hover:bg-slate-800 dark:hover:text-primary-300"
-              )}
-              title={ref.source_iri}
-            >
-              <span
+            <Tooltip key={`${ref.source_iri}-${ref.reference_context}`} content={ref.source_iri}>
+              <button
+                onClick={() => onNavigate?.(ref.source_iri)}
                 className={cn(
-                  "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                  badge.className
+                  "flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-sm",
+                  "text-primary-600 hover:bg-slate-50 hover:text-primary-700",
+                  "dark:text-primary-400 dark:hover:bg-slate-800 dark:hover:text-primary-300"
                 )}
               >
-                <span className="text-[8px] font-bold">{badge.letter}</span>
-              </span>
-              <span className="truncate">
-                {ref.source_label || getLocalName(ref.source_iri)}
-              </span>
-              <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
-            </button>
+                <span
+                  className={cn(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                    badge.className
+                  )}
+                >
+                  <span className="text-[8px] font-bold">{badge.letter}</span>
+                </span>
+                <span className="truncate">
+                  {ref.source_label || getLocalName(ref.source_iri)}
+                </span>
+                <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
+              </button>
+            </Tooltip>
           );
         })}
       </div>

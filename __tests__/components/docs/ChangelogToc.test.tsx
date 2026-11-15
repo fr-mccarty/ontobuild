@@ -149,7 +149,6 @@ describe("ChangelogToc", () => {
     mountTargets({ "v-0-3-0": 50, "v-0-2-0": 1100, "v-0-1-0": 2100 });
     render(<ChangelogToc entries={entries} />);
 
-    // viewportBottom (2200 + 800 = 3000) - docHeight (3000) = 0 < 8 → bottom guard
     setScrollState({ scrollY: 2200, innerHeight: 800, scrollHeight: 3000 });
     fireEvent.scroll(window);
 

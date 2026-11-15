@@ -7,7 +7,6 @@ import {
   projectOntologyApi,
 } from "@/lib/api/client";
 
-// Mock global fetch
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
@@ -146,9 +145,6 @@ describe("api.delete", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Retry logic on 5xx errors
-// ---------------------------------------------------------------------------
 describe("request retry logic", () => {
   beforeEach(() => {
     mockFetch.mockReset();
@@ -169,13 +165,11 @@ describe("request retry logic", () => {
 
     const promise = api.get("/api/v1/fail");
 
-    // Attach catch handler immediately to prevent unhandled rejection
     let caughtError: unknown;
     const handled = promise.catch((e) => {
       caughtError = e;
     });
 
-    // Advance through both retry delays (1s + 2s)
     await vi.advanceTimersByTimeAsync(1000);
     await vi.advanceTimersByTimeAsync(2000);
 
@@ -215,7 +209,6 @@ describe("request retry logic", () => {
 
     const promise = api.get("/api/v1/flaky");
 
-    // Advance past the 1s backoff after first failure
     await vi.advanceTimersByTimeAsync(1000);
 
     const result = await promise;
@@ -224,9 +217,6 @@ describe("request retry logic", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// api.patch
-// ---------------------------------------------------------------------------
 describe("api.patch", () => {
   beforeEach(() => {
     mockFetch.mockReset();
@@ -247,9 +237,6 @@ describe("api.patch", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// uploadFile (api.upload)
-// ---------------------------------------------------------------------------
 describe("api.upload", () => {
   beforeEach(() => {
     mockFetch.mockReset();
@@ -272,7 +259,6 @@ describe("api.upload", () => {
     expect(url).toContain("/api/v1/upload");
     expect(options.method).toBe("POST");
     expect(options.body).toBe(formData);
-    // Content-Type should be deleted so the browser sets it with boundary
     const headers = options.headers as Headers;
     expect(headers.has("Content-Type")).toBe(false);
   });
@@ -315,10 +301,6 @@ describe("api.upload", () => {
     expect(url).toContain("branch=dev");
   });
 });
-
-// ---------------------------------------------------------------------------
-// uploadFileWithProgress (api.uploadWithProgress) — XHR mock
-// ---------------------------------------------------------------------------
 
 class MockXHR {
   static instances: MockXHR[] = [];
@@ -434,7 +416,6 @@ describe("api.uploadWithProgress", () => {
 
     const xhr = MockXHR.instances[0];
 
-    // Simulate upload progress
     xhr.upload.dispatchEvent("progress", {
       lengthComputable: true,
       loaded: 50,
@@ -447,7 +428,6 @@ describe("api.uploadWithProgress", () => {
       phase: "uploading",
     });
 
-    // Simulate upload complete
     xhr.upload.dispatchEvent("load", {});
     expect(onProgress).toHaveBeenCalledWith({
       loaded: 100,
@@ -456,7 +436,6 @@ describe("api.uploadWithProgress", () => {
       phase: "processing",
     });
 
-    // Finish the request
     xhr.status = 200;
     xhr.responseText = "{}";
     xhr.dispatchEvent("load");
@@ -477,7 +456,6 @@ describe("api.uploadWithProgress", () => {
       loaded: 50,
       total: 0,
     });
-    // onProgress should not be called for non-computable progress
     expect(onProgress).not.toHaveBeenCalled();
 
     xhr.status = 200;
@@ -487,7 +465,6 @@ describe("api.uploadWithProgress", () => {
   });
 
   it("rejects with network error message when server is unreachable", async () => {
-    // The error handler does a fetch probe to API_BASE
     mockFetch.mockRejectedValueOnce(new Error("network down"));
 
     const formData = new FormData();
@@ -501,7 +478,6 @@ describe("api.uploadWithProgress", () => {
   });
 
   it("rejects with server error message when server is reachable but CORS blocked", async () => {
-    // Probe succeeds — server is reachable
     mockFetch.mockResolvedValueOnce({ ok: true });
 
     const formData = new FormData();
@@ -564,9 +540,6 @@ describe("api.uploadWithProgress", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// ontologyApi domain wrapper
-// ---------------------------------------------------------------------------
 describe("ontologyApi", () => {
   beforeEach(() => {
     mockFetch.mockReset();
@@ -640,9 +613,6 @@ describe("ontologyApi", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// classApi domain wrapper
-// ---------------------------------------------------------------------------
 describe("classApi", () => {
   beforeEach(() => {
     mockFetch.mockReset();
@@ -657,7 +627,6 @@ describe("classApi", () => {
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain("/api/v1/ontologies/onto-1/classes");
     expect(options.method).toBe("GET");
-    // parent_iri is undefined so should not appear
     expect(url).not.toContain("parent_iri");
   });
 
@@ -699,9 +668,6 @@ describe("classApi", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// projectOntologyApi domain wrapper
-// ---------------------------------------------------------------------------
 describe("projectOntologyApi", () => {
   beforeEach(() => {
     mockFetch.mockReset();

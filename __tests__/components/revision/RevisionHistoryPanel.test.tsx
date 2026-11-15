@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import type { RevisionCommit, RevisionHistoryResponse } from "@/lib/api/revisions";
+import { render as rtlRender, screen, fireEvent, waitFor, act, type RenderOptions } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import type { ReactElement } from "react";
 
-// ── Mocks ──────────────────────────────────────────────────────────
+const render = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
+  rtlRender(ui, { wrapper: TooltipPrimitive.Provider, ...options });
+import type { RevisionCommit, RevisionHistoryResponse } from "@/lib/api/revisions";
 
 const mockGetHistory = vi.fn<(projectId: string, token?: string) => Promise<RevisionHistoryResponse>>();
 
@@ -49,10 +52,7 @@ vi.mock("@/components/revision/CommitDetailView", () => ({
   ),
 }));
 
-// Import after mocks
 import { RevisionHistoryPanel, HistoryButton } from "@/components/revision/RevisionHistoryPanel";
-
-// ── Fixtures ───────────────────────────────────────────────────────
 
 const makeCommit = (overrides: Partial<RevisionCommit> = {}): RevisionCommit => ({
   hash: "abc123def456789012345678901234567890abcd",
@@ -80,7 +80,7 @@ const commit2 = makeCommit({
   author_name: "Bob",
   is_merge: true,
   merged_branch: "feature",
-  timestamp: new Date(Date.now() - 86400000).toISOString(), // yesterday
+  timestamp: new Date(Date.now() - 86400000).toISOString(),
 });
 
 const commit3 = makeCommit({
@@ -88,7 +88,7 @@ const commit3 = makeCommit({
   short_hash: "ghi789d",
   message: "Old commit",
   author_name: "Charlie",
-  timestamp: new Date(Date.now() - 3 * 86400000).toISOString(), // 3 days ago
+  timestamp: new Date(Date.now() - 3 * 86400000).toISOString(),
 });
 
 const mockHistoryResponse: RevisionHistoryResponse = {
@@ -109,8 +109,6 @@ const defaultProps = {
   onSelectRevision: vi.fn(),
 };
 
-// ── Tests ──────────────────────────────────────────────────────────
-
 describe("RevisionHistoryPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -120,8 +118,6 @@ describe("RevisionHistoryPanel", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
-
-  // --- Visibility ---
 
   it("returns null when isOpen is false", () => {
     const { container } = render(
@@ -137,16 +133,12 @@ describe("RevisionHistoryPanel", () => {
     expect(screen.getByText("Revision History")).toBeDefined();
   });
 
-  // --- Loading state ---
-
   it("shows loading spinner while fetching history", async () => {
-    mockGetHistory.mockReturnValue(new Promise(() => {})); // never resolves
+    mockGetHistory.mockReturnValue(new Promise(() => {}));
     const { container } = render(<RevisionHistoryPanel {...defaultProps} />);
     const spinner = container.querySelector(".animate-spin");
     expect(spinner).not.toBeNull();
   });
-
-  // --- Error state ---
 
   it("shows error message when API call fails with Error", async () => {
     mockGetHistory.mockRejectedValue(new Error("Network failure"));
@@ -168,8 +160,6 @@ describe("RevisionHistoryPanel", () => {
     });
   });
 
-  // --- Empty state ---
-
   it("shows empty state when no commits are returned", async () => {
     mockGetHistory.mockResolvedValue({
       project_id: "proj-1",
@@ -183,8 +173,6 @@ describe("RevisionHistoryPanel", () => {
       expect(screen.getByText("No revision history yet")).toBeDefined();
     });
   });
-
-  // --- Commit list rendering ---
 
   it("renders commit messages in the list", async () => {
     await act(async () => {
@@ -224,7 +212,6 @@ describe("RevisionHistoryPanel", () => {
       render(<RevisionHistoryPanel {...defaultProps} />);
     });
     await waitFor(() => {
-      // "feature" appears both as a branch ref badge and merge badge
       expect(screen.getAllByText("feature").length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -238,8 +225,6 @@ describe("RevisionHistoryPanel", () => {
     });
   });
 
-  // --- Close button ---
-
   it("calls onClose when close button is clicked", async () => {
     const onClose = vi.fn();
     await act(async () => {
@@ -248,15 +233,11 @@ describe("RevisionHistoryPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("Revision History")).toBeDefined();
     });
-    // The close button is the X icon button in the header
     const buttons = screen.getAllByRole("button");
-    // First button in the header area is the close button
     const closeButton = buttons[0];
     fireEvent.click(closeButton);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
-
-  // --- Selecting a commit ---
 
   it("calls onSelectRevision when a commit is clicked", async () => {
     const onSelectRevision = vi.fn();
@@ -280,7 +261,6 @@ describe("RevisionHistoryPanel", () => {
       expect(screen.getByText("First commit")).toBeDefined();
     });
     fireEvent.click(screen.getByText("First commit"));
-    // After clicking, the detail view should appear
     expect(screen.getByTestId("commit-detail")).toBeDefined();
   });
 
@@ -291,20 +271,15 @@ describe("RevisionHistoryPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("First commit")).toBeDefined();
     });
-    // Select a commit to enter detail view
     fireEvent.click(screen.getByText("First commit"));
     expect(screen.getByTestId("commit-detail")).toBeDefined();
 
-    // Click Back to return
     fireEvent.click(screen.getByText("Back"));
-    // Detail view should be gone, list should be visible again
     await waitFor(() => {
       expect(screen.queryByTestId("commit-detail")).toBeNull();
       expect(screen.getByText("First commit")).toBeDefined();
     });
   });
-
-  // --- Date formatting ---
 
   it("formats today's timestamps as time", async () => {
     const now = new Date();
@@ -326,8 +301,6 @@ describe("RevisionHistoryPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("Today commit")).toBeDefined();
     });
-    // The formatted time should contain AM/PM or HH:MM pattern
-    // We just verify it doesn't say "Yesterday" or "days ago"
     expect(screen.queryByText("Yesterday")).toBeNull();
   });
 
@@ -381,8 +354,6 @@ describe("RevisionHistoryPanel", () => {
     expect(screen.getByText("3 days ago")).toBeDefined();
   });
 
-  // --- API call args ---
-
   it("passes projectId and accessToken to revisionsApi.getHistory", async () => {
     await act(async () => {
       render(<RevisionHistoryPanel {...defaultProps} />);
@@ -401,8 +372,6 @@ describe("RevisionHistoryPanel", () => {
     expect(mockGetHistory).not.toHaveBeenCalled();
   });
 });
-
-// ── HistoryButton tests ────────────────────────────────────────────
 
 describe("HistoryButton", () => {
   it("renders the History button with label", () => {

@@ -12,13 +12,12 @@ import {
   AlertCircle,
   Trash2,
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface BranchSelectorProps {
   className?: string;
   onBranchChange?: (branchName: string) => void;
-  /** Whether the current user can create new branches (requires editor+ role) */
   canCreateBranch?: boolean;
-  /** Whether the selector is read-only (e.g. unauthenticated users) */
   readOnly?: boolean;
 }
 
@@ -44,7 +43,6 @@ export function BranchSelector({
   const [newBranchName, setNewBranchName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Sync currentBranch to parent on mount and whenever it changes
   const lastNotified = useRef<string | null>(null);
   useEffect(() => {
     if (currentBranch && currentBranch !== lastNotified.current) {
@@ -75,7 +73,6 @@ export function BranchSelector({
     setError(null);
     try {
       const branch = await createBranch(newBranchName.trim());
-      // createBranch already switches to the new branch
       onBranchChange?.(branch.name);
       setNewBranchName("");
       setIsCreating(false);
@@ -104,7 +101,6 @@ export function BranchSelector({
 
   return (
     <div className={cn("relative", className)}>
-      {/* Trigger Button */}
       <Button
         variant="outline"
         size="sm"
@@ -130,18 +126,14 @@ export function BranchSelector({
         {!readOnly && <ChevronDown className="h-4 w-4" />}
       </Button>
 
-      {/* Dropdown */}
       {isOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
 
-          {/* Menu */}
           <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
-            {/* Error message */}
             {error && (
               <div className="flex items-center gap-2 border-b border-slate-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-slate-700 dark:bg-red-900/20 dark:text-red-400">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -149,7 +141,6 @@ export function BranchSelector({
               </div>
             )}
 
-            {/* Create branch */}
             {canCreateBranch && (isCreating ? (
               <div className="border-b border-slate-200 p-3 dark:border-slate-700">
                 <input
@@ -193,7 +184,6 @@ export function BranchSelector({
               </button>
             ))}
 
-            {/* Branch list */}
             <div className="max-h-64 overflow-y-auto py-1">
               {branches.map((branch) => (
                 <div
@@ -246,27 +236,27 @@ export function BranchSelector({
                     {!branch.is_default &&
                       branch.name !== currentBranch &&
                       branch.has_delete_permission && (
-                        <button
-                          className={cn(
-                            "rounded-sm p-1",
-                            branch.can_delete
-                              ? "text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                              : "cursor-not-allowed text-slate-300 dark:text-slate-600"
-                          )}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (branch.can_delete)
-                              handleDeleteBranch(branch.name, e);
-                          }}
-                          title={
-                            branch.has_open_pr
-                              ? "Cannot delete: branch has an open pull request"
-                              : "Delete branch"
-                          }
-                          disabled={!branch.can_delete}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                        <Tooltip content={branch.has_open_pr ? "Cannot delete: branch has an open pull request" : "Delete branch"}>
+                          <span className="inline-flex">
+                            <button
+                              className={cn(
+                                "rounded-sm p-1",
+                                branch.can_delete
+                                  ? "text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                                  : "cursor-not-allowed text-slate-300 dark:text-slate-600"
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (branch.can_delete)
+                                  handleDeleteBranch(branch.name, e);
+                              }}
+                              aria-label={branch.has_open_pr ? "Cannot delete: branch has an open pull request" : "Delete branch"}
+                              disabled={!branch.can_delete}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </span>
+                        </Tooltip>
                       )}
                   </div>
                 </div>

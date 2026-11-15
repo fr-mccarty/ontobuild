@@ -18,8 +18,6 @@ import {
   TURTLE_DEFAULT_PREFIX,
 } from "./fixtures";
 
-// ── parseDeclarations ──────────────────────────────────────────────────
-
 describe("parseDeclarations", () => {
   it("parses @prefix declarations", () => {
     const { prefixes } = parseDeclarations(TURTLE_FIXTURE);
@@ -65,8 +63,6 @@ describe("parseDeclarations", () => {
   });
 });
 
-// ── reverseMap ─────────────────────────────────────────────────────────
-
 describe("reverseMap", () => {
   it("creates namespace-to-alias mapping", () => {
     const rev = reverseMap({ ex: "http://example.org/ont#" });
@@ -82,8 +78,6 @@ describe("reverseMap", () => {
   });
 });
 
-// ── toTurtle ───────────────────────────────────────────────────────────
-
 describe("toTurtle", () => {
   const rev = reverseMap({ ex: "http://example.org/ont#" });
 
@@ -98,7 +92,6 @@ describe("toTurtle", () => {
   });
 
   it("falls back to full IRI when local name is not valid QName", () => {
-    // local part contains invalid characters for a QName
     expect(toTurtle("http://example.org/ont#123invalid", rev)).toBe(
       "<http://example.org/ont#123invalid>",
     );
@@ -115,8 +108,6 @@ describe("toTurtle", () => {
     );
   });
 });
-
-// ── iriTurtleForms ─────────────────────────────────────────────────────
 
 describe("iriTurtleForms", () => {
   it("always includes full IRI form", () => {
@@ -176,12 +167,9 @@ describe("iriTurtleForms", () => {
       {},
       "http://example.org/ont#",
     );
-    // Only full IRI, no relative form since relative would be empty
     expect(forms).toEqual(["<http://example.org/ont#>"]);
   });
 });
-
-// ── scanToBlockEnd ─────────────────────────────────────────────────────
 
 describe("scanToBlockEnd", () => {
   it("finds terminating period on same line", () => {
@@ -236,12 +224,9 @@ describe("scanToBlockEnd", () => {
 
   it("handles escaped quotes inside strings", () => {
     const lines = ['ex:Dog rdfs:label "say \\"hello\\"."@en .'];
-    // The period after the escaped string closes the block
     expect(scanToBlockEnd(lines, 0)).toBe(0);
   });
 });
-
-// ── findBlock ──────────────────────────────────────────────────────────
 
 describe("findBlock", () => {
   it("finds a block by prefixed name", () => {
@@ -319,7 +304,6 @@ describe("findBlock", () => {
     ].join("\n");
     const lines = source.split("\n");
     const { prefixes } = parseDeclarations(source);
-    // Looking for ex:B — should find line 3, not line 2 (continuation)
     const block = findBlock(
       lines,
       "http://example.org/ont#B",
@@ -336,7 +320,6 @@ describe("findBlock", () => {
       "foo:MyClass a owl:Class .",
     ].join("\n");
     const lines = source.split("\n");
-    // Pass no prefixes, but the IRI contains the local name
     const block = findBlock(
       lines,
       "http://foo.org/MyClass",
@@ -346,8 +329,6 @@ describe("findBlock", () => {
     expect(block).not.toBeNull();
   });
 });
-
-// ── escapeRegex ────────────────────────────────────────────────────────
 
 describe("escapeRegex", () => {
   it("escapes special regex characters", () => {
@@ -365,8 +346,6 @@ describe("escapeRegex", () => {
     expect(escapeRegex("hello")).toBe("hello");
   });
 });
-
-// ── esc ────────────────────────────────────────────────────────────────
 
 describe("esc", () => {
   it("escapes backslashes", () => {
@@ -398,8 +377,6 @@ describe("esc", () => {
   });
 });
 
-// ── literal ────────────────────────────────────────────────────────────
-
 describe("literal", () => {
   it("creates a language-tagged literal", () => {
     expect(literal("hello", "en")).toBe('"hello"@en');
@@ -417,8 +394,6 @@ describe("literal", () => {
     expect(literal("line1\nline2\\end", "")).toBe('"line1\\nline2\\\\end"');
   });
 });
-
-// ── isIriValue ─────────────────────────────────────────────────────────
 
 describe("isIriValue", () => {
   it("returns true for http:// URIs", () => {

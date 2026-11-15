@@ -44,13 +44,11 @@ describe("useIriLabels", () => {
     await waitFor(() => {
       expect(result.current["http://example.org/hasPart"]).toBe("has Part");
     });
-    // Search alone resolved it — no class probe needed.
     expect(mockedSearchEntities).toHaveBeenCalled();
     expect(mockedGetClassDetail).not.toHaveBeenCalled();
   });
 
   it("falls back to getClassDetail when search returns no match", async () => {
-    // Search returns an empty result set — IRI isn't in the search index.
     mockedSearchEntities.mockResolvedValue({ results: [] });
     mockedGetClassDetail.mockResolvedValue({
       labels: [{ value: "Person", lang: "en" }],
@@ -105,7 +103,6 @@ describe("useIriLabels", () => {
       }),
     );
 
-    // labelHints are returned immediately, no fetch needed
     expect(result.current["http://example.org/Known"]).toBe("Known Label");
     expect(mockedGetClassDetail).not.toHaveBeenCalled();
     expect(mockedSearchEntities).not.toHaveBeenCalled();
@@ -166,7 +163,6 @@ describe("useIriLabels", () => {
       labels: [{ value: "Label2", lang: "en" }],
     });
 
-    // Change projectId AND iris to trigger both the context reset and the IRI effect
     rerender({ projectId: "proj-2", iris: ["http://example.org/F"] });
 
     await waitFor(
@@ -175,7 +171,6 @@ describe("useIriLabels", () => {
       },
       { timeout: 3000 },
     );
-    // Old label should be cleared
     expect(result.current["http://example.org/E"]).toBeUndefined();
   });
 
@@ -190,12 +185,10 @@ describe("useIriLabels", () => {
       }),
     );
 
-    // Wait for both API paths to complete (getClassDetail fails, searchEntities fallback runs)
     await waitFor(() => {
       expect(mockedSearchEntities).toHaveBeenCalled();
     });
 
-    // No label resolved, but no crash
     expect(result.current["http://example.org/Unknown"]).toBeUndefined();
   });
 
@@ -205,7 +198,6 @@ describe("useIriLabels", () => {
     "http://www.w3.org/2002/07/owl#topObjectProperty",
     "http://purl.org/dc/terms/hasVersion",
     "http://www.w3.org/2001/XMLSchema#string",
-    // https:// variants of the same vocabularies must also be skipped
     "https://www.w3.org/2004/02/skos/core#prefLabel",
     "https://purl.org/dc/terms/title",
     "https://www.w3.org/2002/07/owl#sameAs",
@@ -217,9 +209,6 @@ describe("useIriLabels", () => {
       useIriLabels([iri], { projectId: "proj-1", accessToken: "token" }),
     );
 
-    // Wait for the hook's effect to settle. waitFor's retry interval gives
-    // any would-be probe calls time to issue before we assert their absence.
-    // The result for an external-vocab IRI stays undefined throughout.
     await waitFor(() => {
       expect(mockedGetClassDetail).not.toHaveBeenCalled();
       expect(mockedSearchEntities).not.toHaveBeenCalled();
@@ -232,10 +221,6 @@ describe("useIriLabels", () => {
     "tel:+1-555-0100",
     "bare-string-no-scheme",
   ])("does not short-circuit non-http(s) IRIs: %s", async (iri) => {
-    // Non-http(s) IRIs aren't in the external-vocabulary skip-list, so the
-    // hook should fall through to its normal probe path. Configure both
-    // mocks to return empty results — we just want to assert that the hook
-    // ATTEMPTED to resolve (i.e., did not silently skip).
     mockedSearchEntities.mockResolvedValue({ results: [] });
     mockedGetClassDetail.mockRejectedValue(new Error("not found"));
 

@@ -7,7 +7,6 @@ import { ToastContainer } from "@/components/ui/toast-container";
 import { ScreenReaderAnnouncerProvider } from "@/components/ui/ScreenReaderAnnouncer";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
-// Import the store module to ensure module-level theme sync runs
 import "@/lib/stores/editorModeStore";
 
 interface ProvidersProps {
@@ -20,7 +19,7 @@ export function Providers({ children }: ProvidersProps) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 1 minute
+            staleTime: 60 * 1000,
             refetchOnWindowFocus: false,
           },
         },
@@ -31,7 +30,7 @@ export function Providers({ children }: ProvidersProps) {
     <QueryClientProvider client={queryClient}>
         <ScreenReaderAnnouncerProvider>
           <ToastProvider>
-            <TooltipPrimitive.Provider delayDuration={200}>
+            <TooltipPrimitive.Provider delayDuration={1500}>
               {children}
               <ToastContainer />
             </TooltipPrimitive.Provider>

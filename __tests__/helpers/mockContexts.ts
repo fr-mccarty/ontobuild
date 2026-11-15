@@ -1,10 +1,3 @@
-/**
- * Shared context mocks for BranchContext and ToastContext.
- *
- * Usage in test files:
- *   vi.mock("@/lib/context/BranchContext", () => branchContextMock());
- *   vi.mock("@/lib/context/ToastContext", () => toastContextMock());
- */
 import { vi } from "vitest";
 
 export function branchContextMock(overrides?: {

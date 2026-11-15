@@ -1,10 +1,3 @@
-/**
- * OntoKit Full is a local, single-user app with no authentication.
- *
- * `useSession()` is a drop-in replacement for next-auth's hook: it always reports the
- * fixed local user as signed in. `accessToken` is a placeholder string kept so existing
- * `session?.accessToken` guards keep working; the API client never sends it.
- */
 export interface LocalUser {
   id: string;
   name: string;
@@ -40,7 +33,6 @@ const RESULT = {
   update: async () => LOCAL_SESSION,
 };
 
-/** Always-signed-in session for the local user. */
 export function useSession(): {
   data: LocalSession;
   status: SessionStatus;
@@ -49,7 +41,6 @@ export function useSession(): {
   return RESULT;
 }
 
-/** Server-side equivalent of next-auth's `auth()`. */
 export async function getLocalSession(): Promise<LocalSession> {
   return LOCAL_SESSION;
 }

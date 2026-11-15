@@ -1,8 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
-// ── Mocks ──────────────────────────────────────────────────────────
-
 const mockUseGraphData = vi.fn();
 
 vi.mock("@xyflow/react", () => ({
@@ -41,10 +39,7 @@ vi.mock("@/lib/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
-// Import after mocks
 import { OntologyGraph } from "@/components/graph/OntologyGraph";
-
-// ── Fixtures ───────────────────────────────────────────────────────
 
 const mockGraphData = {
   nodes: [
@@ -72,15 +67,11 @@ const defaultProps = {
   onNavigateToClass: vi.fn(),
 };
 
-// ── Tests ──────────────────────────────────────────────────────────
-
 describe("OntologyGraph", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseGraphData.mockReturnValue(defaultReturn);
   });
-
-  // --- Basic rendering ---
 
   it("renders ReactFlow component", () => {
     render(<OntologyGraph {...defaultProps} />);
@@ -102,8 +93,6 @@ describe("OntologyGraph", () => {
     expect(screen.getByTestId("background")).toBeDefined();
   });
 
-  // --- Empty state (no focusIri) ---
-
   it("shows empty state when focusIri is null", () => {
     render(<OntologyGraph {...defaultProps} focusIri={null} />);
     expect(
@@ -112,8 +101,6 @@ describe("OntologyGraph", () => {
     expect(screen.queryByTestId("react-flow")).toBeNull();
   });
 
-  // --- Loading state ---
-
   it("shows loading spinner when isLoading is true", () => {
     mockUseGraphData.mockReturnValue({ ...defaultReturn, isLoading: true });
     const { container } = render(<OntologyGraph {...defaultProps} />);
@@ -121,8 +108,6 @@ describe("OntologyGraph", () => {
     expect(spinner).toBeDefined();
     expect(spinner).not.toBeNull();
   });
-
-  // --- No relationships state ---
 
   it("shows no-relationships message when single node and no edges", () => {
     mockUseGraphData.mockReturnValue({
@@ -137,8 +122,6 @@ describe("OntologyGraph", () => {
       screen.getByText("No relationships found for this class")
     ).toBeDefined();
   });
-
-  // --- Toolbar: node/edge counts ---
 
   it("shows node and edge counts", () => {
     render(<OntologyGraph {...defaultProps} />);
@@ -155,8 +138,6 @@ describe("OntologyGraph", () => {
     render(<OntologyGraph {...defaultProps} />);
     expect(screen.queryByText(/resolved/)).toBeNull();
   });
-
-  // --- Layout direction toggle ---
 
   it("defaults to Top-Down layout", () => {
     render(<OntologyGraph {...defaultProps} />);
@@ -179,8 +160,6 @@ describe("OntologyGraph", () => {
     expect(screen.getByText("Top-Down")).toBeDefined();
   });
 
-  // --- Reset button ---
-
   it("calls resetGraph when Reset button is clicked", () => {
     render(<OntologyGraph {...defaultProps} />);
     const resetBtn = screen.getByLabelText("Reset graph");
@@ -188,14 +167,10 @@ describe("OntologyGraph", () => {
     expect(defaultReturn.resetGraph).toHaveBeenCalledTimes(1);
   });
 
-  // --- Fit view button ---
-
   it("renders Fit view button inside controls", () => {
     render(<OntologyGraph {...defaultProps} />);
     expect(screen.getByLabelText("Fit view")).toBeDefined();
   });
-
-  // --- Null graphData ---
 
   it("renders without crashing when graphData is null", () => {
     mockUseGraphData.mockReturnValue({ ...defaultReturn, graphData: null });
@@ -203,8 +178,6 @@ describe("OntologyGraph", () => {
     expect(screen.getByTestId("react-flow")).toBeDefined();
     expect(screen.getByText(/0 nodes, 0 edges/)).toBeDefined();
   });
-
-  // --- Passes correct options to useGraphData ---
 
   it("passes correct options to useGraphData", () => {
     render(<OntologyGraph {...defaultProps} />);

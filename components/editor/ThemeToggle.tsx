@@ -3,6 +3,7 @@
 import { Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorModeStore, type ThemePreference } from "@/lib/stores/editorModeStore";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface ThemeToggleProps {
   className?: string;
@@ -28,22 +29,22 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       )}
     >
       {themes.map(({ value, label, icon: Icon }) => (
-        <button
-          type="button"
-          key={value}
-          onClick={() => setTheme(value)}
-          title={label}
-          aria-label={label}
-          aria-pressed={theme === value}
-          className={cn(
-            "flex items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors",
-            theme === value
-              ? "bg-white text-slate-900 shadow-xs dark:bg-slate-700 dark:text-white"
-              : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
-          )}
-        >
-          <Icon className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip key={value} side="bottom" content={label}>
+          <button
+            type="button"
+            onClick={() => setTheme(value)}
+            aria-label={label}
+            aria-pressed={theme === value}
+            className={cn(
+              "flex items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors",
+              theme === value
+                ? "bg-white text-slate-900 shadow-xs dark:bg-slate-700 dark:text-white"
+                : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
       ))}
     </div>
   );
