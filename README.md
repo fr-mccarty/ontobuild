@@ -233,3 +233,8 @@ curl -s -H 'Accept: text/turtle' localhost:3000/api/v1/projects/<id>/source
 Imports accept Turtle (`.ttl`), N3, N-Triples (`.nt`), N-Quads (`.nq`), TriG, RDF/XML (`.owl`,
 `.rdf`, `.xml`) and JSON-LD (`.jsonld`, `.json`). The imported file is converted to Turtle, with
 language tags removed, before it is committed.
+
+## License
+
+MIT, the same license as the upstream ontokit-web and ontokit-api projects. See
+[LICENSE](LICENSE).
