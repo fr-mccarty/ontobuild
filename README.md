@@ -8,8 +8,9 @@ OpenRouter (see [Editor agent](#editor-agent)).
 
 ## Features
 
-- **Projects.** Create an empty project or import an ontology in Turtle, N3, N-Triples,
-  N-Quads, TriG, RDF/XML or JSON-LD. The ontology is stored as Turtle.
+- **Projects.** Create an empty project or import an ontology in Turtle (`.ttl`), N3,
+  N-Triples (`.nt`), N-Quads (`.nq`), TriG, RDF/XML (`.owl`, `.rdf`, `.xml`) or JSON-LD
+  (`.jsonld`, `.json`). Imports are converted to Turtle before they are committed.
 - **Form-based editor.** Browse classes, properties and individuals, and add, edit and
   delete entities through forms. Every change is saved immediately as a git commit.
 - **Branches and pull requests.** Work on branches, open pull requests, review, comment and
@@ -57,9 +58,6 @@ Open http://localhost:3000, choose **New project**, and either create an empty p
 import an ontology file. The `data/` directory is created on first start, so there is no
 database setup step.
 
-To use the editor agent, add an OpenRouter API key as described in
-[Editor agent](#editor-agent). Everything else works without one.
-
 Production build:
 
 ```bash
@@ -88,50 +86,14 @@ To reset everything, stop the server and delete `data/`.
 
 ## Editor agent
 
-The editor has a right sidebar with two tabs, **Agent** and **Health**. The Agent tab is a
-streaming chat with an LLM that can read and edit the open project. It has 35 tools covering
-entity create, update, delete and selection, direct Turtle edits, lint, consistency checks,
-duplicate detection, normalization, branches and pull requests. Each change it makes is a normal
-commit on the current branch, and the editor refreshes in place. The agent receives the current
-page context (project, branch, selected entity) and sends ontology content to OpenRouter.
+The **Agent** tab in the editor's right sidebar is a chat with an LLM that can read and edit the
+open project. It can search and inspect entities, create, update and delete them, edit the
+Turtle source directly, run lint, consistency and duplicate checks and fix what they find, and
+work with branches and pull requests. Each change is a normal commit on the current branch.
+The agent sends ontology content to OpenRouter.
 
-In practice, you can ask the agent to explore, change and maintain the ontology. It can search
-entities, walk the class tree, read an entity's full definition and find everything that
-references it before a rename or delete. It can create, update and delete classes, properties
-and individuals, including labels, comments, parents, domains, ranges and annotations. For
-constructs the forms don't cover (restrictions, prefixes, the ontology header), it edits the
-Turtle source directly. It can select an entity in the editor to show it to you, list recent
-commits and diff two commits or branches. It can run lint (and change the lint configuration),
-consistency checks and duplicate detection, then fix what they find, and normalize the source
-with an optional dry run. It can also create branches and work on one other than the one open
-in the editor, and open, comment on, merge or close pull requests. IRIs can be given as
-prefixed names (`:Pizza`, `ex:Pizza`, `owl:Thing`), and new entities are written with short
-names using the file's prefixes.
-
-### Where to put the OpenRouter API key
-
-The key is read only from the environment variable `OPENROUTER_API_KEY`. It is never entered in
-or shown by the UI. Put it in `.env.local` at the project root (the directory you run
-`npm run dev` from, next to `package.json`):
-
-```bash
-# ontokit-monorepo/.env.local
-OPENROUTER_API_KEY=sk-or-...
-```
-
-- Create a key at https://openrouter.ai/keys.
-- `.env.local` is gitignored, so the key is never committed.
-- `npm run dev` picks up changes to `.env.local` without a restart. With `npm start`, restart
-  the server after adding or changing the key. Exporting `OPENROUTER_API_KEY` in your shell
-  also works.
-- Open **Settings → Agent** (`/settings`) to check it. It shows *Configured* or *Not
-  configured* and the full path of the `.env.local` file the server reads. **Test connection**
-  checks the key against OpenRouter.
-
-On the same settings page you can choose the model (default `anthropic/claude-opus-5.5`, from
-OpenRouter's model list), the reasoning effort (default `high`) and custom instructions that are
-added to the system prompt. These settings are stored in SQLite. The model and effort can also
-be changed per chat from the agent panel.
+To enable it, add `OPENROUTER_API_KEY=sk-or-...` to `.env.local` in the project root. Choose
+the model, reasoning effort and custom instructions under **Settings → Agent**.
 
 ## Architecture
 
@@ -176,9 +138,8 @@ server/user.ts                                the fixed local user (author of ev
 - Background jobs (lint, quality, normalization, reindex) run in-process, and the UI polls
   their status endpoints.
 - Ontology endpoints take the branch as a `?branch=` query parameter.
-- The OpenAPI document is generated from the registered routes, served at
-  `/api/v1/openapi.json` and rendered at `/api-docs`. Tests fail if an operation has no
-  documentation.
+- The OpenAPI document is generated from the registered routes. Tests fail if an operation has
+  no documentation.
 
 ## Quick API check
 
@@ -188,10 +149,6 @@ curl -s -X POST localhost:3000/api/v1/projects/import -F file=@my-ontology.ttl
 curl -s localhost:3000/api/v1/projects
 curl -s -H 'Accept: text/turtle' localhost:3000/api/v1/projects/<id>/source
 ```
-
-Imports accept Turtle (`.ttl`), N3, N-Triples (`.nt`), N-Quads (`.nq`), TriG, RDF/XML (`.owl`,
-`.rdf`, `.xml`) and JSON-LD (`.jsonld`, `.json`). The imported file is converted to Turtle, with
-language tags removed, before it is committed.
 
 ## License
 
