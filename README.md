@@ -33,7 +33,10 @@ OntoKit Monorepo is derived from two projects by CatholicOS:
 [ontokit-web](https://github.com/CatholicOS/ontokit-web), a Next.js frontend, and
 [ontokit-api](https://github.com/CatholicOS/ontokit-api), a FastAPI backend. The frontend code
 in this repository started from ontokit-web, and the API in `server/` started as a TypeScript
-port of ontokit-api. Both have since been reworked into a standalone local app.
+port of ontokit-api. Both have since been reworked into a standalone local app. Credit for
+OntoKit goes to its authors, Fr. John R. D'Orazio ([@JohnRDOrazio](https://github.com/JohnRDOrazio))
+and Damien Riehl ([@damienriehl](https://github.com/damienriehl)), and the other contributors
+to ontokit-web and ontokit-api.
 
 ## Requirements
 
