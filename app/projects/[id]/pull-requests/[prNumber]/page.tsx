@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "@/lib/localUser";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -11,7 +10,6 @@ import { PRDetail } from "@/components/pr/PRDetail";
 import { projectApi, type Project } from "@/lib/api/projects";
 
 export default function PullRequestDetailPage() {
-  const { data: session, status } = useSession();
   const params = useParams();
   const projectId = params.id as string;
   const prNumber = parseInt(params.prNumber as string, 10);
@@ -26,7 +24,7 @@ export default function PullRequestDetailPage() {
       setError(null);
 
       try {
-        const data = await projectApi.get(projectId, session?.accessToken);
+        const data = await projectApi.get(projectId);
         setProject(data);
       } catch (err) {
         if (err instanceof Error && err.message.includes("403")) {
@@ -41,12 +39,12 @@ export default function PullRequestDetailPage() {
       }
     };
 
-    if (status !== "loading" && projectId) {
+    if (projectId) {
       fetchProject();
     }
-  }, [projectId, session?.accessToken, status]);
+  }, [projectId]);
 
-  if (isLoading || status === "loading") {
+  if (isLoading) {
     return (
       <>
         <Header />
@@ -106,9 +104,6 @@ export default function PullRequestDetailPage() {
             <PRDetail
               projectId={projectId}
               prNumber={prNumber}
-              accessToken={session?.accessToken}
-              userRole={project.user_role}
-              currentUserId={session?.user?.id}
             />
           </div>
         </div>

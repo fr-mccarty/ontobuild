@@ -16,10 +16,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => `/projects/${PROJECT_ID}`,
 }));
 
-vi.mock("@/lib/localUser", () => ({
-  useSession: () => ({ data: { accessToken: "token", user: { id: "u1" } }, status: "authenticated" }),
-}));
-
 vi.mock("@/lib/context/ToastContext", () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }),
 }));
@@ -58,15 +54,12 @@ vi.mock("@/lib/hooks/useProjectViewer", () => ({
 function makeViewer(overrides: Record<string, unknown> = {}) {
   const fns = new Map<PropertyKey, unknown>();
   const base: Record<string, unknown> = {
-    project: { id: PROJECT_ID, name: "Newman Center", description: "Campus ministry ontology", user_role: "owner" },
+    project: { id: PROJECT_ID, name: "Newman Center", description: "Campus ministry ontology" },
     isLoading: false,
     error: null,
     openPRCount: 2,
     lintSummary: { total_issues: 3, error_count: 1, warning_count: 2, info_count: 0 },
     normalizationStatus: { needs_normalization: true },
-    canManage: true,
-    canEdit: true,
-    hasValidAccess: true,
     hasOntology: true,
     nodes: [],
     totalClasses: 14,
@@ -168,17 +161,6 @@ describe("Project editor sub header tooltips", () => {
     const branchButton = within(subHeader()).getByRole("button", { name: /main/ });
     expect(await tooltipFor(branchButton)).toBe(
       "Branch: main at commit a47aeb0. Click to switch branches or create a new one.",
-    );
-  });
-
-  it("explains why the branch selector is read-only without access", async () => {
-    mockViewer = makeViewer({ hasValidAccess: false });
-    renderPage();
-    const branchButton = within(subHeader()).getByRole("button", { name: /main/ });
-    expect((branchButton as HTMLButtonElement).disabled).toBe(true);
-    // The disabled button can't take focus or pointer events; its wrapper carries the tooltip.
-    expect(await tooltipFor(branchButton.parentElement!)).toBe(
-      "Branch: main at commit a47aeb0. Sign in to switch or create branches.",
     );
   });
 
@@ -297,12 +279,12 @@ describe("Share overflow menu", () => {
     );
   });
 
-  it("leaves out Normalize and settings when they don't apply, and hides the overflow from lg up", () => {
-    mockViewer = makeViewer({ normalizationStatus: { needs_normalization: false }, canManage: false });
+  it("leaves out Normalize when it doesn't apply, and hides the overflow from lg up", () => {
+    mockViewer = makeViewer({ normalizationStatus: { needs_normalization: false } });
     renderPage();
     const menu = openMenu();
     expect(within(menu).queryByRole("menuitem", { name: "Normalize ontology" })).toBeNull();
-    expect(within(menu).queryByRole("menuitem", { name: "Project settings" })).toBeNull();
+    expect(within(menu).getByRole("menuitem", { name: "Project settings" })).toBeDefined();
     expect(cls(within(menu).getByRole("group", { name: "Branch" }).parentElement!)).toContain("lg:hidden");
   });
 
@@ -323,13 +305,12 @@ describe("Share overflow menu", () => {
     expect(await screen.findByRole("dialog")).toBeDefined();
   });
 
-  it("shows the branch selector with the current branch, read-only without access", () => {
-    mockViewer = makeViewer({ hasValidAccess: false });
+  it("shows the branch selector with the current branch", () => {
     renderPage();
     const group = within(openMenu()).getByRole("group", { name: "Branch" });
     const button = within(group).getByRole("button", { name: /main/ });
     expect(button.textContent).toContain("a47aeb0");
-    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect((button as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("switches branch from the menu's branch selector", () => {

@@ -198,48 +198,17 @@ describe("BranchSelector", () => {
     });
   });
 
-  it("shows 'Create new branch' button when canCreateBranch is true", async () => {
+  it("shows 'Create new branch' button", async () => {
     const user = userEvent.setup();
-    render(<BranchSelector canCreateBranch />);
+    render(<BranchSelector />);
     await user.click(screen.getByRole("button"));
 
     expect(screen.getByText("Create new branch")).toBeDefined();
   });
 
-  it("hides 'Create new branch' when canCreateBranch is false", async () => {
-    const user = userEvent.setup();
-    render(<BranchSelector canCreateBranch={false} />);
-    await user.click(screen.getByRole("button"));
-
-    expect(screen.queryByText("Create new branch")).toBeNull();
-  });
-
-  it("does not open dropdown when readOnly", async () => {
-    const user = userEvent.setup();
-    render(<BranchSelector readOnly />);
-
-    const trigger = screen.getByRole("button");
-    await user.click(trigger);
-
-    expect(screen.queryByRole("option")).toBeNull();
-  });
-
-  it("disables trigger button when readOnly", () => {
-    render(<BranchSelector readOnly />);
-    const trigger = screen.getByRole("button");
-    expect(trigger.hasAttribute("disabled")).toBe(true);
-  });
-
-  it("does not show chevron when readOnly", () => {
-    render(<BranchSelector readOnly />);
-    const button = screen.getByRole("button");
-    const svgs = button.querySelectorAll("svg");
-    expect(svgs.length).toBe(1);
-  });
-
   it("shows create branch input when clicking 'Create new branch'", async () => {
     const user = userEvent.setup();
-    render(<BranchSelector canCreateBranch />);
+    render(<BranchSelector />);
     await user.click(screen.getByRole("button"));
     await user.click(screen.getByText("Create new branch"));
 
@@ -248,7 +217,7 @@ describe("BranchSelector", () => {
 
   it("calls createBranch with the typed name", async () => {
     const user = userEvent.setup();
-    render(<BranchSelector canCreateBranch />);
+    render(<BranchSelector />);
     await user.click(screen.getByRole("button"));
     await user.click(screen.getByText("Create new branch"));
 
@@ -261,7 +230,7 @@ describe("BranchSelector", () => {
 
   it("does not call createBranch with empty name", async () => {
     const user = userEvent.setup();
-    render(<BranchSelector canCreateBranch />);
+    render(<BranchSelector />);
     await user.click(screen.getByRole("button"));
     await user.click(screen.getByText("Create new branch"));
 
@@ -272,7 +241,7 @@ describe("BranchSelector", () => {
 
   it("hides create form when Cancel is clicked", async () => {
     const user = userEvent.setup();
-    render(<BranchSelector canCreateBranch />);
+    render(<BranchSelector />);
     await user.click(screen.getByRole("button"));
     await user.click(screen.getByText("Create new branch"));
 
@@ -285,7 +254,7 @@ describe("BranchSelector", () => {
 
   it("creates branch on Enter key", async () => {
     const user = userEvent.setup();
-    render(<BranchSelector canCreateBranch />);
+    render(<BranchSelector />);
     await user.click(screen.getByRole("button"));
     await user.click(screen.getByText("Create new branch"));
 
@@ -297,7 +266,7 @@ describe("BranchSelector", () => {
 
   it("cancels create on Escape key", async () => {
     const user = userEvent.setup();
-    render(<BranchSelector canCreateBranch />);
+    render(<BranchSelector />);
     await user.click(screen.getByRole("button"));
     await user.click(screen.getByText("Create new branch"));
 
@@ -389,7 +358,7 @@ describe("BranchSelector tooltip", () => {
   const tooltipText = async () => (await screen.findByRole("tooltip")).textContent;
 
   it("names the current branch and commit on focus", async () => {
-    render(<BranchSelector canCreateBranch />);
+    render(<BranchSelector />);
     fireEvent.focus(screen.getByRole("button"));
     expect(await tooltipText()).toBe("Branch: main at commit abc1234. Click to switch branches or create a new one.");
   });
@@ -402,7 +371,7 @@ describe("BranchSelector tooltip", () => {
       </TooltipPrimitive.Provider>,
     );
     await user.hover(screen.getByRole("button"));
-    expect(await tooltipText()).toBe("Branch: main at commit abc1234. Click to switch branches.");
+    expect(await tooltipText()).toBe("Branch: main at commit abc1234. Click to switch branches or create a new one.");
   });
 
   it("includes commits ahead of and behind the default branch", async () => {
@@ -417,17 +386,8 @@ describe("BranchSelector tooltip", () => {
     render(<BranchSelector />);
     fireEvent.focus(screen.getByRole("button"));
     expect(await tooltipText()).toBe(
-      "Branch: feature/test at commit def4567, 2 commits ahead of main, 1 commit behind main. Click to switch branches.",
+      "Branch: feature/test at commit def4567, 2 commits ahead of main, 1 commit behind main. Click to switch branches or create a new one.",
     );
-  });
-
-  it("explains why it is read-only", async () => {
-    render(<BranchSelector readOnly readOnlyReason="Sign in to switch or create branches." />);
-    const button = screen.getByRole("button") as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    // A disabled button gets no pointer events, so the wrapper is the hover target.
-    fireEvent.focus(button.parentElement!);
-    expect(await tooltipText()).toBe("Branch: main at commit abc1234. Sign in to switch or create branches.");
   });
 
   it("says when branches are loading", async () => {

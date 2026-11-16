@@ -41,7 +41,6 @@ const defaultBranchContext = {
 
 const defaultProps = {
   projectId: "proj-1",
-  accessToken: "token-123",
   isOpen: true,
   onClose: vi.fn(),
   onCreated: vi.fn(),
@@ -202,7 +201,6 @@ describe("PRCreateModal", () => {
           source_branch: "feature/test",
           target_branch: "main",
         },
-        "token-123"
       );
     });
 
@@ -271,7 +269,6 @@ describe("PRCreateModal", () => {
           title: "Trimmed Title",
           description: "Trimmed Desc",
         }),
-        "token-123"
       );
     });
   });
@@ -291,7 +288,6 @@ describe("PRCreateModal", () => {
         expect.objectContaining({
           description: undefined,
         }),
-        "token-123"
       );
     });
   });

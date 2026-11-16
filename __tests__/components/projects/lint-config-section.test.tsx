@@ -31,10 +31,6 @@ vi.mock("@/components/layout/header", () => ({
   Header: () => null,
 }));
 
-vi.mock("@/lib/localUser", () => ({
-  useSession: vi.fn(() => ({ data: null, status: "unauthenticated" })),
-}));
-
 vi.mock("next/navigation", () => ({
   useRouter: vi.fn(() => ({ push: vi.fn(), back: vi.fn() })),
   useParams: vi.fn(() => ({ id: "p1" })),
@@ -159,7 +155,7 @@ describe("LintConfigSection", () => {
 
   it("shows loading spinner initially", () => {
     mockLintApi.getRules.mockReturnValue(new Promise(() => {}));
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     expect(screen.getByText("Lint Rule Configuration")).toBeDefined();
   });
@@ -170,7 +166,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Missing label")).toBeDefined();
@@ -182,7 +178,7 @@ describe("LintConfigSection", () => {
   it("shows error message when rules fail to load", async () => {
     mockLintApi.getRules.mockRejectedValue(new Error("Network error"));
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Failed to load lint rules")).toBeDefined();
@@ -195,7 +191,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/Level 1 — Critical/)).toBeDefined();
@@ -211,7 +207,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Rules (3 of 4 enabled)")).toBeDefined();
@@ -225,7 +221,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Custom")).toBeDefined();
@@ -245,7 +241,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       const saveBtn = screen.getByText("Save Lint Configuration");
@@ -260,7 +256,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/Level 3 — Labels/)).toBeDefined();
@@ -284,7 +280,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 3, enabled_rules: ["R001", "R002", "R003", "R004"], effective_rules: ["R001", "R002", "R003", "R004"], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/Level 3 — Labels/)).toBeDefined();
@@ -297,7 +293,6 @@ describe("LintConfigSection", () => {
       expect(mockLintApi.updateLintConfig).toHaveBeenCalledWith(
         "p1",
         { lint_level: 3 },
-        "tok"
       );
       expect(screen.getByText("Lint configuration saved")).toBeDefined();
     });
@@ -313,7 +308,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: null, enabled_rules: ["R001", "R002", "R003"], effective_rules: ["R001", "R002", "R003"], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Custom")).toBeDefined();
@@ -326,7 +321,6 @@ describe("LintConfigSection", () => {
       expect(mockLintApi.updateLintConfig).toHaveBeenCalledWith(
         "p1",
         expect.objectContaining({ lint_level: null }),
-        "tok"
       );
     });
     const [, payload] = mockLintApi.updateLintConfig.mock.calls[0];
@@ -347,7 +341,7 @@ describe("LintConfigSection", () => {
     });
     render(
       <QueryClientProvider client={queryClient}>
-        <LintConfigSection projectId="p1" accessToken="tok" canManage={true} />
+        <LintConfigSection projectId="p1" />
       </QueryClientProvider>
     );
 
@@ -371,28 +365,11 @@ describe("LintConfigSection", () => {
     expect(lvl2Btn.getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("shows read-only message when canManage is false", async () => {
-    mockLintApi.getRules.mockResolvedValue({ rules: sampleRules });
-    mockLintApi.getLintConfig.mockResolvedValue({
-      project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
-    });
-
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={false} />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Only project owners and admins can modify lint configuration.")
-      ).toBeDefined();
-    });
-
-    expect(screen.queryByText("Save Lint Configuration")).toBeNull();
-  });
-
   it("surfaces the API error when config endpoint returns 404", async () => {
     mockLintApi.getRules.mockResolvedValue({ rules: sampleRules });
     mockLintApi.getLintConfig.mockRejectedValue(new MockApiError(404, "Not Found", "Not found"));
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Not found")).toBeDefined();
@@ -403,7 +380,7 @@ describe("LintConfigSection", () => {
     mockLintApi.getRules.mockResolvedValue({ rules: sampleRules });
     mockLintApi.getLintConfig.mockRejectedValue(new MockApiError(500, "Internal Server Error", "Server error"));
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Server error")).toBeDefined();
@@ -413,7 +390,7 @@ describe("LintConfigSection", () => {
   it("shows error to read-only users when rules fail to load", async () => {
     mockLintApi.getRules.mockRejectedValue(new Error("Network error"));
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={false} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Failed to load lint rules")).toBeDefined();
@@ -426,7 +403,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       const consistencyBtn = screen.getByText(/Level 2 — Consistency/).closest("button")!;
@@ -443,7 +420,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       const switches = screen.getAllByRole("switch");
@@ -472,7 +449,7 @@ describe("LintConfigSection", () => {
       total_issues: 5,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/2 error/)).toBeDefined();
@@ -496,7 +473,7 @@ describe("LintConfigSection", () => {
       total_issues: 0,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("No issues")).toBeDefined();
@@ -512,7 +489,7 @@ describe("LintConfigSection", () => {
     mockLintApi.getStatus.mockResolvedValue(summaryWithResults);
     mockLintApi.clearResults.mockResolvedValue(undefined);
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Clear Results")).toBeDefined();
@@ -521,7 +498,7 @@ describe("LintConfigSection", () => {
     await user.click(screen.getByText("Clear Results"));
 
     await waitFor(() => {
-      expect(mockLintApi.clearResults).toHaveBeenCalledWith("p1", "tok");
+      expect(mockLintApi.clearResults).toHaveBeenCalledWith("p1");
       expect(screen.getByText("Lint results cleared")).toBeDefined();
     });
   });
@@ -535,7 +512,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: null, enabled_rules: ["R001"], effective_rules: ["R001"], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Custom")).toBeDefined();
@@ -553,7 +530,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: 2, enabled_rules: [], effective_rules: [], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/1 rules/)).toBeDefined();
@@ -568,7 +545,7 @@ describe("LintConfigSection", () => {
       project_id: "p1", lint_level: null, enabled_rules: ["R001", "R003"], effective_rules: ["R001", "R003"], updated_at: null,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     await waitFor(() => {
@@ -595,7 +572,7 @@ describe("LintConfigSection", () => {
     mockLintApi.getStatus.mockResolvedValue(summaryWithResults);
     mockLintApi.clearResults.mockRejectedValue(new Error("Server error"));
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Clear Results")).toBeDefined();
@@ -618,7 +595,7 @@ describe("LintConfigSection", () => {
       job_id: "j1", status: "pending", message: "started",
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Run Lint")).toBeDefined();
@@ -628,7 +605,7 @@ describe("LintConfigSection", () => {
     await user.click(screen.getByText("Run Lint"));
 
     await waitFor(() => {
-      expect(mockLintApi.triggerLint).toHaveBeenCalledWith("p1", "tok");
+      expect(mockLintApi.triggerLint).toHaveBeenCalledWith("p1");
       expect(screen.getByText("Lint run started")).toBeDefined();
     });
   });
@@ -643,7 +620,7 @@ describe("LintConfigSection", () => {
       error_count: 0, warning_count: 0, info_count: 0, total_issues: 0,
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Run Lint")).toBeDefined();
@@ -661,7 +638,7 @@ describe("LintConfigSection", () => {
       last_run: { ...summaryWithResults.last_run, status: "running" as const },
     });
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Running...")).toBeDefined();
@@ -678,7 +655,7 @@ describe("LintConfigSection", () => {
     });
     mockLintApi.triggerLint.mockRejectedValue(new Error("Backend down"));
 
-    renderWithQueryClient(<LintConfigSection projectId="p1" accessToken="tok" canManage={true} />);
+    renderWithQueryClient(<LintConfigSection projectId="p1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Run Lint")).toBeDefined();

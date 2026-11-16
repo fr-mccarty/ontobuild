@@ -53,8 +53,6 @@ function makeComment(overrides: Partial<Comment> = {}): Comment {
 const defaultProps = {
   projectId: "proj-1",
   prNumber: 42,
-  accessToken: "token-123",
-  currentUserId: "user-1",
   onCommentsChange: vi.fn(),
 };
 
@@ -105,19 +103,10 @@ describe("PRCommentThread", () => {
   it("shows edit and delete buttons for own comments", () => {
     const comment = makeComment({ author_id: "user-1" });
     render(
-      <PRCommentThread {...defaultProps} currentUserId="user-1" comments={[comment]} />
+      <PRCommentThread {...defaultProps} comments={[comment]} />
     );
     expect(screen.getByLabelText("Edit")).toBeDefined();
     expect(screen.getByLabelText("Delete")).toBeDefined();
-  });
-
-  it("does not show edit/delete buttons for other users comments", () => {
-    const comment = makeComment({ author_id: "user-2" });
-    render(
-      <PRCommentThread {...defaultProps} currentUserId="user-1" comments={[comment]} />
-    );
-    expect(screen.queryByLabelText("Edit")).toBeNull();
-    expect(screen.queryByLabelText("Delete")).toBeNull();
   });
 
   it("shows Reply button for top-level comments", () => {
@@ -172,7 +161,6 @@ describe("PRCommentThread", () => {
         "proj-1",
         42,
         { body: "My reply", parent_id: "c1" },
-        "token-123"
       );
     });
 
@@ -237,7 +225,6 @@ describe("PRCommentThread", () => {
         42,
         "c1",
         { body: "Updated body" },
-        "token-123"
       );
     });
 
@@ -277,7 +264,6 @@ describe("PRCommentThread", () => {
         "proj-1",
         42,
         "c1",
-        "token-123"
       );
     });
 

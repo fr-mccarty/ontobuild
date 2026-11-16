@@ -3,7 +3,7 @@ import { Store } from "n3";
 import * as git from "./git";
 import { all, bool, fromJson, get } from "./db";
 import { httpError } from "./http";
-import { LOCAL_USER, LOCAL_ROLE } from "./user";
+import { LOCAL_USER } from "./user";
 import { NS, parseTurtle, RdfParseError, findOntologyIri, stripLanguageTagsFromTurtle } from "./rdf";
 
 export { NS, findOntologyIri };
@@ -64,13 +64,8 @@ export function projectToResponse(p: ProjectRow) {
     name: p.name,
     description: p.description,
     is_public: bool(p.is_public),
-    owner_id: p.owner_id,
-    owner: { id: LOCAL_USER.id, name: LOCAL_USER.name, email: LOCAL_USER.email },
     created_at: p.created_at,
     updated_at: p.updated_at,
-    member_count: 1,
-    user_role: LOCAL_ROLE,
-    is_superadmin: false,
     source_file_path: p.source_file_path,
     git_ontology_path: p.source_file_path ? ontologyFilePath(p) : null,
     ontology_iri: p.ontology_iri,

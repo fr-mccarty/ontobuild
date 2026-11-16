@@ -8,7 +8,6 @@ import type { EntityTreeNode } from "@/lib/ontology/types";
 
 interface PropertyTreeProps {
   projectId: string;
-  accessToken?: string;
   branch?: string;
   selectedIri: string | null;
   onSelect: (iri: string) => void;
@@ -25,7 +24,6 @@ interface PropertyGroup {
 
 export function PropertyTree({
   projectId,
-  accessToken,
   branch,
   selectedIri,
   onSelect,
@@ -64,7 +62,6 @@ export function PropertyTree({
         const response = await projectOntologyApi.searchEntities(
           projectId,
           "*",
-          accessToken,
           branch,
           "property",
         );
@@ -123,7 +120,7 @@ export function PropertyTree({
 
     fetchProperties();
     return () => { cancelled = true; };
-  }, [projectId, accessToken, branch, refreshKey]);
+  }, [projectId, branch, refreshKey]);
 
   const entityNodes = useMemo((): EntityTreeNode[] => {
     return groups.map((group) => ({

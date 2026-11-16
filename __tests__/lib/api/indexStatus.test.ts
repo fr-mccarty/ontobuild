@@ -36,17 +36,17 @@ describe("IndexStatusPoller", () => {
 
   it("polls index-status for the project on connect", async () => {
     getIndexStatus.mockResolvedValue(status("ready"));
-    const manager = new IndexStatusPoller("p1", vi.fn(), "tok", { intervalMs: 1000 });
+    const manager = new IndexStatusPoller("p1", vi.fn(), { intervalMs: 1000 });
     manager.connect();
     await flush();
-    expect(getIndexStatus).toHaveBeenCalledWith("p1", undefined, undefined);
+    expect(getIndexStatus).toHaveBeenCalledWith("p1", undefined);
     manager.disconnect();
   });
 
   it("does not emit when the index is already ready", async () => {
     getIndexStatus.mockResolvedValue(status("ready"));
     const onMessage = vi.fn();
-    const manager = new IndexStatusPoller("p1", onMessage, undefined, { intervalMs: 1000 });
+    const manager = new IndexStatusPoller("p1", onMessage, { intervalMs: 1000 });
     manager.connect();
     await flush();
     await vi.advanceTimersByTimeAsync(3000);
@@ -61,7 +61,7 @@ describe("IndexStatusPoller", () => {
       .mockResolvedValueOnce(status("indexing"))
       .mockResolvedValue(status("ready", { entity_count: 9 }));
     const onMessage = vi.fn();
-    const manager = new IndexStatusPoller("p1", onMessage, undefined, { intervalMs: 1000 });
+    const manager = new IndexStatusPoller("p1", onMessage, { intervalMs: 1000 });
     manager.connect();
     await flush();
     await vi.advanceTimersByTimeAsync(1000);
@@ -83,7 +83,7 @@ describe("IndexStatusPoller", () => {
       .mockResolvedValueOnce(status("indexing"))
       .mockResolvedValue(status("failed", { error_message: "boom" }));
     const onMessage = vi.fn();
-    const manager = new IndexStatusPoller("p1", onMessage, undefined, { intervalMs: 1000 });
+    const manager = new IndexStatusPoller("p1", onMessage, { intervalMs: 1000 });
     manager.connect();
     await flush();
     await vi.advanceTimersByTimeAsync(1000);
@@ -98,7 +98,7 @@ describe("IndexStatusPoller", () => {
 
   it("keeps polling after errors and stops after disconnect", async () => {
     getIndexStatus.mockRejectedValueOnce(new Error("404")).mockResolvedValue(status("ready"));
-    const manager = new IndexStatusPoller("p1", vi.fn(), undefined, { intervalMs: 1000 });
+    const manager = new IndexStatusPoller("p1", vi.fn(), { intervalMs: 1000 });
     manager.connect();
     await flush();
     await vi.advanceTimersByTimeAsync(1000);
@@ -110,7 +110,7 @@ describe("IndexStatusPoller", () => {
 
   it("connect is idempotent", async () => {
     getIndexStatus.mockResolvedValue(status("ready"));
-    const manager = new IndexStatusPoller("p1", vi.fn(), undefined, { intervalMs: 1000 });
+    const manager = new IndexStatusPoller("p1", vi.fn(), { intervalMs: 1000 });
     manager.connect();
     manager.connect();
     await flush();

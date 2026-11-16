@@ -69,7 +69,7 @@ describe("useProjectActivity", () => {
 
   it("is disabled when projectId is empty", () => {
     const { result } = renderHook(
-      () => useProjectActivity("", "token"),
+      () => useProjectActivity(""),
       { wrapper: createWrapper() },
     );
     expect(result.current.isFetching).toBe(false);
@@ -79,7 +79,7 @@ describe("useProjectActivity", () => {
   it("starts in loading state when enabled", () => {
     mockedGetActivity.mockReturnValue(new Promise(() => {}));
     const { result } = renderHook(
-      () => useProjectActivity("proj-1", "token"),
+      () => useProjectActivity("proj-1"),
       { wrapper: createWrapper() },
     );
     expect(result.current.isLoading).toBe(true);
@@ -88,19 +88,19 @@ describe("useProjectActivity", () => {
   it("returns data on success", async () => {
     mockedGetActivity.mockResolvedValue(mockActivity);
     const { result } = renderHook(
-      () => useProjectActivity("proj-1", "token", 7),
+      () => useProjectActivity("proj-1", 7),
       { wrapper: createWrapper() },
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(mockActivity);
-    expect(mockedGetActivity).toHaveBeenCalledWith("proj-1", "token", 7);
+    expect(mockedGetActivity).toHaveBeenCalledWith("proj-1", 7);
   });
 
   it("returns error on failure", async () => {
     mockedGetActivity.mockRejectedValue(new Error("fail"));
     const { result } = renderHook(
-      () => useProjectActivity("proj-1", "token"),
+      () => useProjectActivity("proj-1"),
       { wrapper: createWrapper() },
     );
 
@@ -110,12 +110,12 @@ describe("useProjectActivity", () => {
   it("uses default days parameter of 30", async () => {
     mockedGetActivity.mockResolvedValue(mockActivity);
     const { result } = renderHook(
-      () => useProjectActivity("proj-1", "token"),
+      () => useProjectActivity("proj-1"),
       { wrapper: createWrapper() },
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockedGetActivity).toHaveBeenCalledWith("proj-1", "token", 30);
+    expect(mockedGetActivity).toHaveBeenCalledWith("proj-1", 30);
   });
 });
 
@@ -124,7 +124,7 @@ describe("useHotEntities", () => {
 
   it("is disabled when projectId is empty", () => {
     const { result } = renderHook(
-      () => useHotEntities("", "token"),
+      () => useHotEntities(""),
       { wrapper: createWrapper() },
     );
     expect(result.current.isFetching).toBe(false);
@@ -134,19 +134,19 @@ describe("useHotEntities", () => {
   it("returns data on success", async () => {
     mockedGetHotEntities.mockResolvedValue(mockHotEntities);
     const { result } = renderHook(
-      () => useHotEntities("proj-1", "token"),
+      () => useHotEntities("proj-1"),
       { wrapper: createWrapper() },
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(mockHotEntities);
-    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", "token", 20, 30);
+    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", 20, 30);
   });
 
   it("returns error on failure", async () => {
     mockedGetHotEntities.mockRejectedValue(new Error("fail"));
     const { result } = renderHook(
-      () => useHotEntities("proj-1", "token"),
+      () => useHotEntities("proj-1"),
       { wrapper: createWrapper() },
     );
 
@@ -156,23 +156,12 @@ describe("useHotEntities", () => {
   it("passes custom limit parameter", async () => {
     mockedGetHotEntities.mockResolvedValue(mockHotEntities);
     const { result } = renderHook(
-      () => useHotEntities("proj-1", "token", 5),
+      () => useHotEntities("proj-1", 5),
       { wrapper: createWrapper() },
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", "token", 5, 30);
-  });
-
-  it("works without accessToken", async () => {
-    mockedGetHotEntities.mockResolvedValue(mockHotEntities);
-    const { result } = renderHook(
-      () => useHotEntities("proj-1"),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", undefined, 20, 30);
+    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", 5, 30);
   });
 });
 
@@ -181,7 +170,7 @@ describe("useContributors", () => {
 
   it("is disabled when projectId is empty", () => {
     const { result } = renderHook(
-      () => useContributors("", "token"),
+      () => useContributors(""),
       { wrapper: createWrapper() },
     );
     expect(result.current.isFetching).toBe(false);
@@ -191,19 +180,19 @@ describe("useContributors", () => {
   it("returns data on success", async () => {
     mockedGetContributors.mockResolvedValue(mockContributors);
     const { result } = renderHook(
-      () => useContributors("proj-1", "token"),
+      () => useContributors("proj-1"),
       { wrapper: createWrapper() },
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(mockContributors);
-    expect(mockedGetContributors).toHaveBeenCalledWith("proj-1", "token", 30);
+    expect(mockedGetContributors).toHaveBeenCalledWith("proj-1", 30);
   });
 
   it("returns error on failure", async () => {
     mockedGetContributors.mockRejectedValue(new Error("fail"));
     const { result } = renderHook(
-      () => useContributors("proj-1", "token"),
+      () => useContributors("proj-1"),
       { wrapper: createWrapper() },
     );
 
@@ -213,22 +202,11 @@ describe("useContributors", () => {
   it("passes custom days parameter", async () => {
     mockedGetContributors.mockResolvedValue(mockContributors);
     const { result } = renderHook(
-      () => useContributors("proj-1", "token", 14),
+      () => useContributors("proj-1", 14),
       { wrapper: createWrapper() },
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockedGetContributors).toHaveBeenCalledWith("proj-1", "token", 14);
-  });
-
-  it("works without accessToken", async () => {
-    mockedGetContributors.mockResolvedValue(mockContributors);
-    const { result } = renderHook(
-      () => useContributors("proj-1"),
-      { wrapper: createWrapper() },
-    );
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockedGetContributors).toHaveBeenCalledWith("proj-1", undefined, 30);
+    expect(mockedGetContributors).toHaveBeenCalledWith("proj-1", 14);
   });
 });

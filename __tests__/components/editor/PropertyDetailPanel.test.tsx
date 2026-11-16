@@ -129,7 +129,6 @@ const DEFAULT_PROPS = {
   propertyIri: "http://example.org/ontology#hasParent",
   sourceContent: SAMPLE_SOURCE,
   canEdit: false,
-  accessToken: "test-token",
   branch: "main",
 };
 

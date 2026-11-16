@@ -514,14 +514,12 @@ describe("api.uploadWithProgress", () => {
     const formData = new FormData();
     api.uploadWithProgress("/api/v1/upload", formData, {
       headers: {
-        Authorization: "Bearer tok",
         "Content-Type": "should-be-skipped",
         "X-Custom": "value",
       },
     });
 
     const xhr = MockXHR.instances[0];
-    expect(xhr.setRequestHeader).not.toHaveBeenCalledWith("Authorization", "Bearer tok");
     expect(xhr.setRequestHeader).toHaveBeenCalledWith("X-Custom", "value");
     expect(xhr.setRequestHeader).not.toHaveBeenCalledWith(
       "Content-Type",
@@ -547,24 +545,15 @@ describe("projectOntologyApi", () => {
     });
   });
 
-  it("getRootClasses with token and branch", async () => {
-    await projectOntologyApi.getRootClasses("p1", "tok123", "dev");
-    const [url, options] = mockFetch.mock.calls[0];
+  it("getRootClasses with branch", async () => {
+    await projectOntologyApi.getRootClasses("p1", "dev");
+    const [url] = mockFetch.mock.calls[0];
     expect(url).toContain("/api/v1/projects/p1/ontology/tree");
     expect(url).toContain("branch=dev");
-    const headers = options.headers as Headers;
-    expect(headers.get("Authorization")).toBeNull();
-  });
-
-  it("getRootClasses without token omits Authorization header", async () => {
-    await projectOntologyApi.getRootClasses("p1");
-    const [, options] = mockFetch.mock.calls[0];
-    const headers = options.headers as Headers;
-    expect(headers.get("Authorization")).toBeNull();
   });
 
   it("getClassChildren encodes classIri and includes branch", async () => {
-    await projectOntologyApi.getClassChildren("p1", "http://ex.org/C", "tok", "main");
+    await projectOntologyApi.getClassChildren("p1", "http://ex.org/C", "main");
     const [url] = mockFetch.mock.calls[0];
     expect(url).toContain(encodeURIComponent("http://ex.org/C"));
     expect(url).toContain("/children");
@@ -572,20 +561,20 @@ describe("projectOntologyApi", () => {
   });
 
   it("getClassAncestors calls correct endpoint", async () => {
-    await projectOntologyApi.getClassAncestors("p1", "http://ex.org/C", "tok", "main");
+    await projectOntologyApi.getClassAncestors("p1", "http://ex.org/C", "main");
     const [url] = mockFetch.mock.calls[0];
     expect(url).toContain("/ancestors");
   });
 
   it("getClassDetail calls correct endpoint", async () => {
-    await projectOntologyApi.getClassDetail("p1", "http://ex.org/C", "tok", "main");
+    await projectOntologyApi.getClassDetail("p1", "http://ex.org/C", "main");
     const [url] = mockFetch.mock.calls[0];
     expect(url).toContain("/api/v1/projects/p1/ontology/classes/");
     expect(url).toContain(encodeURIComponent("http://ex.org/C"));
   });
 
   it("searchEntities passes query and entityTypes", async () => {
-    await projectOntologyApi.searchEntities("p1", "Person", "tok", "main", "class");
+    await projectOntologyApi.searchEntities("p1", "Person", "main", "class");
     const [url] = mockFetch.mock.calls[0];
     expect(url).toContain("/api/v1/projects/p1/ontology/search");
     expect(url).toContain("q=Person");
@@ -593,13 +582,13 @@ describe("projectOntologyApi", () => {
     expect(url).toContain("entity_types=class");
   });
 
-  it("updateClass sends PATCH with auth and data", async () => {
+  it("updateClass sends PATCH with data", async () => {
     const data = {
       labels: [{ value: "Test" }],
       comments: [],
       parent_iris: [],
     };
-    await projectOntologyApi.updateClass("p1", "http://ex.org/C", data, "update labels", "tok", "dev");
+    await projectOntologyApi.updateClass("p1", "http://ex.org/C", data, "update labels", "dev");
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain("/api/v1/projects/p1/ontology/classes/");
     expect(url).toContain("branch=dev");
@@ -607,23 +596,19 @@ describe("projectOntologyApi", () => {
     const body = JSON.parse(options.body as string);
     expect(body.commit_message).toBe("update labels");
     expect(body.labels).toEqual([{ value: "Test" }]);
-    const headers = options.headers as Headers;
-    expect(headers.get("Authorization")).toBeNull();
   });
 
   it("deleteClass sends DELETE with commit_message param", async () => {
-    await projectOntologyApi.deleteClass("p1", "http://ex.org/C", "remove class", "tok", "dev");
+    await projectOntologyApi.deleteClass("p1", "http://ex.org/C", "remove class", "dev");
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain(encodeURIComponent("http://ex.org/C"));
     expect(url).toContain("commit_message=remove+class");
     expect(url).toContain("branch=dev");
     expect(options.method).toBe("DELETE");
-    const headers = options.headers as Headers;
-    expect(headers.get("Authorization")).toBeNull();
   });
 
-  it("reindex sends POST with auth", async () => {
-    await projectOntologyApi.reindex("p1", "tok", "main");
+  it("reindex sends POST", async () => {
+    await projectOntologyApi.reindex("p1", "main");
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain("/api/v1/projects/p1/ontology/reindex");
     expect(url).toContain("branch=main");
@@ -631,14 +616,14 @@ describe("projectOntologyApi", () => {
   });
 
   it("getIndexStatus calls correct endpoint", async () => {
-    await projectOntologyApi.getIndexStatus("p1", "tok", "main");
+    await projectOntologyApi.getIndexStatus("p1", "main");
     const [url] = mockFetch.mock.calls[0];
     expect(url).toContain("/api/v1/projects/p1/ontology/index-status");
     expect(url).toContain("branch=main");
   });
 
   it("saveSource sends PUT with content and commit message", async () => {
-    await projectOntologyApi.saveSource("p1", "@prefix ex: <http://ex.org/> .", "save source", "tok", "dev");
+    await projectOntologyApi.saveSource("p1", "@prefix ex: <http://ex.org/> .", "save source", "dev");
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain("/api/v1/projects/p1/source");
     expect(url).toContain("branch=dev");
@@ -646,7 +631,5 @@ describe("projectOntologyApi", () => {
     const body = JSON.parse(options.body as string);
     expect(body.content).toBe("@prefix ex: <http://ex.org/> .");
     expect(body.commit_message).toBe("save source");
-    const headers = options.headers as Headers;
-    expect(headers.get("Authorization")).toBeNull();
   });
 });

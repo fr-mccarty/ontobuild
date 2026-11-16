@@ -5,7 +5,6 @@ import { projectOntologyApi, type EntitySearchResult } from "@/lib/api/client";
 
 interface UseTreeSearchOptions {
   projectId: string;
-  accessToken?: string;
   branch?: string;
   onSearchSelect: (iri: string) => void;
 }
@@ -24,7 +23,6 @@ interface UseTreeSearchReturn {
 
 export function useTreeSearch({
   projectId,
-  accessToken,
   branch,
   onSearchSelect,
 }: UseTreeSearchOptions): UseTreeSearchReturn {
@@ -73,7 +71,6 @@ export function useTreeSearch({
         const response = await projectOntologyApi.searchEntities(
           projectId,
           searchQuery.trim(),
-          accessToken,
           branch,
         );
         setSearchResults(response.results);
@@ -84,7 +81,7 @@ export function useTreeSearch({
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, showSearch, projectId, accessToken, branch]);
+  }, [searchQuery, showSearch, projectId, branch]);
 
   return {
     showSearch,

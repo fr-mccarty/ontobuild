@@ -56,21 +56,18 @@ function formatRelativeTime(dateStr: string): string {
 interface EntityHistoryTabProps {
   projectId: string;
   entityIri: string | null;
-  accessToken?: string;
   branch?: string;
 }
 
 export function EntityHistoryTab({
   projectId,
   entityIri,
-  accessToken,
   branch,
 }: EntityHistoryTabProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { data, isLoading, error } = useEntityHistory(
     projectId,
     entityIri,
-    accessToken,
     branch
   );
 

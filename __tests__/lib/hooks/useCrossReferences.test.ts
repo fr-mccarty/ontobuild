@@ -49,7 +49,7 @@ describe("useCrossReferences", () => {
 
   it("is disabled when entityIri is null", () => {
     const { result } = renderHook(
-      () => useCrossReferences("proj-1", null, "token", "main"),
+      () => useCrossReferences("proj-1", null, "main"),
       { wrapper: createWrapper() },
     );
     expect(result.current.isFetching).toBe(false);
@@ -58,7 +58,7 @@ describe("useCrossReferences", () => {
 
   it("is disabled when entityIri is empty string", () => {
     const { result } = renderHook(
-      () => useCrossReferences("proj-1", "", "token", "main"),
+      () => useCrossReferences("proj-1", "", "main"),
       { wrapper: createWrapper() },
     );
     expect(result.current.isFetching).toBe(false);
@@ -67,7 +67,7 @@ describe("useCrossReferences", () => {
 
   it("is disabled when projectId is empty", () => {
     const { result } = renderHook(
-      () => useCrossReferences("", "http://example.org/Entity1", "token"),
+      () => useCrossReferences("", "http://example.org/Entity1"),
       { wrapper: createWrapper() },
     );
     expect(result.current.isFetching).toBe(false);
@@ -77,7 +77,7 @@ describe("useCrossReferences", () => {
   it("starts in loading state when enabled", () => {
     mockedGetCrossReferences.mockReturnValue(new Promise(() => {}));
     const { result } = renderHook(
-      () => useCrossReferences("proj-1", "http://example.org/Entity1", "token", "main"),
+      () => useCrossReferences("proj-1", "http://example.org/Entity1", "main"),
       { wrapper: createWrapper() },
     );
     expect(result.current.isLoading).toBe(true);
@@ -86,7 +86,7 @@ describe("useCrossReferences", () => {
   it("returns data on success", async () => {
     mockedGetCrossReferences.mockResolvedValue(mockResponse);
     const { result } = renderHook(
-      () => useCrossReferences("proj-1", "http://example.org/Entity1", "token", "main"),
+      () => useCrossReferences("proj-1", "http://example.org/Entity1", "main"),
       { wrapper: createWrapper() },
     );
 
@@ -95,7 +95,6 @@ describe("useCrossReferences", () => {
     expect(mockedGetCrossReferences).toHaveBeenCalledWith(
       "proj-1",
       "http://example.org/Entity1",
-      "token",
       "main",
     );
   });
@@ -103,7 +102,7 @@ describe("useCrossReferences", () => {
   it("returns error on failure", async () => {
     mockedGetCrossReferences.mockRejectedValue(new Error("Network error"));
     const { result } = renderHook(
-      () => useCrossReferences("proj-1", "http://example.org/Entity1", "token", "main"),
+      () => useCrossReferences("proj-1", "http://example.org/Entity1", "main"),
       { wrapper: createWrapper() },
     );
 
@@ -112,7 +111,7 @@ describe("useCrossReferences", () => {
     expect(result.current.error?.message).toBe("Network error");
   });
 
-  it("works without accessToken", async () => {
+  it("works without a branch", async () => {
     mockedGetCrossReferences.mockResolvedValue(mockResponse);
     const { result } = renderHook(
       () => useCrossReferences("proj-1", "http://example.org/Entity1"),
@@ -124,18 +123,17 @@ describe("useCrossReferences", () => {
       "proj-1",
       "http://example.org/Entity1",
       undefined,
-      undefined,
     );
   });
 
-  it("includes branch and accessToken presence in queryKey", async () => {
+  it("includes the branch in the queryKey", async () => {
     mockedGetCrossReferences.mockResolvedValue(mockResponse);
     const { result: result1 } = renderHook(
-      () => useCrossReferences("proj-1", "http://example.org/E", "tok", "main"),
+      () => useCrossReferences("proj-1", "http://example.org/E", "main"),
       { wrapper: createWrapper() },
     );
     const { result: result2 } = renderHook(
-      () => useCrossReferences("proj-1", "http://example.org/E", undefined, "dev"),
+      () => useCrossReferences("proj-1", "http://example.org/E", "dev"),
       { wrapper: createWrapper() },
     );
 

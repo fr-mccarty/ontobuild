@@ -12,14 +12,12 @@ import { GitPullRequest } from "lucide-react";
 
 interface PRListProps {
   projectId: string;
-  accessToken?: string;
   defaultStatus?: PRStatus | "all";
   className?: string;
 }
 
 export function PRList({
   projectId,
-  accessToken,
   defaultStatus = "open",
   className,
 }: PRListProps) {
@@ -41,7 +39,6 @@ export function PRList({
       const status = statusFilter === "all" ? undefined : statusFilter;
       const response = await pullRequestsApi.list(
         projectId,
-        accessToken,
         status,
         undefined,
         skip,
@@ -56,7 +53,7 @@ export function PRList({
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, accessToken, statusFilter, skip]);
+  }, [projectId, statusFilter, skip]);
 
   useEffect(() => {
     loadPRs();

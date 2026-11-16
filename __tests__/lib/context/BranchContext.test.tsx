@@ -45,7 +45,7 @@ function makeListResponse(branches: BranchInfo[], overrides?: Partial<BranchList
   };
 }
 
-function createWrapper(props: { projectId: string; accessToken?: string; initialBranch?: string }) {
+function createWrapper(props: { projectId: string; initialBranch?: string }) {
   const QueryWrapper = createQueryWrapper();
   function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(
@@ -53,7 +53,7 @@ function createWrapper(props: { projectId: string; accessToken?: string; initial
       null,
       React.createElement(
         BranchProvider,
-        { projectId: props.projectId, accessToken: props.accessToken, initialBranch: props.initialBranch } as React.ComponentProps<typeof BranchProvider>,
+        { projectId: props.projectId, initialBranch: props.initialBranch } as React.ComponentProps<typeof BranchProvider>,
         children,
       ),
     );
@@ -81,7 +81,7 @@ describe("BranchContext", () => {
   });
 
   it("provides initial loading state", () => {
-    const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+    const wrapper = createWrapper({ projectId: "p1" });
     const { result } = renderHook(() => useBranch(), { wrapper });
 
     expect(result.current.isLoading).toBe(true);
@@ -89,7 +89,7 @@ describe("BranchContext", () => {
   });
 
   it("loads branches and exposes them via the context", async () => {
-    const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+    const wrapper = createWrapper({ projectId: "p1" });
     const { result } = renderHook(() => useBranch(), { wrapper });
 
     await waitFor(() => {
@@ -104,7 +104,7 @@ describe("BranchContext", () => {
 
   describe("switchBranch", () => {
     it("switches to an existing branch", async () => {
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -117,21 +117,8 @@ describe("BranchContext", () => {
       expect(result.current.isFeatureBranch).toBe(true);
     });
 
-    it("throws when switching without authentication", async () => {
-      const wrapper = createWrapper({ projectId: "p1" });
-      const { result } = renderHook(() => useBranch(), { wrapper });
-
-      await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-      await expect(
-        act(async () => {
-          await result.current.switchBranch("feature-1");
-        })
-      ).rejects.toThrow("Authentication required");
-    });
-
     it("throws when switching to a non-existent branch", async () => {
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -144,7 +131,7 @@ describe("BranchContext", () => {
     });
 
     it("throws when there are pending changes", async () => {
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -166,7 +153,7 @@ describe("BranchContext", () => {
       const newBranch = makeBranch("new-branch");
       mockedCreate.mockResolvedValue(newBranch);
 
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -180,22 +167,8 @@ describe("BranchContext", () => {
       expect(mockedCreate).toHaveBeenCalledWith(
         "p1",
         { name: "new-branch", from_branch: "main" },
-        "tok"
       );
       expect(result.current.currentBranch).toBe("new-branch");
-    });
-
-    it("throws without authentication", async () => {
-      const wrapper = createWrapper({ projectId: "p1" });
-      const { result } = renderHook(() => useBranch(), { wrapper });
-
-      await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-      await expect(
-        act(async () => {
-          await result.current.createBranch("new");
-        })
-      ).rejects.toThrow("Authentication required");
     });
   });
 
@@ -203,7 +176,7 @@ describe("BranchContext", () => {
     it("deletes a branch", async () => {
       mockedDelete.mockResolvedValue(undefined);
 
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -212,11 +185,11 @@ describe("BranchContext", () => {
         await result.current.deleteBranch("feature-1");
       });
 
-      expect(mockedDelete).toHaveBeenCalledWith("p1", "feature-1", "tok", false);
+      expect(mockedDelete).toHaveBeenCalledWith("p1", "feature-1", false);
     });
 
     it("throws when deleting the current branch", async () => {
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -229,7 +202,7 @@ describe("BranchContext", () => {
     });
 
     it("throws when deleting the default branch", async () => {
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -244,24 +217,11 @@ describe("BranchContext", () => {
         })
       ).rejects.toThrow("Cannot delete the default branch");
     });
-
-    it("throws without authentication", async () => {
-      const wrapper = createWrapper({ projectId: "p1" });
-      const { result } = renderHook(() => useBranch(), { wrapper });
-
-      await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-      await expect(
-        act(async () => {
-          await result.current.deleteBranch("feature-1");
-        })
-      ).rejects.toThrow("Authentication required");
-    });
   });
 
   describe("sessionStorage persistence", () => {
     it("persists branch selection to sessionStorage on switch", async () => {
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -278,7 +238,7 @@ describe("BranchContext", () => {
     it("exposes error message when branch loading fails", async () => {
       mockedList.mockRejectedValue(new Error("Network failure"));
 
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -289,7 +249,7 @@ describe("BranchContext", () => {
 
   describe("pendingChanges", () => {
     it("starts as false and can be toggled", async () => {
-      const wrapper = createWrapper({ projectId: "p1", accessToken: "tok" });
+      const wrapper = createWrapper({ projectId: "p1" });
       const { result } = renderHook(() => useBranch(), { wrapper });
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));

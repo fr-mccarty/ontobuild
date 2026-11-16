@@ -26,33 +26,24 @@ beforeEach(() => {
 });
 
 describe("useIndexStatus", () => {
-  it("fetches index status when projectId and accessToken are provided", async () => {
+  it("fetches index status when projectId is provided", async () => {
     const statusData = { status: "idle", entity_count: 42 };
     mockedGetIndexStatus.mockResolvedValueOnce(statusData);
 
     const { result } = renderHook(
-      () => useIndexStatus("proj-1", "token-123"),
+      () => useIndexStatus("proj-1"),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual(statusData);
-    expect(mockedGetIndexStatus).toHaveBeenCalledWith("proj-1", "token-123");
+    expect(mockedGetIndexStatus).toHaveBeenCalledWith("proj-1");
   });
 
   it("does not fetch when projectId is empty", () => {
     renderHook(
-      () => useIndexStatus("", "token-123"),
-      { wrapper: createWrapper() }
-    );
-
-    expect(mockedGetIndexStatus).not.toHaveBeenCalled();
-  });
-
-  it("does not fetch when accessToken is undefined", () => {
-    renderHook(
-      () => useIndexStatus("proj-1", undefined),
+      () => useIndexStatus(""),
       { wrapper: createWrapper() }
     );
 
@@ -61,7 +52,7 @@ describe("useIndexStatus", () => {
 
   it("does not fetch when enabled option is false", () => {
     renderHook(
-      () => useIndexStatus("proj-1", "token-123", { enabled: false }),
+      () => useIndexStatus("proj-1", { enabled: false }),
       { wrapper: createWrapper() }
     );
 
@@ -73,7 +64,7 @@ describe("useIndexStatus", () => {
     mockedGetIndexStatus.mockResolvedValueOnce(statusData);
 
     const { result } = renderHook(
-      () => useIndexStatus("proj-1", "token-123", { enabled: true }),
+      () => useIndexStatus("proj-1", { enabled: true }),
       { wrapper: createWrapper() }
     );
 
@@ -86,7 +77,7 @@ describe("useIndexStatus", () => {
     mockedGetIndexStatus.mockRejectedValueOnce(new Error("Network error"));
 
     const { result } = renderHook(
-      () => useIndexStatus("proj-1", "token-123"),
+      () => useIndexStatus("proj-1"),
       { wrapper: createWrapper() }
     );
 

@@ -31,30 +31,17 @@ describe("qualityApi", () => {
       expect(options.method).toBe("GET");
     });
 
-    it("includes token and branch when provided", async () => {
+    it("includes branch when provided", async () => {
       mockOk({ incoming: [], outgoing: [] });
 
       await qualityApi.getCrossReferences(
         "proj-1",
         "http://example.org/Foo",
-        "tok",
         "dev"
       );
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("branch=dev");
-      const headers = new Headers(options.headers);
-      expect(headers.get("Authorization")).toBeNull();
-    });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ incoming: [], outgoing: [] });
-
-      await qualityApi.getCrossReferences("proj-1", "http://example.org/Foo");
-
-      const [, options] = mockFetch.mock.calls[0];
-      const headers = new Headers(options.headers);
-      expect(headers.get("Authorization")).toBeNull();
     });
   });
 
@@ -63,7 +50,7 @@ describe("qualityApi", () => {
       const data = { job_id: "job-1" };
       mockOk(data);
 
-      const result = await qualityApi.triggerConsistencyCheck("proj-1", "tok");
+      const result = await qualityApi.triggerConsistencyCheck("proj-1");
       expect(result).toEqual(data);
 
       const [url, options] = mockFetch.mock.calls[0];
@@ -74,7 +61,7 @@ describe("qualityApi", () => {
     it("includes branch param", async () => {
       mockOk({ job_id: "job-1" });
 
-      await qualityApi.triggerConsistencyCheck("proj-1", "tok", "dev");
+      await qualityApi.triggerConsistencyCheck("proj-1", "dev");
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("branch=dev");
@@ -86,22 +73,12 @@ describe("qualityApi", () => {
       const data = { project_id: "proj-1", branch: "main", issues: [], checked_at: "", duration_ms: 50 };
       mockOk(data);
 
-      const result = await qualityApi.getConsistencyJobResult("proj-1", "job-1", "tok");
+      const result = await qualityApi.getConsistencyJobResult("proj-1", "job-1");
       expect(result).toEqual(data);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/proj-1/quality/jobs/job-1");
       expect(options.method).toBe("GET");
-    });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ issues: [] });
-
-      await qualityApi.getConsistencyJobResult("proj-1", "job-1");
-
-      const [, options] = mockFetch.mock.calls[0];
-      const headers = new Headers(options.headers);
-      expect(headers.get("Authorization")).toBeNull();
     });
   });
 
@@ -123,7 +100,7 @@ describe("qualityApi", () => {
       const data = { job_id: "dup-job-1" };
       mockOk(data);
 
-      const result = await qualityApi.triggerDuplicateDetection("proj-1", "tok");
+      const result = await qualityApi.triggerDuplicateDetection("proj-1");
       expect(result).toEqual(data);
 
       const [url, options] = mockFetch.mock.calls[0];
@@ -135,7 +112,7 @@ describe("qualityApi", () => {
     it("passes custom threshold and branch", async () => {
       mockOk({ job_id: "dup-job-2" });
 
-      await qualityApi.triggerDuplicateDetection("proj-1", "tok", "dev", 0.9);
+      await qualityApi.triggerDuplicateDetection("proj-1", "dev", 0.9);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("threshold=0.9");
@@ -148,22 +125,12 @@ describe("qualityApi", () => {
       const data = { clusters: [], threshold: 0.85, checked_at: "" };
       mockOk(data);
 
-      const result = await qualityApi.getDuplicateJobResult("proj-1", "job-1", "tok");
+      const result = await qualityApi.getDuplicateJobResult("proj-1", "job-1");
       expect(result).toEqual(data);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/proj-1/quality/duplicates/jobs/job-1");
       expect(options.method).toBe("GET");
-    });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ clusters: [], threshold: 0.85, checked_at: "" });
-
-      await qualityApi.getDuplicateJobResult("proj-1", "job-1");
-
-      const [, options] = mockFetch.mock.calls[0];
-      const headers = new Headers(options.headers);
-      expect(headers.get("Authorization")).toBeNull();
     });
   });
 
@@ -172,7 +139,7 @@ describe("qualityApi", () => {
       const data = { clusters: [], threshold: 0.85, checked_at: "" };
       mockOk(data);
 
-      const result = await qualityApi.getLatestDuplicates("proj-1", "tok", "dev");
+      const result = await qualityApi.getLatestDuplicates("proj-1", "dev");
       expect(result).toEqual(data);
 
       const [url] = mockFetch.mock.calls[0];
@@ -180,20 +147,10 @@ describe("qualityApi", () => {
       expect(url).toContain("branch=dev");
     });
 
-    it("omits auth header when no token", async () => {
-      mockOk({ clusters: [], threshold: 0.85, checked_at: "" });
-
-      await qualityApi.getLatestDuplicates("proj-1");
-
-      const [, options] = mockFetch.mock.calls[0];
-      const headers = new Headers(options.headers);
-      expect(headers.get("Authorization")).toBeNull();
-    });
-
     it("omits branch param when not provided", async () => {
       mockOk({ clusters: [], threshold: 0.85, checked_at: "" });
 
-      await qualityApi.getLatestDuplicates("proj-1", "tok");
+      await qualityApi.getLatestDuplicates("proj-1");
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).not.toContain("branch=");

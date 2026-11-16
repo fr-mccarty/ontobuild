@@ -24,7 +24,6 @@ import { OntologyEdge, type OntologyEdgeData } from "./OntologyEdge";
 interface OntologyGraphProps {
   focusIri: string | null;
   projectId: string;
-  accessToken?: string;
   branch?: string;
   onNavigateToClass?: (iri: string) => void;
   labelHints?: Map<string, string>;
@@ -131,7 +130,6 @@ function LegendEdgeItem({
 export function OntologyGraph({
   focusIri,
   projectId,
-  accessToken,
   branch,
   onNavigateToClass,
   labelHints,
@@ -140,7 +138,6 @@ export function OntologyGraph({
     useGraphData({
       focusIri,
       projectId,
-      accessToken,
       branch,
       labelHints,
     });

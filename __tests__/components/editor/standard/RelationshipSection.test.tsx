@@ -59,7 +59,6 @@ const emptyGroup: RelationshipGroup = {
 
 const baseProps = {
   projectId: "proj-1",
-  accessToken: "token-123",
   branch: "main",
 };
 
@@ -259,7 +258,7 @@ describe("RelationshipSection", () => {
 
       vi.advanceTimersByTime(300);
       await vi.waitFor(() => {
-        expect(mockSearchEntities).toHaveBeenCalledWith("proj-1", "Class", "token-123", "main");
+        expect(mockSearchEntities).toHaveBeenCalledWith("proj-1", "Class", "main");
       });
 
       vi.useRealTimers();

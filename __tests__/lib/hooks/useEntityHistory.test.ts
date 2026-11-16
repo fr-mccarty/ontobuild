@@ -52,7 +52,7 @@ describe("useEntityHistory", () => {
 
   it("is disabled when entityIri is null", () => {
     const { result } = renderHook(
-      () => useEntityHistory("proj-1", null, "token", "main"),
+      () => useEntityHistory("proj-1", null, "main"),
       { wrapper: createWrapper() },
     );
     expect(result.current.isFetching).toBe(false);
@@ -61,7 +61,7 @@ describe("useEntityHistory", () => {
 
   it("is disabled when projectId is empty", () => {
     const { result } = renderHook(
-      () => useEntityHistory("", "http://example.org/E", "token"),
+      () => useEntityHistory("", "http://example.org/E"),
       { wrapper: createWrapper() },
     );
     expect(result.current.isFetching).toBe(false);
@@ -71,7 +71,7 @@ describe("useEntityHistory", () => {
   it("starts in loading state when enabled", () => {
     mockedGetEntityHistory.mockReturnValue(new Promise(() => {}));
     const { result } = renderHook(
-      () => useEntityHistory("proj-1", "http://example.org/E", "token", "main"),
+      () => useEntityHistory("proj-1", "http://example.org/E", "main"),
       { wrapper: createWrapper() },
     );
     expect(result.current.isLoading).toBe(true);
@@ -80,7 +80,7 @@ describe("useEntityHistory", () => {
   it("returns data on success", async () => {
     mockedGetEntityHistory.mockResolvedValue(mockResponse);
     const { result } = renderHook(
-      () => useEntityHistory("proj-1", "http://example.org/Entity1", "token", "main"),
+      () => useEntityHistory("proj-1", "http://example.org/Entity1", "main"),
       { wrapper: createWrapper() },
     );
 
@@ -89,7 +89,6 @@ describe("useEntityHistory", () => {
     expect(mockedGetEntityHistory).toHaveBeenCalledWith(
       "proj-1",
       "http://example.org/Entity1",
-      "token",
       "main",
       50,
     );
@@ -98,7 +97,7 @@ describe("useEntityHistory", () => {
   it("returns error on failure", async () => {
     mockedGetEntityHistory.mockRejectedValue(new Error("Server error"));
     const { result } = renderHook(
-      () => useEntityHistory("proj-1", "http://example.org/E", "token"),
+      () => useEntityHistory("proj-1", "http://example.org/E"),
       { wrapper: createWrapper() },
     );
 
@@ -109,7 +108,7 @@ describe("useEntityHistory", () => {
   it("passes custom limit parameter", async () => {
     mockedGetEntityHistory.mockResolvedValue(mockResponse);
     const { result } = renderHook(
-      () => useEntityHistory("proj-1", "http://example.org/E", "token", "main", 10),
+      () => useEntityHistory("proj-1", "http://example.org/E", "main", 10),
       { wrapper: createWrapper() },
     );
 
@@ -117,13 +116,12 @@ describe("useEntityHistory", () => {
     expect(mockedGetEntityHistory).toHaveBeenCalledWith(
       "proj-1",
       "http://example.org/E",
-      "token",
       "main",
       10,
     );
   });
 
-  it("works without accessToken or branch", async () => {
+  it("works without a branch", async () => {
     mockedGetEntityHistory.mockResolvedValue(mockResponse);
     const { result } = renderHook(
       () => useEntityHistory("proj-1", "http://example.org/E"),
@@ -135,14 +133,13 @@ describe("useEntityHistory", () => {
       "proj-1",
       "http://example.org/E",
       undefined,
-      undefined,
       50,
     );
   });
 
   it("is disabled when entityIri is empty string", () => {
     const { result } = renderHook(
-      () => useEntityHistory("proj-1", "", "token"),
+      () => useEntityHistory("proj-1", ""),
       { wrapper: createWrapper() },
     );
     expect(result.current.isFetching).toBe(false);

@@ -17,18 +17,11 @@ import { Tooltip } from "@/components/ui/tooltip";
 interface BranchSelectorProps {
   className?: string;
   onBranchChange?: (branchName: string) => void;
-  canCreateBranch?: boolean;
-  readOnly?: boolean;
-  /** Explains in the tooltip why the selector is read-only. */
-  readOnlyReason?: string;
 }
 
 export function BranchSelector({
   className,
   onBranchChange,
-  canCreateBranch = false,
-  readOnly = false,
-  readOnlyReason,
 }: BranchSelectorProps) {
   const {
     branches,
@@ -112,17 +105,11 @@ export function BranchSelector({
   ].filter(Boolean).join(", ");
   const branchTooltip = isLoading
     ? "Branch: loading branches…"
-    : `Branch: ${currentBranch}${branchStatus ? ` ${branchStatus}` : ""}. ${
-        readOnly
-          ? readOnlyReason ?? "Switching branches isn't available here."
-          : canCreateBranch
-            ? "Click to switch branches or create a new one."
-            : "Click to switch branches."
-      }`;
+    : `Branch: ${currentBranch}${branchStatus ? ` ${branchStatus}` : ""}. Click to switch branches or create a new one.`;
 
   return (
     <div className={cn("relative", className)}>
-      {/* The span receives hover even when the button is disabled, so the tooltip can explain why. */}
+      {/* The span receives hover even while the button is disabled (loading), so the tooltip still shows. */}
       <Tooltip side="bottom" disabled={isOpen} content={branchTooltip}>
         <span className="inline-flex">
           <Button
@@ -132,8 +119,8 @@ export function BranchSelector({
               "gap-2",
               isFeatureBranch && "border-amber-500 text-amber-600 dark:text-amber-400"
             )}
-            onClick={() => !readOnly && setIsOpen(!isOpen)}
-            disabled={isLoading || readOnly}
+            onClick={() => setIsOpen(!isOpen)}
+            disabled={isLoading}
             aria-expanded={isOpen}
           >
             <GitBranch className="h-4 w-4" />
@@ -148,7 +135,7 @@ export function BranchSelector({
                 +{currentBranchInfo.commits_ahead}
               </span>
             )}
-            {!readOnly && <ChevronDown className="h-4 w-4" />}
+            <ChevronDown className="h-4 w-4" />
           </Button>
         </span>
       </Tooltip>
@@ -168,7 +155,7 @@ export function BranchSelector({
               </div>
             )}
 
-            {canCreateBranch && (isCreating ? (
+            {isCreating ? (
               <div className="border-b border-slate-200 p-3 dark:border-slate-700">
                 <input
                   type="text"
@@ -209,7 +196,7 @@ export function BranchSelector({
                 <Plus className="h-4 w-4" />
                 Create new branch
               </button>
-            ))}
+            )}
 
             <div className="max-h-64 overflow-y-auto py-1">
               {branches.map((branch) => (

@@ -62,7 +62,6 @@ const defaultReturn = {
 const defaultProps = {
   focusIri: "iri:Class1",
   projectId: "proj-1",
-  accessToken: "tok",
   branch: "main",
   onNavigateToClass: vi.fn(),
 };
@@ -185,7 +184,6 @@ describe("OntologyGraph", () => {
       expect.objectContaining({
         focusIri: "iri:Class1",
         projectId: "proj-1",
-        accessToken: "tok",
         branch: "main",
       })
     );

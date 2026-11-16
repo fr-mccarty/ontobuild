@@ -32,7 +32,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 
 interface HealthCheckPanelProps {
   projectId: string;
-  accessToken?: string;
   branch?: string;
   isOpen: boolean;
   onClose: () => void;
@@ -58,7 +57,6 @@ const issueColors = {
 
 export function HealthCheckPanel({
   projectId,
-  accessToken,
   branch,
   canRunLint = false,
   isOpen,
@@ -109,8 +107,8 @@ export function HealthCheckPanel({
       }
 
       const [summaryData, issuesData] = await Promise.all([
-        lintApi.getStatus(projectId, accessToken),
-        lintApi.getIssues(projectId, accessToken, issueOptions),
+        lintApi.getStatus(projectId),
+        lintApi.getIssues(projectId, issueOptions),
       ]);
 
       setSummary(summaryData);
@@ -128,18 +126,18 @@ export function HealthCheckPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, accessToken, isOpen, filter]);
+  }, [projectId, isOpen, filter]);
 
   const fetchDataRef = useRef(fetchData);
   useEffect(() => { fetchDataRef.current = fetchData; }, [fetchData]);
 
   useEffect(() => {
-    if (!isOpen || !accessToken) return;
+    if (!isOpen) return;
     let cancelled = false;
     (async () => {
       try {
         const [config, levels] = await Promise.all([
-          lintApi.getLintConfig(projectId, accessToken),
+          lintApi.getLintConfig(projectId),
           lintApi.getLevels(),
         ]);
         if (cancelled) return;
@@ -160,7 +158,7 @@ export function HealthCheckPanel({
       }
     })();
     return () => { cancelled = true; };
-  }, [isOpen, projectId, accessToken]);
+  }, [isOpen, projectId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -171,7 +169,7 @@ export function HealthCheckPanel({
   useEffect(() => {
     if (!isOpen || !isPollingLint) return;
     const controller = new AbortController();
-    waitForLintRun(projectId, { token: accessToken, signal: controller.signal })
+    waitForLintRun(projectId, { signal: controller.signal })
       .then((summary) => {
         if (controller.signal.aborted || !summary) return;
         setIsPollingLint(false);
@@ -185,13 +183,12 @@ export function HealthCheckPanel({
         setError(err instanceof Error ? err.message : "Failed to check lint status");
       });
     return () => controller.abort();
-  }, [isOpen, isPollingLint, projectId, accessToken]);
+  }, [isOpen, isPollingLint, projectId]);
 
   const handleClearResults = async () => {
-    if (!accessToken) return;
     setIsClearing(true);
     try {
-      await lintApi.clearResults(projectId, accessToken);
+      await lintApi.clearResults(projectId);
       setSummary((prev) => prev ? {
         ...prev,
         last_run: null,
@@ -210,16 +207,11 @@ export function HealthCheckPanel({
   };
 
   const handleRunLint = async () => {
-    if (!accessToken) {
-      setError("Authentication required to run lint");
-      return;
-    }
-
     setIsRunning(true);
     setError(null);
 
     try {
-      await lintApi.triggerLint(projectId, accessToken);
+      await lintApi.triggerLint(projectId);
       setIsPollingLint(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to start lint";
@@ -229,7 +221,6 @@ export function HealthCheckPanel({
   };
 
   const handleRunConsistencyCheck = async () => {
-    if (!accessToken) return;
     setIsCheckingConsistency(true);
     setConsistencyError(null);
     pollCancelled.current = false;
@@ -238,7 +229,6 @@ export function HealthCheckPanel({
     try {
       ({ job_id: jobId } = await qualityApi.triggerConsistencyCheck(
         projectId,
-        accessToken,
         branch
       ));
     } catch (err) {
@@ -259,8 +249,7 @@ export function HealthCheckPanel({
         if (pollCancelled.current) return;
         const result = await qualityApi.getConsistencyJobResult(
           projectId,
-          jobId,
-          accessToken
+          jobId
         );
         if ("status" in result && result.status === "pending") {
           delay = Math.min(delay * 1.5, maxDelay);
@@ -286,7 +275,6 @@ export function HealthCheckPanel({
   };
 
   const handleDetectDuplicates = async () => {
-    if (!accessToken) return;
     setIsDetectingDuplicates(true);
     setDuplicatesError(null);
     pollCancelled.current = false;
@@ -295,7 +283,6 @@ export function HealthCheckPanel({
     try {
       ({ job_id: jobId } = await qualityApi.triggerDuplicateDetection(
         projectId,
-        accessToken,
         branch
       ));
     } catch (err) {
@@ -316,8 +303,7 @@ export function HealthCheckPanel({
         if (pollCancelled.current) return;
         const result = await qualityApi.getDuplicateJobResult(
           projectId,
-          jobId,
-          accessToken
+          jobId
         );
         if ("status" in result && result.status === "pending") {
           delay = Math.min(delay * 1.5, maxDelay);
@@ -348,7 +334,7 @@ export function HealthCheckPanel({
       requestAnimationFrame(() => {
         if (cancelled) return;
         setIsLoadingCachedConsistency(true);
-        qualityApi.getConsistencyIssues(projectId, accessToken, branch)
+        qualityApi.getConsistencyIssues(projectId, branch)
           .then((r) => {
             if (cancelled) return;
             setConsistencyIssues(r.issues);
@@ -362,7 +348,7 @@ export function HealthCheckPanel({
       requestAnimationFrame(() => {
         if (cancelled) return;
         setIsLoadingCachedDuplicates(true);
-        qualityApi.getLatestDuplicates(projectId, accessToken, branch)
+        qualityApi.getLatestDuplicates(projectId, branch)
           .then((r) => {
             if (cancelled) return;
             setDuplicateClusters(r.clusters);
@@ -392,10 +378,9 @@ export function HealthCheckPanel({
   }, [isOpen, projectId, branch]);
 
   const handleDismissIssue = async (issueId: string) => {
-    if (!accessToken) return;
 
     try {
-      await lintApi.dismissIssue(projectId, issueId, accessToken);
+      await lintApi.dismissIssue(projectId, issueId);
       setIssues((prev) => prev.filter((i) => i.id !== issueId));
       if (summary) {
         const issue = issues.find((i) => i.id === issueId);
@@ -454,7 +439,7 @@ export function HealthCheckPanel({
                   variant="outline"
                   size="sm"
                   onClick={handleClearResults}
-                  disabled={isClearing || !accessToken || !canRunLint}
+                  disabled={isClearing || !canRunLint}
                   className="gap-1"
                 >
                   <X className="h-4 w-4" />
@@ -465,7 +450,7 @@ export function HealthCheckPanel({
                   variant="outline"
                   size="sm"
                   onClick={handleRunLint}
-                  disabled={isRunning || !accessToken || !canRunLint}
+                  disabled={isRunning || !canRunLint}
                   className="gap-1"
                 >
                   <RefreshCw className={cn("h-4 w-4", isRunning && "animate-spin")} />
@@ -478,7 +463,7 @@ export function HealthCheckPanel({
                 variant="outline"
                 size="sm"
                 onClick={handleRunConsistencyCheck}
-                disabled={isCheckingConsistency || !accessToken}
+                disabled={isCheckingConsistency}
                 className="gap-1"
               >
                 <ShieldCheck className={cn("h-4 w-4", isCheckingConsistency && "animate-spin")} />
@@ -490,7 +475,7 @@ export function HealthCheckPanel({
                 variant="outline"
                 size="sm"
                 onClick={handleDetectDuplicates}
-                disabled={isDetectingDuplicates || !accessToken}
+                disabled={isDetectingDuplicates}
                 className="gap-1"
               >
                 <Copy className={cn("h-4 w-4", isDetectingDuplicates && "animate-spin")} />
@@ -630,7 +615,7 @@ export function HealthCheckPanel({
                 key={issue.id}
                 issue={issue}
                 onNavigate={onNavigateToClass}
-                onDismiss={accessToken ? () => handleDismissIssue(issue.id) : undefined}
+                onDismiss={() => handleDismissIssue(issue.id)}
               />
             ))}
           </div>

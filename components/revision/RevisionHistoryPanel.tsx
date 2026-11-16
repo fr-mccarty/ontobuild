@@ -20,7 +20,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 
 interface RevisionHistoryPanelProps {
   projectId: string;
-  accessToken?: string;
   isOpen: boolean;
   onClose: () => void;
   onSelectRevision?: (commit: RevisionCommit) => void;
@@ -33,7 +32,6 @@ const ROW_HEIGHT = DEFAULT_GRAPH_CONFIG.cellHeight;
 
 export function RevisionHistoryPanel({
   projectId,
-  accessToken,
   isOpen,
   onClose,
   onSelectRevision,
@@ -55,7 +53,7 @@ export function RevisionHistoryPanel({
     setError(null);
 
     try {
-      const response = await revisionsApi.getHistory(projectId, accessToken);
+      const response = await revisionsApi.getHistory(projectId);
       setCommits(response.commits);
       setRefs(response.refs);
     } catch (err) {
@@ -65,7 +63,7 @@ export function RevisionHistoryPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, accessToken]);
+  }, [projectId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -141,7 +139,6 @@ export function RevisionHistoryPanel({
           <CommitDetailView
             commit={selectedCommit}
             projectId={projectId}
-            accessToken={accessToken}
             onBack={handleBackToList}
             commits={commits}
           />

@@ -22,7 +22,6 @@ export class IndexStatusPoller {
   constructor(
     projectId: string,
     onMessage: (message: IndexStatusEvent) => void,
-    _token?: string,
     options: { branch?: string; intervalMs?: number } = {}
   ) {
     this.projectId = projectId;
@@ -56,7 +55,7 @@ export class IndexStatusPoller {
 
   private async poll(): Promise<void> {
     try {
-      const status = await projectOntologyApi.getIndexStatus(this.projectId, undefined, this.branch);
+      const status = await projectOntologyApi.getIndexStatus(this.projectId, this.branch);
       if (!this.active) return;
       const prev = this.lastStatus;
       this.lastStatus = status.status;

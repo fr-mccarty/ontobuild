@@ -27,7 +27,6 @@ describe("useTreeSearch", () => {
 
   const defaultOpts = {
     projectId: "proj-1",
-    accessToken: "token",
     branch: "main",
     onSearchSelect: vi.fn(),
   };
@@ -104,7 +103,7 @@ describe("useTreeSearch", () => {
       expect(result.current.searchResults).toEqual(mockSearchResponse.results);
     }, { timeout: 2000 });
 
-    expect(mockedSearchEntities).toHaveBeenCalledWith("proj-1", "Person", "token", "main");
+    expect(mockedSearchEntities).toHaveBeenCalledWith("proj-1", "Person", "main");
   });
 
   it("does not search when query is whitespace", async () => {

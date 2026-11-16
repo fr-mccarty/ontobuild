@@ -30,7 +30,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 interface CommitDetailViewProps {
   commit: RevisionCommit;
   projectId: string;
-  accessToken?: string;
   onBack: () => void;
   commits: RevisionCommit[];
   className?: string;
@@ -39,7 +38,6 @@ interface CommitDetailViewProps {
 export function CommitDetailView({
   commit,
   projectId,
-  accessToken,
   onBack,
   commits,
   className,
@@ -63,8 +61,7 @@ export function CommitDetailView({
       const response = await revisionsApi.getDiff(
         projectId,
         commit.parent_hashes[0],
-        commit.hash,
-        accessToken
+        commit.hash
       );
       setDiff(response);
       setExpandedFiles(new Set(response.changes.map((c) => c.path)));
@@ -75,7 +72,7 @@ export function CommitDetailView({
     } finally {
       setIsLoadingDiff(false);
     }
-  }, [commit, projectId, accessToken]);
+  }, [commit, projectId]);
 
   useEffect(() => {
     loadDiff();

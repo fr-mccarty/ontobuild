@@ -100,7 +100,6 @@ const allCommits = [mockCommit, parentCommit, mockInitialCommit, mockMergeCommit
 const defaultProps = {
   commit: mockCommit,
   projectId: "proj-1",
-  accessToken: "tok",
   onBack: vi.fn(),
   commits: allCommits,
 };
@@ -173,7 +172,6 @@ describe("CommitDetailView", () => {
         "proj-1",
         mockCommit.parent_hashes[0],
         mockCommit.hash,
-        "tok"
       );
     });
   });

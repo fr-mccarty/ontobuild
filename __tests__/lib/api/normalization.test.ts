@@ -32,26 +32,6 @@ describe("normalizationApi", () => {
       expect(url).toContain("/api/v1/projects/proj-1/normalization/status");
       expect(options.method).toBe("GET");
     });
-
-    it("includes auth header when token provided", async () => {
-      mockOk({ needs_normalization: false });
-
-      await normalizationApi.getStatus("proj-1", "my-token");
-
-      const [, options] = mockFetch.mock.calls[0];
-      const headers = new Headers(options.headers);
-      expect(headers.get("Authorization")).toBeNull();
-    });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ needs_normalization: false });
-
-      await normalizationApi.getStatus("proj-1");
-
-      const [, options] = mockFetch.mock.calls[0];
-      const headers = new Headers(options.headers);
-      expect(headers.get("Authorization")).toBeNull();
-    });
   });
 
   describe("runNormalization", () => {
@@ -61,8 +41,7 @@ describe("normalizationApi", () => {
 
       const result = await normalizationApi.runNormalization(
         "proj-1",
-        true,
-        "my-token"
+        true
       );
       expect(result).toEqual(data);
 
@@ -75,7 +54,7 @@ describe("normalizationApi", () => {
     it("defaults dry_run to false", async () => {
       mockOk({ id: "run-1" });
 
-      await normalizationApi.runNormalization("proj-1", undefined as unknown as boolean, "tok");
+      await normalizationApi.runNormalization("proj-1", undefined as unknown as boolean);
 
       const [, options] = mockFetch.mock.calls[0];
       expect(JSON.parse(options.body)).toEqual({ dry_run: false });
@@ -99,7 +78,7 @@ describe("normalizationApi", () => {
     it("passes custom limit and includeDryRuns", async () => {
       mockOk({ items: [], total: 0 });
 
-      await normalizationApi.getHistory("proj-1", 25, true, "tok");
+      await normalizationApi.getHistory("proj-1", 25, true);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("limit=25");
@@ -112,7 +91,7 @@ describe("normalizationApi", () => {
       const data = { id: "run-1", project_id: "proj-1" };
       mockOk(data);
 
-      const result = await normalizationApi.getRun("proj-1", "run-1", "tok");
+      const result = await normalizationApi.getRun("proj-1", "run-1");
       expect(result).toEqual(data);
 
       const [url] = mockFetch.mock.calls[0];
@@ -127,7 +106,7 @@ describe("normalizationApi", () => {
       const data = { message: "Queued", job_id: "job-1" };
       mockOk(data);
 
-      const result = await normalizationApi.refreshStatus("proj-1", "tok");
+      const result = await normalizationApi.refreshStatus("proj-1");
       expect(result).toEqual(data);
 
       const [url, options] = mockFetch.mock.calls[0];
@@ -145,8 +124,7 @@ describe("normalizationApi", () => {
 
       const result = await normalizationApi.queueNormalization(
         "proj-1",
-        true,
-        "tok"
+        true
       );
       expect(result).toEqual(data);
 
@@ -171,8 +149,7 @@ describe("normalizationApi", () => {
 
       const result = await normalizationApi.getJobStatus(
         "proj-1",
-        "job-1",
-        "tok"
+        "job-1"
       );
       expect(result).toEqual(data);
 

@@ -5,10 +5,10 @@ export const lintQueryKeys = {
   summary: (projectId: string) => ["lint", "summary", projectId] as const,
 };
 
-export function useLintSummary(projectId: string, accessToken?: string) {
+export function useLintSummary(projectId: string) {
   return useQuery({
     queryKey: lintQueryKeys.summary(projectId),
-    queryFn: () => lintApi.getStatus(projectId, accessToken),
-    enabled: !!projectId && !!accessToken,
+    queryFn: () => lintApi.getStatus(projectId),
+    enabled: !!projectId,
   });
 }

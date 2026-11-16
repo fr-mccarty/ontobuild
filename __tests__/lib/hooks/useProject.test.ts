@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { derivePermissions, useProject } from "@/lib/hooks/useProject";
+import { useProject } from "@/lib/hooks/useProject";
 import { ApiError } from "@/lib/api/client";
 import type { Project } from "@/lib/api/projects";
 
@@ -30,79 +30,10 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     id: "proj-1",
     name: "Test Project",
     is_public: true,
-    owner_id: "user-1",
     created_at: "2024-01-01T00:00:00Z",
-    member_count: 1,
     ...overrides,
   };
 }
-
-describe("derivePermissions", () => {
-  it("returns all false/falsy when project is null", () => {
-    const perms = derivePermissions(null);
-    expect(perms.canManage).toBe(false);
-    expect(perms.canEdit).toBe(false);
-    expect(perms.hasValidAccess).toBe(false);
-    expect(perms.hasOntology).toBe(false);
-  });
-
-  it("grants canManage and canEdit for owner role", () => {
-    const perms = derivePermissions(makeProject({ user_role: "owner" }));
-    expect(perms.canManage).toBe(true);
-    expect(perms.canEdit).toBe(true);
-  });
-
-  it("grants canManage and canEdit for admin role", () => {
-    const perms = derivePermissions(makeProject({ user_role: "admin" }));
-    expect(perms.canManage).toBe(true);
-    expect(perms.canEdit).toBe(true);
-  });
-
-  it("grants canEdit but not canManage for editor role", () => {
-    const perms = derivePermissions(makeProject({ user_role: "editor" }));
-    expect(perms.canManage).toBe(false);
-    expect(perms.canEdit).toBe(true);
-  });
-
-  it("grants no edit/manage for viewer role", () => {
-    const perms = derivePermissions(makeProject({ user_role: "viewer" }));
-    expect(perms.canManage).toBe(false);
-    expect(perms.canEdit).toBe(false);
-  });
-
-  it("grants canManage and canEdit for superadmin regardless of role", () => {
-    const perms = derivePermissions(
-      makeProject({ user_role: undefined, is_superadmin: true })
-    );
-    expect(perms.canManage).toBe(true);
-    expect(perms.canEdit).toBe(true);
-  });
-
-  it("superadmin with viewer role still gets canManage/canEdit", () => {
-    const perms = derivePermissions(
-      makeProject({ user_role: "viewer", is_superadmin: true })
-    );
-    expect(perms.canManage).toBe(true);
-    expect(perms.canEdit).toBe(true);
-  });
-
-  it("reports hasValidAccess when accessToken is provided", () => {
-    const perms = derivePermissions(makeProject(), "token-abc");
-    expect(perms.hasValidAccess).toBe(true);
-  });
-
-  it("reports hasOntology when source_file_path is set", () => {
-    const perms = derivePermissions(
-      makeProject({ source_file_path: "ontology.ttl" })
-    );
-    expect(perms.hasOntology).toBe(true);
-  });
-
-  it("reports no ontology when source_file_path is absent", () => {
-    const perms = derivePermissions(makeProject({ source_file_path: undefined }));
-    expect(perms.hasOntology).toBe(false);
-  });
-});
 
 describe("useProject", () => {
   beforeEach(() => {
@@ -111,7 +42,7 @@ describe("useProject", () => {
 
   it("returns loading state initially", () => {
     mockedGet.mockReturnValue(new Promise(() => {}));
-    const { result } = renderHook(() => useProject("proj-1", "token"), {
+    const { result } = renderHook(() => useProject("proj-1"), {
       wrapper: createWrapper(),
     });
 
@@ -125,7 +56,7 @@ describe("useProject", () => {
     const project = makeProject({ id: "proj-1", name: "My Project" });
     mockedGet.mockResolvedValue(project);
 
-    const { result } = renderHook(() => useProject("proj-1", "token"), {
+    const { result } = renderHook(() => useProject("proj-1"), {
       wrapper: createWrapper(),
     });
 
@@ -141,7 +72,7 @@ describe("useProject", () => {
       new ApiError(403, "Forbidden", "Not allowed")
     );
 
-    const { result } = renderHook(() => useProject("proj-1", "token"), {
+    const { result } = renderHook(() => useProject("proj-1"), {
       wrapper: createWrapper(),
     });
 
@@ -156,7 +87,7 @@ describe("useProject", () => {
       new ApiError(404, "Not Found", "Project not found")
     );
 
-    const { result } = renderHook(() => useProject("proj-1", "token"), {
+    const { result } = renderHook(() => useProject("proj-1"), {
       wrapper: createWrapper(),
     });
 
@@ -175,7 +106,7 @@ describe("useProject", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children);
 
-    const { result } = renderHook(() => useProject("proj-1", "token"), {
+    const { result } = renderHook(() => useProject("proj-1"), {
       wrapper,
     });
 
@@ -194,7 +125,7 @@ describe("useProject", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children);
 
-    const { result } = renderHook(() => useProject("proj-1", "token"), {
+    const { result } = renderHook(() => useProject("proj-1"), {
       wrapper,
     });
 
@@ -205,7 +136,7 @@ describe("useProject", () => {
   });
 
   it("does not fetch when projectId is empty", async () => {
-    const { result } = renderHook(() => useProject("", "token"), {
+    const { result } = renderHook(() => useProject(""), {
       wrapper: createWrapper(),
     });
 
@@ -218,7 +149,7 @@ describe("useProject", () => {
   it("provides a refetch function", async () => {
     mockedGet.mockResolvedValue(makeProject());
 
-    const { result } = renderHook(() => useProject("proj-1", "token"), {
+    const { result } = renderHook(() => useProject("proj-1"), {
       wrapper: createWrapper(),
     });
 

@@ -121,7 +121,6 @@ const DEFAULT_PROPS = {
   individualIri: "http://example.org/ontology#JohnDoe",
   sourceContent: SAMPLE_SOURCE,
   canEdit: false,
-  accessToken: "test-token",
   branch: "main",
 };
 

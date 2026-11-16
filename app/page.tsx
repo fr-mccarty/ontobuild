@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useSession } from "@/lib/localUser";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Plus, Search, FolderOpen } from "lucide-react";
@@ -14,7 +13,6 @@ import { cn } from "@/lib/utils";
 const PAGE_SIZE = 50;
 
 export default function HomePage() {
-  const { data: session, status } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -38,13 +36,12 @@ export default function HomePage() {
   } = useInfiniteQuery({
     queryKey: ["projects", debouncedSearch],
     queryFn: async ({ pageParam = 0 }) =>
-      projectApi.list(pageParam, PAGE_SIZE, session?.accessToken, debouncedSearch || undefined),
+      projectApi.list(pageParam, PAGE_SIZE, debouncedSearch || undefined),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
       const nextSkip = lastPage.skip + lastPage.limit;
       return nextSkip < lastPage.total ? nextSkip : undefined;
     },
-    enabled: status !== "loading",
   });
 
   const projects = data?.pages.flatMap((page) => page.items) ?? [];

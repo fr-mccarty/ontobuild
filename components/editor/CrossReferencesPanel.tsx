@@ -29,7 +29,6 @@ const entityTypeBadges: Record<string, { letter: string; className: string }> = 
 interface CrossReferencesPanelProps {
   projectId: string;
   entityIri: string | null;
-  accessToken?: string;
   branch?: string;
   onNavigateToClass?: (iri: string) => void;
 }
@@ -37,7 +36,6 @@ interface CrossReferencesPanelProps {
 export function CrossReferencesPanel({
   projectId,
   entityIri,
-  accessToken,
   branch,
   onNavigateToClass,
 }: CrossReferencesPanelProps) {
@@ -45,7 +43,6 @@ export function CrossReferencesPanel({
   const { data, isLoading } = useCrossReferences(
     projectId,
     entityIri,
-    accessToken,
     branch
   );
 

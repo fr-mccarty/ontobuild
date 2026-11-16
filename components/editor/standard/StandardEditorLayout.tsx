@@ -41,7 +41,6 @@ import { useAnnounce } from "@/components/ui/ScreenReaderAnnouncer";
 
 export interface StandardEditorLayoutProps {
   projectId: string;
-  accessToken?: string;
   activeBranch?: string;
   canEdit: boolean;
 
@@ -100,7 +99,6 @@ export interface StandardEditorLayoutProps {
 export function StandardEditorLayout(props: StandardEditorLayoutProps) {
   const {
     projectId,
-    accessToken,
     activeBranch,
     canEdit,
     nodes,
@@ -283,7 +281,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     handleSearchSelect: baseSearchSelect,
   } = useTreeSearch({
     projectId,
-    accessToken,
     branch: activeBranch,
     onSearchSelect: navigateToNode,
   });
@@ -291,7 +288,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
   const { filteredNodes, isBuilding: isFilteredTreeBuilding, truncated: filteredTreeTruncated } = useFilteredTree({
     searchResults: showSearch ? searchResults : null,
     projectId,
-    accessToken,
     branch: activeBranch,
   });
 
@@ -386,7 +382,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
           {activeTab === "properties" && (
             <PropertyTree
               projectId={projectId}
-              accessToken={accessToken}
               branch={activeBranch}
               selectedIri={selectedPropertyIri}
               onSelect={setSelectedPropertyIri}
@@ -397,7 +392,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
           {activeTab === "individuals" && (
             <IndividualList
               projectId={projectId}
-              accessToken={accessToken}
               branch={activeBranch}
               selectedIri={selectedIndividualIri}
               onSelect={setSelectedIndividualIri}
@@ -433,7 +427,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
               <OntologyGraph
                 focusIri={selectedIri}
                 projectId={projectId}
-                accessToken={accessToken}
                 branch={activeBranch}
                 labelHints={treeLabelHints}
                 onNavigateToClass={(iri) => {
@@ -448,7 +441,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
             key={`${selectedIri ?? "no-class"}:${detailEpoch}`}
             projectId={projectId}
             classIri={selectedIri}
-            accessToken={accessToken}
             branch={activeBranch}
             onNavigateToClass={(iri) => navigateToNode(iri)}
             onCopyIri={onCopyIri}
@@ -481,7 +473,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
             refreshKey={detailRefreshKey}
             onNavigateToEntity={(iri) => navigateToNode(iri)}
             onCopyIri={onCopyIri}
-            accessToken={accessToken}
             labelHints={treeLabelHintsRecord}
           />
         ) : (
@@ -496,7 +487,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
             refreshKey={detailRefreshKey}
             onNavigateToEntity={(iri) => navigateToNode(iri)}
             onCopyIri={onCopyIri}
-            accessToken={accessToken}
             labelHints={treeLabelHintsRecord}
           />
         )}

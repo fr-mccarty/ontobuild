@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "@/lib/localUser";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, BarChart3, Flame, Users } from "lucide-react";
@@ -15,26 +14,21 @@ import { cn, getLocalName } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 
 export default function ProjectAnalyticsPage() {
-  const { data: session } = useSession();
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
-  const token = session?.accessToken;
   const projectHomeHref = useProjectHomeHref(projectId);
 
   const { data: activity, isLoading: loadingActivity, error: activityError } = useProjectActivity(
     projectId,
-    token,
     30
   );
   const { data: hotEntities, isLoading: loadingHot, error: hotError } = useHotEntities(
     projectId,
-    token,
     20
   );
   const { data: contributors, isLoading: loadingContributors, error: contributorsError } = useContributors(
     projectId,
-    token,
     30
   );
 

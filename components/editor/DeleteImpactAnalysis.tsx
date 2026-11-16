@@ -9,7 +9,6 @@ import type { CrossReferencesResponse, CrossReferenceGroup } from "@/lib/ontolog
 interface DeleteImpactAnalysisProps {
   projectId: string;
   entityIri: string | null;
-  accessToken?: string;
   branch?: string;
   onAcknowledge: (acknowledged: boolean) => void;
 }
@@ -17,13 +16,12 @@ interface DeleteImpactAnalysisProps {
 export function DeleteImpactAnalysis({
   projectId,
   entityIri,
-  accessToken,
   branch,
   onAcknowledge,
 }: DeleteImpactAnalysisProps) {
   // Identifies the cross-reference lookup the current props call for (null = nothing to check).
   const requestKey = entityIri && projectId
-    ? JSON.stringify([projectId, entityIri, accessToken ?? null, branch ?? null])
+    ? JSON.stringify([projectId, entityIri, branch ?? null])
     : null;
 
   // Result of the most recent lookup, tagged with the request it answers so that
@@ -52,7 +50,7 @@ export function DeleteImpactAnalysis({
     if (!requestKey || !entityIri) return;
     let cancelled = false;
     qualityApi
-      .getCrossReferences(projectId, entityIri, accessToken, branch)
+      .getCrossReferences(projectId, entityIri, branch)
       .then((response) => {
         if (!cancelled) setResult({ key: requestKey, data: response, error: false });
       })
@@ -62,7 +60,7 @@ export function DeleteImpactAnalysis({
     return () => {
       cancelled = true;
     };
-  }, [requestKey, entityIri, projectId, accessToken, branch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [requestKey, entityIri, projectId, branch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = data?.total ?? 0;
 

@@ -4,14 +4,13 @@ import { analyticsApi } from "@/lib/api/analytics";
 export function useEntityHistory(
   projectId: string,
   entityIri: string | null,
-  accessToken?: string,
   branch?: string,
   limit = 50
 ) {
   return useQuery({
-    queryKey: ["entityHistory", projectId, entityIri, !!accessToken, branch, limit],
+    queryKey: ["entityHistory", projectId, entityIri, branch, limit],
     queryFn: () =>
-      analyticsApi.getEntityHistory(projectId, entityIri!, accessToken, branch, limit),
+      analyticsApi.getEntityHistory(projectId, entityIri!, branch, limit),
     enabled: !!entityIri && !!projectId,
     staleTime: 30_000,
   });

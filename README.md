@@ -15,8 +15,8 @@ This project was rebuilt from two upstream projects:
 | ontokit-web (Next.js frontend) | https://github.com/CatholicOS/ontokit-web | `~/ontokit-web` | `c5d3ae0` |
 | ontokit-api (FastAPI backend) | https://github.com/CatholicOS/ontokit-api | `~/ontokit-api` | `c8383ad` |
 
-- The frontend (`app/`, `components/`, `lib/`, `messages/`, `__tests__/`) is copied from
-  ontokit-web, with authentication and the dropped features removed.
+- The frontend (`app/`, `components/`, `lib/`, `__tests__/`) is copied from ontokit-web, with
+  authentication, roles and the dropped features removed.
 - The API (`server/`) started as a TypeScript port of ontokit-api, with the same `/api/v1`
   paths and JSON shapes. Most route files in `server/routes/` still correspond to the matching
   `ontokit/api/routes/*.py` file in ontokit-api, and `server/linter.ts` and `server/quality.ts`
@@ -126,7 +126,7 @@ browser ──> Next.js (App Router pages, React Query)
 ```
 
 ```
-app/, components/, lib/, messages/, public/   frontend (Next.js App Router)
+app/, components/, lib/, public/             frontend (Next.js App Router)
 app/api/v1/[[...path]]/route.ts               forwards every /api/v1/* request to Hono
 server/app.ts                                 Hono app (basePath /api/v1), error handler, /health, /openapi.json
 server/http.ts                                shared request and response helpers
@@ -144,13 +144,13 @@ server/rdf.ts                                 parse Turtle, N3, N-Triples, N-Qua
 server/ontology.ts                            load a branch into an N3 store (cached by commit), commit edits
 server/linter.ts  quality.ts                  lint rules, consistency checks, duplicate detection
 server/jobs.ts                                in-process background jobs (replaces ARQ/Redis)
-server/user.ts                                the fixed local user (owner of every project)
+server/user.ts                                the fixed local user (author of every commit and comment)
 ```
 
 - The frontend's `lib/api/*` clients call the relative `/api/v1` by default. Set
   `NEXT_PUBLIC_API_URL` to point them at another server.
-- Every request acts as the local user, who owns every project, so the UI always shows the
-  owner/editor view.
+- Every request acts as the single local user. There are no roles or permission checks, so
+  every action is always available.
 - Websockets were replaced by polling the existing status endpoints (lint status, index
   status, quality and normalization jobs).
 - The OpenAPI document is generated from the registered routes, served at
@@ -162,7 +162,8 @@ server/user.ts                                the fixed local user (owner of eve
 These features were removed from both the API and the UI:
 
 - Login and authentication (Zitadel, next-auth, sign-in pages, session guard, user menu)
-- Project members, roles, join requests and ownership transfer
+- Project members, roles, permissions, join requests and ownership transfer
+- Exemplar projects
 - The suggestions workflow for non-editor roles
 - Notifications and user search
 - GitHub integration: create from GitHub, GitHub tokens, webhooks, remote sync
@@ -172,7 +173,7 @@ These features were removed from both the API and the UI:
 - Language tags and the language dimension (see below)
 - The project viewer page and the public/private project setting. The editor is the only view
   of a project (`/projects/<id>/editor` redirects to `/projects/<id>`). The API still stores
-  `is_public`, and the import endpoint still requires the field, but the UI no longer shows it.
+  an optional `is_public` flag, but the UI no longer uses it.
 
 The Developer editor mode was also removed from the UI: the Standard/Developer switch and the
 Turtle source editor are gone, and the form-based editor is the only editor. The pull requests
@@ -215,12 +216,16 @@ link moved from the editor toolbar into the **Share** menu.
 - Queued lint and normalization jobs return 202, and their responses include the run id,
   branch and totals.
 - Label and annotation values are returned as `{ value }`, with no `lang` field.
+- Project responses no longer include `owner_id`, `owner`, `member_count`, `user_role` or
+  `is_superadmin`.
+- `is_public` is optional on import and defaults to `false`.
+- Requests need no `Authorization` header, and the API ignores one if sent.
 
 ## Quick API check
 
 ```bash
 curl -s localhost:3000/api/v1/health
-curl -s -X POST localhost:3000/api/v1/projects/import -F file=@my-ontology.ttl -F is_public=false
+curl -s -X POST localhost:3000/api/v1/projects/import -F file=@my-ontology.ttl
 curl -s localhost:3000/api/v1/projects
 curl -s -H 'Accept: text/turtle' localhost:3000/api/v1/projects/<id>/source
 ```

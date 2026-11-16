@@ -25,25 +25,13 @@ describe("analyticsApi", () => {
       expect(options.method).toBe("GET");
     });
 
-    it("includes token and custom days", async () => {
+    it("passes custom days", async () => {
       mockOk({ daily_counts: [], total_events: 0, top_editors: [] });
 
-      await analyticsApi.getActivity("proj-1", "tok", 7);
+      await analyticsApi.getActivity("proj-1", 7);
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("days=7");
-      const headers = new Headers(options.headers);
-      expect(headers.get("Authorization")).toBeNull();
-    });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ daily_counts: [], total_events: 0, top_editors: [] });
-
-      await analyticsApi.getActivity("proj-1");
-
-      const [, options] = mockFetch.mock.calls[0];
-      const headers = new Headers(options.headers);
-      expect(headers.get("Authorization")).toBeNull();
     });
   });
 
@@ -77,7 +65,6 @@ describe("analyticsApi", () => {
       await analyticsApi.getEntityHistory(
         "proj-1",
         "http://example.org/Foo",
-        "tok",
         "dev",
         10
       );
@@ -112,7 +99,7 @@ describe("analyticsApi", () => {
     it("passes custom limit", async () => {
       mockOk([]);
 
-      await analyticsApi.getHotEntities("proj-1", "tok", 5);
+      await analyticsApi.getHotEntities("proj-1", 5);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("limit=5");
@@ -133,10 +120,10 @@ describe("analyticsApi", () => {
       expect(url).toContain("days=30");
     });
 
-    it("passes custom days and token", async () => {
+    it("passes custom days", async () => {
       mockOk([]);
 
-      await analyticsApi.getContributors("proj-1", "tok", 14);
+      await analyticsApi.getContributors("proj-1", 14);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("days=14");

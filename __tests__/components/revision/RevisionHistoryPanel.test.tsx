@@ -103,7 +103,6 @@ const mockHistoryResponse: RevisionHistoryResponse = {
 
 const defaultProps = {
   projectId: "proj-1",
-  accessToken: "tok",
   isOpen: true,
   onClose: vi.fn(),
   onSelectRevision: vi.fn(),
@@ -354,14 +353,13 @@ describe("RevisionHistoryPanel", () => {
     expect(screen.getByText("3 days ago")).toBeDefined();
   });
 
-  it("passes projectId and accessToken to revisionsApi.getHistory", async () => {
+  it("passes projectId to revisionsApi.getHistory", async () => {
     await act(async () => {
       render(<RevisionHistoryPanel {...defaultProps} />);
     });
     await waitFor(() => {
       expect(mockGetHistory).toHaveBeenCalled();
       expect(mockGetHistory.mock.calls[0][0]).toBe("proj-1");
-      expect(mockGetHistory.mock.calls[0][1]).toBe("tok");
     });
   });
 

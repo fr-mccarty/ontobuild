@@ -38,32 +38,22 @@ describe("revisionsApi", () => {
       const response = { project_id: "p1", commits: [], total: 0 };
       mockOk(response);
 
-      const result = await revisionsApi.getHistory("p1", "tok");
+      const result = await revisionsApi.getHistory("p1");
       expect(result).toEqual(response);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/revisions");
       expect(url).toContain("limit=50");
       expect(options.method).toBe("GET");
-      expect(options.headers.get("Authorization")).toBeNull();
     });
 
     it("passes custom limit", async () => {
       mockOk({ project_id: "p1", commits: [], total: 0 });
 
-      await revisionsApi.getHistory("p1", undefined, 10);
+      await revisionsApi.getHistory("p1", 10);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("limit=10");
-    });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ project_id: "p1", commits: [], total: 0 });
-
-      await revisionsApi.getHistory("p1");
-
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.headers.has("Authorization")).toBe(false);
     });
 
     it("throws ApiError on 404", async () => {
@@ -78,7 +68,7 @@ describe("revisionsApi", () => {
       const response = { project_id: "p1", version: "abc123", filename: "ontology.ttl", content: "@prefix..." };
       mockOk(response);
 
-      const result = await revisionsApi.getFileAtVersion("p1", "abc123", "tok");
+      const result = await revisionsApi.getFileAtVersion("p1", "abc123");
       expect(result).toEqual(response);
 
       const [url] = mockFetch.mock.calls[0];
@@ -90,19 +80,10 @@ describe("revisionsApi", () => {
     it("passes custom filename", async () => {
       mockOk({ project_id: "p1", version: "abc", filename: "other.owl", content: "" });
 
-      await revisionsApi.getFileAtVersion("p1", "abc", undefined, "other.owl");
+      await revisionsApi.getFileAtVersion("p1", "abc", "other.owl");
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("filename=other.owl");
-    });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ project_id: "p1", version: "abc", filename: "ontology.ttl", content: "" });
-
-      await revisionsApi.getFileAtVersion("p1", "abc");
-
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.headers.has("Authorization")).toBe(false);
     });
   });
 
@@ -111,7 +92,7 @@ describe("revisionsApi", () => {
       const response = { project_id: "p1", from_version: "a", to_version: "HEAD", files_changed: 0, changes: [] };
       mockOk(response);
 
-      const result = await revisionsApi.getDiff("p1", "a", undefined, "tok");
+      const result = await revisionsApi.getDiff("p1", "a", undefined);
       expect(result).toEqual(response);
 
       const [url] = mockFetch.mock.calls[0];
@@ -146,22 +127,12 @@ describe("branchesApi", () => {
       };
       mockOk(response);
 
-      const result = await branchesApi.list("p1", "tok");
+      const result = await branchesApi.list("p1");
       expect(result).toEqual(response);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/branches");
       expect(options.method).toBe("GET");
-      expect(options.headers.get("Authorization")).toBeNull();
-    });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ items: [], current_branch: "main", default_branch: "main", preferred_branch: null });
-
-      await branchesApi.list("p1");
-
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.headers.has("Authorization")).toBe(false);
     });
   });
 
@@ -170,14 +141,13 @@ describe("branchesApi", () => {
       const branch = { name: "feature", is_current: false, is_default: false, commits_ahead: 0, commits_behind: 0, can_delete: true, has_open_pr: false, has_delete_permission: true };
       mockOk(branch);
 
-      const result = await branchesApi.create("p1", { name: "feature", from_branch: "main" }, "tok");
+      const result = await branchesApi.create("p1", { name: "feature", from_branch: "main" });
       expect(result).toEqual(branch);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/branches");
       expect(options.method).toBe("POST");
       expect(JSON.parse(options.body)).toEqual({ name: "feature", from_branch: "main" });
-      expect(options.headers.get("Authorization")).toBeNull();
     });
   });
 
@@ -185,7 +155,7 @@ describe("branchesApi", () => {
     it("calls DELETE with URL-encoded branch name and force param", async () => {
       mockEmpty();
 
-      await branchesApi.delete("p1", "feat/old", "tok", true);
+      await branchesApi.delete("p1", "feat/old", true);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/branches/feat%2Fold");
@@ -196,7 +166,7 @@ describe("branchesApi", () => {
     it("passes force=false by default", async () => {
       mockEmpty();
 
-      await branchesApi.delete("p1", "old-branch", "tok");
+      await branchesApi.delete("p1", "old-branch");
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("force=false");
@@ -207,13 +177,12 @@ describe("branchesApi", () => {
     it("calls PUT /api/v1/projects/:id/branch-preference", async () => {
       mockEmpty();
 
-      await branchesApi.savePreference("p1", "develop", "tok");
+      await branchesApi.savePreference("p1", "develop");
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/branch-preference");
       expect(url).toContain("branch=develop");
       expect(options.method).toBe("PUT");
-      expect(options.headers.get("Authorization")).toBeNull();
     });
   });
 });

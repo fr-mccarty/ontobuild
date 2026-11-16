@@ -3,12 +3,11 @@ import { analyticsApi } from "@/lib/api/analytics";
 
 export function useProjectActivity(
   projectId: string,
-  accessToken?: string,
   days = 30
 ) {
   return useQuery({
-    queryKey: ["projectActivity", projectId, !!accessToken, days],
-    queryFn: () => analyticsApi.getActivity(projectId, accessToken, days),
+    queryKey: ["projectActivity", projectId, days],
+    queryFn: () => analyticsApi.getActivity(projectId, days),
     enabled: !!projectId,
     staleTime: 60_000,
   });
@@ -16,13 +15,12 @@ export function useProjectActivity(
 
 export function useHotEntities(
   projectId: string,
-  accessToken?: string,
   limit = 20,
   days = 30
 ) {
   return useQuery({
-    queryKey: ["hotEntities", projectId, !!accessToken, limit, days],
-    queryFn: () => analyticsApi.getHotEntities(projectId, accessToken, limit, days),
+    queryKey: ["hotEntities", projectId, limit, days],
+    queryFn: () => analyticsApi.getHotEntities(projectId, limit, days),
     enabled: !!projectId,
     staleTime: 60_000,
   });
@@ -30,12 +28,11 @@ export function useHotEntities(
 
 export function useContributors(
   projectId: string,
-  accessToken?: string,
   days = 30
 ) {
   return useQuery({
-    queryKey: ["contributors", projectId, !!accessToken, days],
-    queryFn: () => analyticsApi.getContributors(projectId, accessToken, days),
+    queryKey: ["contributors", projectId, days],
+    queryFn: () => analyticsApi.getContributors(projectId, days),
     enabled: !!projectId,
     staleTime: 60_000,
   });

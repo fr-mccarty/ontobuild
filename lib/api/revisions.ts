@@ -74,16 +74,11 @@ export interface BranchCreate {
 }
 
 export const revisionsApi = {
-  getHistory: (projectId: string, token?: string, limit = 50) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  getHistory: (projectId: string, limit = 50) => {
     return api.get<RevisionHistoryResponse>(
       `/api/v1/projects/${projectId}/revisions`,
       {
         params: { limit },
-        headers,
       }
     );
   },
@@ -91,18 +86,12 @@ export const revisionsApi = {
   getFileAtVersion: (
     projectId: string,
     version: string,
-    token?: string,
     filename = "ontology.ttl"
   ) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
     return api.get<RevisionFileResponse>(
       `/api/v1/projects/${projectId}/revisions/file`,
       {
         params: { version, filename },
-        headers,
       }
     );
   },
@@ -110,55 +99,40 @@ export const revisionsApi = {
   getDiff: (
     projectId: string,
     fromVersion: string,
-    toVersion = "HEAD",
-    token?: string
+    toVersion = "HEAD"
   ) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
     return api.get<RevisionDiffResponse>(
       `/api/v1/projects/${projectId}/revisions/diff`,
       {
         params: { from_version: fromVersion, to_version: toVersion },
-        headers,
       }
     );
   },
 };
 
 export const branchesApi = {
-  list: (projectId: string, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  list: (projectId: string) => {
     return api.get<BranchListResponse>(
-      `/api/v1/projects/${projectId}/branches`,
-      { headers }
+      `/api/v1/projects/${projectId}/branches`
     );
   },
 
-  create: (projectId: string, data: BranchCreate, token: string) =>
-    api.post<BranchInfo>(`/api/v1/projects/${projectId}/branches`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  create: (projectId: string, data: BranchCreate) =>
+    api.post<BranchInfo>(`/api/v1/projects/${projectId}/branches`, data),
 
-  delete: (projectId: string, branchName: string, token: string, force = false) =>
+  delete: (projectId: string, branchName: string, force = false) =>
     api.delete(
       `/api/v1/projects/${projectId}/branches/${encodeURIComponent(branchName)}`,
       {
         params: { force },
-        headers: { Authorization: `Bearer ${token}` },
       }
     ),
 
-  savePreference: (projectId: string, branch: string, token: string) =>
+  savePreference: (projectId: string, branch: string) =>
     api.put<void>(
       `/api/v1/projects/${projectId}/branch-preference`,
       undefined,
       {
-        headers: { Authorization: `Bearer ${token}` },
         params: { branch },
       }
     ),

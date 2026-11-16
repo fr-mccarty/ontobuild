@@ -59,7 +59,6 @@ export interface TreeNodeFallback {
 interface ClassDetailPanelProps {
   projectId: string;
   classIri: string | null;
-  accessToken?: string;
   branch?: string;
   onNavigateToClass?: (iri: string) => void;
   onCopyIri?: (iri: string) => void;
@@ -75,7 +74,6 @@ interface ClassDetailPanelProps {
 export function ClassDetailPanel({
   projectId,
   classIri,
-  accessToken,
   branch,
   onNavigateToClass,
   onCopyIri,
@@ -252,8 +250,8 @@ export function ClassDetailPanel({
 
       try {
         const [detail, issuesResponse] = await Promise.all([
-          projectOntologyApi.getClassDetail(projectId, classIri, accessToken, branch),
-          lintApi.getIssues(projectId, accessToken, { subject_iri: classIri, limit: 50 }).catch(() => ({ items: [] })),
+          projectOntologyApi.getClassDetail(projectId, classIri, branch),
+          lintApi.getIssues(projectId, { subject_iri: classIri, limit: 50 }).catch(() => ({ items: [] })),
         ]);
         if (cancelled) return;
         setClassDetail(detail);
@@ -284,7 +282,7 @@ export function ClassDetailPanel({
     return () => {
       cancelled = true;
     };
-  }, [projectId, classIri, accessToken, branch, selectedNodeFallback, refreshKey]);
+  }, [projectId, classIri, branch, selectedNodeFallback, refreshKey]);
 
   useEffect(() => {
     if (!classDetail?.annotations) return;
@@ -308,14 +306,14 @@ export function ClassDetailPanel({
       await Promise.all(
         targetIris.map(async (iri) => {
           try {
-            const detail = await projectOntologyApi.getClassDetail(projectId, iri, accessToken, branch);
+            const detail = await projectOntologyApi.getClassDetail(projectId, iri, branch);
             const label = getPreferredLabel(detail.labels);
             if (label) { newLabels[iri] = label; return; }
           } catch {
           }
           try {
             const localName = getLocalName(iri);
-            const searchResult = await projectOntologyApi.searchEntities(projectId, localName, accessToken, branch);
+            const searchResult = await projectOntologyApi.searchEntities(projectId, localName, branch);
             const match = searchResult.results.find((r) => r.iri === iri);
             if (match?.label) newLabels[iri] = match.label;
           } catch {
@@ -329,7 +327,7 @@ export function ClassDetailPanel({
 
     resolveLabels();
     return () => { cancelled = true; };
-  }, [classDetail, projectId, accessToken, branch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [classDetail, projectId, branch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isEditing || Object.keys(resolvedTargetLabels).length === 0) return;
@@ -854,7 +852,6 @@ export function ClassDetailPanel({
                   <div className="mt-1">
                     <ParentClassPicker
                       projectId={projectId}
-                      accessToken={accessToken}
                       branch={branch}
                       excludeIris={[classDetail.iri, ...editParentIris]}
                       onSelect={addParent}
@@ -912,7 +909,6 @@ export function ClassDetailPanel({
                   groups={readRelationships}
                   isEditing={isEditing}
                   projectId={projectId}
-                  accessToken={accessToken}
                   branch={branch}
                   onAddTarget={addRelationshipTarget}
                   onRemoveTarget={removeRelationshipTarget}
@@ -983,7 +979,6 @@ export function ClassDetailPanel({
           <CrossReferencesPanel
             projectId={projectId}
             entityIri={classIri}
-            accessToken={accessToken}
             branch={branch}
             onNavigateToClass={onNavigateToClass}
           />
@@ -991,7 +986,6 @@ export function ClassDetailPanel({
           <EntityHistoryTab
             projectId={projectId}
             entityIri={classIri}
-            accessToken={accessToken}
             branch={branch}
           />
 

@@ -8,7 +8,6 @@ import { X, GitBranch, ArrowRight } from "lucide-react";
 
 interface PRCreateModalProps {
   projectId: string;
-  accessToken: string;
   isOpen: boolean;
   onClose: () => void;
   onCreated?: (pr: PullRequest) => void;
@@ -16,7 +15,6 @@ interface PRCreateModalProps {
 
 export function PRCreateModal({
   projectId,
-  accessToken,
   isOpen,
   onClose,
   onCreated,
@@ -54,8 +52,7 @@ export function PRCreateModal({
           description: description.trim() || undefined,
           source_branch: sourceBranch,
           target_branch: targetBranch,
-        },
-        accessToken
+        }
       );
 
       onCreated?.(pr);

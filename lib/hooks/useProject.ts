@@ -1,18 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { projectApi, type Project } from "@/lib/api/projects";
+import { projectApi } from "@/lib/api/projects";
 import { ApiError } from "@/lib/api/client";
 
 export type ProjectErrorKind = "no-access" | "not-found" | "generic";
 
 export const projectQueryKeys = {
-  detail: (projectId: string, isAuthenticated: boolean) =>
-    ["project", projectId, isAuthenticated] as const,
+  detail: (projectId: string) => ["project", projectId] as const,
 };
 
-export function useProject(projectId: string, accessToken?: string) {
+export function useProject(projectId: string) {
   const query = useQuery({
-    queryKey: projectQueryKeys.detail(projectId, !!accessToken),
-    queryFn: () => projectApi.get(projectId, accessToken),
+    queryKey: projectQueryKeys.detail(projectId),
+    queryFn: () => projectApi.get(projectId),
     enabled: !!projectId,
     retry: (failureCount, error) => {
       if (error instanceof ApiError && (error.status === 403 || error.status === 404)) return false;
@@ -43,13 +42,4 @@ export function useProject(projectId: string, accessToken?: string) {
     errorKind,
     refetch: query.refetch,
   };
-}
-
-export function derivePermissions(project: Project | null, accessToken?: string) {
-  const canManage = project?.user_role === "owner" || project?.user_role === "admin" || !!project?.is_superadmin;
-  const canEdit = project?.user_role === "owner" || project?.user_role === "admin" || project?.user_role === "editor" || !!project?.is_superadmin;
-  const hasValidAccess = !!accessToken;
-  const hasOntology = !!project?.source_file_path;
-
-  return { canManage, canEdit, hasValidAccess, hasOntology };
 }

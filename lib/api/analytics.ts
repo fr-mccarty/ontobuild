@@ -67,13 +67,11 @@ export interface EntityHistoryResponse {
 export const analyticsApi = {
   getActivity: (
     projectId: string,
-    token?: string,
     days = 30
   ) =>
     api.get<ProjectActivity>(
       `/api/v1/projects/${projectId}/analytics/activity`,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         params: { days },
       }
     ),
@@ -81,41 +79,35 @@ export const analyticsApi = {
   getEntityHistory: (
     projectId: string,
     entityIri: string,
-    token?: string,
     branch?: string,
     limit = 50
   ) =>
     api.get<EntityHistoryResponse>(
       `/api/v1/projects/${projectId}/analytics/entity/${encodeURIComponent(entityIri)}/history`,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         params: { branch, limit },
       }
     ),
 
   getHotEntities: (
     projectId: string,
-    token?: string,
     limit = 20,
     days = 30
   ) =>
     api.get<HotEntity[]>(
       `/api/v1/projects/${projectId}/analytics/hot-entities`,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         params: { limit, days },
       }
     ),
 
   getContributors: (
     projectId: string,
-    token?: string,
     days = 30
   ) =>
     api.get<ContributorStats[]>(
       `/api/v1/projects/${projectId}/analytics/contributors`,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         params: { days },
       }
     ),

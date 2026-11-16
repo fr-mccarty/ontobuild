@@ -235,7 +235,6 @@ describe("useFilteredTree", () => {
       useFilteredTree({
         searchResults: null,
         projectId: "p1",
-        accessToken: "tok",
       })
     );
 
@@ -280,7 +279,6 @@ describe("useFilteredTree", () => {
       useFilteredTree({
         searchResults: [makeClassResult("urn:leaf", "Leaf")],
         projectId: "p1",
-        accessToken: "tok",
         branch: "main",
       })
     );
@@ -334,7 +332,7 @@ describe("useFilteredTree", () => {
     await waitFor(() => expect(result.current.isBuilding).toBe(false));
 
     expect(mockedGetClassAncestors).toHaveBeenCalledTimes(1);
-    expect(mockedGetClassAncestors).toHaveBeenCalledWith("p1", "urn:cls", undefined, undefined);
+    expect(mockedGetClassAncestors).toHaveBeenCalledWith("p1", "urn:cls", undefined);
   });
 
   it("sets truncated when results exceed MAX_MATCHES (20)", async () => {

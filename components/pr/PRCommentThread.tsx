@@ -11,8 +11,6 @@ interface PRCommentThreadProps {
   projectId: string;
   prNumber: number;
   comments: Comment[];
-  accessToken: string;
-  currentUserId?: string;
   onCommentsChange: () => void;
   className?: string;
 }
@@ -21,8 +19,6 @@ export function PRCommentThread({
   projectId,
   prNumber,
   comments,
-  accessToken,
-  currentUserId,
   onCommentsChange,
   className,
 }: PRCommentThreadProps) {
@@ -50,8 +46,7 @@ export function PRCommentThread({
       await pullRequestsApi.createComment(
         projectId,
         prNumber,
-        { body: replyBody.trim(), parent_id: parentId },
-        accessToken
+        { body: replyBody.trim(), parent_id: parentId }
       );
       setReplyBody("");
       setReplyingTo(null);
@@ -72,8 +67,7 @@ export function PRCommentThread({
         projectId,
         prNumber,
         commentId,
-        { body: editBody.trim() },
-        accessToken
+        { body: editBody.trim() }
       );
       setEditBody("");
       setEditingId(null);
@@ -94,8 +88,7 @@ export function PRCommentThread({
       await pullRequestsApi.deleteComment(
         projectId,
         prNumber,
-        commentId,
-        accessToken
+        commentId
       );
       onCommentsChange();
     } catch (err) {
@@ -104,7 +97,6 @@ export function PRCommentThread({
   };
 
   const renderComment = (comment: Comment, isReply = false) => {
-    const isOwn = comment.author_id === currentUserId;
     const isEditing = editingId === comment.id;
 
     return (
@@ -134,7 +126,7 @@ export function PRCommentThread({
               </div>
             </div>
 
-            {isOwn && !isEditing && (
+            {!isEditing && (
               <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                 <Tooltip content="Edit">
                   <button

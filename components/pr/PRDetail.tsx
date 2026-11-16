@@ -35,18 +35,12 @@ type TabType = "conversation" | "commits" | "files";
 interface PRDetailProps {
   projectId: string;
   prNumber: number;
-  accessToken?: string;
-  userRole?: string;
-  currentUserId?: string;
   className?: string;
 }
 
 export function PRDetail({
   projectId,
   prNumber,
-  accessToken,
-  userRole,
-  currentUserId,
   className,
 }: PRDetailProps) {
   const [pr, setPR] = useState<PullRequest | null>(null);
@@ -71,12 +65,12 @@ export function PRDetail({
     setError(null);
 
     try {
-      const prData = await pullRequestsApi.get(projectId, prNumber, accessToken);
+      const prData = await pullRequestsApi.get(projectId, prNumber);
       setPR(prData);
 
       const [reviewsData, commentsData] = await Promise.all([
-        pullRequestsApi.listReviews(projectId, prNumber, accessToken),
-        pullRequestsApi.listComments(projectId, prNumber, accessToken),
+        pullRequestsApi.listReviews(projectId, prNumber),
+        pullRequestsApi.listComments(projectId, prNumber),
       ]);
       setReviews(reviewsData.items);
       setComments(commentsData.items);
@@ -87,7 +81,7 @@ export function PRDetail({
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, prNumber, accessToken]);
+  }, [projectId, prNumber]);
 
   useEffect(() => {
     loadPR();
@@ -98,21 +92,21 @@ export function PRDetail({
 
     setIsLoadingCommits(true);
     try {
-      const commitsData = await pullRequestsApi.getCommits(projectId, prNumber, accessToken);
+      const commitsData = await pullRequestsApi.getCommits(projectId, prNumber);
       setCommits(commitsData.items);
     } catch (err) {
       console.error("Failed to load commits:", err);
     } finally {
       setIsLoadingCommits(false);
     }
-  }, [projectId, prNumber, accessToken, commits.length]);
+  }, [projectId, prNumber, commits.length]);
 
   const loadDiff = useCallback(async () => {
     if (!projectId || !prNumber || fileChanges.length > 0) return;
 
     setIsLoadingDiff(true);
     try {
-      const diffData = await pullRequestsApi.getDiff(projectId, prNumber, accessToken);
+      const diffData = await pullRequestsApi.getDiff(projectId, prNumber);
       setFileChanges(diffData.files);
       setDiffStats({
         additions: diffData.total_additions,
@@ -125,7 +119,7 @@ export function PRDetail({
     } finally {
       setIsLoadingDiff(false);
     }
-  }, [projectId, prNumber, accessToken, fileChanges.length]);
+  }, [projectId, prNumber, fileChanges.length]);
 
   useEffect(() => {
     if (activeTab === "commits") {
@@ -136,21 +130,19 @@ export function PRDetail({
   }, [activeTab, loadCommits, loadDiff]);
 
   const handleAddComment = async () => {
-    if (!newComment.trim() || !accessToken) return;
+    if (!newComment.trim()) return;
 
     setIsSubmittingComment(true);
     try {
       await pullRequestsApi.createComment(
         projectId,
         prNumber,
-        { body: newComment.trim() },
-        accessToken
+        { body: newComment.trim() }
       );
       setNewComment("");
       const commentsData = await pullRequestsApi.listComments(
         projectId,
-        prNumber,
-        accessToken
+        prNumber
       );
       setComments(commentsData.items);
     } catch (err) {
@@ -163,8 +155,7 @@ export function PRDetail({
   const handleCommentsChange = async () => {
     const commentsData = await pullRequestsApi.listComments(
       projectId,
-      prNumber,
-      accessToken
+      prNumber
     );
     setComments(commentsData.items);
   };
@@ -272,15 +263,11 @@ export function PRDetail({
         </div>
       )}
 
-      {accessToken && (
-        <PRActions
-          projectId={projectId}
-          pr={pr}
-          accessToken={accessToken}
-          userRole={userRole}
-          onUpdate={setPR}
-        />
-      )}
+      <PRActions
+        projectId={projectId}
+        pr={pr}
+        onUpdate={setPR}
+      />
 
       <div className="border-b border-slate-200 dark:border-slate-700">
         <div className="flex gap-4">
@@ -408,31 +395,27 @@ export function PRDetail({
                 projectId={projectId}
                 prNumber={prNumber}
                 comments={comments}
-                accessToken={accessToken || ""}
-                currentUserId={currentUserId}
                 onCommentsChange={handleCommentsChange}
               />
 
-              {accessToken && (
-                <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
-                  <textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Leave a comment..."
-                    rows={3}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden dark:border-slate-600 dark:bg-slate-700"
-                  />
-                  <div className="mt-2 flex justify-end">
-                    <Button
-                      size="sm"
-                      onClick={handleAddComment}
-                      disabled={isSubmittingComment || !newComment.trim()}
-                    >
-                      Comment
-                    </Button>
-                  </div>
+              <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Leave a comment..."
+                  rows={3}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden dark:border-slate-600 dark:bg-slate-700"
+                />
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handleAddComment}
+                    disabled={isSubmittingComment || !newComment.trim()}
+                  >
+                    Comment
+                  </Button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}

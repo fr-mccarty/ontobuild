@@ -53,7 +53,6 @@ interface IndividualDetailPanelProps {
   refreshKey?: number;
   onNavigateToEntity?: (iri: string) => void;
   onCopyIri?: (iri: string) => void;
-  accessToken?: string;
   labelHints?: Record<string, string>;
 }
 
@@ -67,7 +66,6 @@ export function IndividualDetailPanel({
   refreshKey,
   onNavigateToEntity,
   onCopyIri,
-  accessToken,
   labelHints,
 }: IndividualDetailPanelProps) {
   const detail = useMemo((): ParsedIndividualDetail | null => {
@@ -97,7 +95,7 @@ export function IndividualDetailPanel({
     return iris;
   }, [detail]);
 
-  const resolvedLabels = useIriLabels(allDisplayedIris, { projectId, accessToken, branch, labelHints });
+  const resolvedLabels = useIriLabels(allDisplayedIris, { projectId, branch, labelHints });
 
   const [isEditing, setIsEditing] = useState(false);
   const [editLabels, setEditLabels] = useState<LocalizedString[]>([]);
@@ -506,7 +504,7 @@ export function IndividualDetailPanel({
                   onRemove={(iri) => { setEditTypeIris((p) => p.filter((i) => i !== iri)); requestAnimationFrame(() => triggerSave()); }}
                   onAdd={(iri) => { setEditTypeIris((p) => [...p, iri]); requestAnimationFrame(() => triggerSave()); }}
                   onNavigate={onNavigateToEntity}
-                  projectId={projectId} accessToken={accessToken} branch={branch}
+                  projectId={projectId} branch={branch}
                   entityFilter="class" placeholder="Search classes..."
                   resolvedLabels={resolvedLabels}
                 />
@@ -524,7 +522,7 @@ export function IndividualDetailPanel({
                   onRemove={(iri) => { setEditSameAsIris((p) => p.filter((i) => i !== iri)); requestAnimationFrame(() => triggerSave()); }}
                   onAdd={(iri) => { setEditSameAsIris((p) => [...p, iri]); requestAnimationFrame(() => triggerSave()); }}
                   onNavigate={onNavigateToEntity}
-                  projectId={projectId} accessToken={accessToken} branch={branch}
+                  projectId={projectId} branch={branch}
                   entityFilter="individual" placeholder="Search individuals..."
                   resolvedLabels={resolvedLabels}
                 />
@@ -542,7 +540,7 @@ export function IndividualDetailPanel({
                   onRemove={(iri) => { setEditDifferentFromIris((p) => p.filter((i) => i !== iri)); requestAnimationFrame(() => triggerSave()); }}
                   onAdd={(iri) => { setEditDifferentFromIris((p) => [...p, iri]); requestAnimationFrame(() => triggerSave()); }}
                   onNavigate={onNavigateToEntity}
-                  projectId={projectId} accessToken={accessToken} branch={branch}
+                  projectId={projectId} branch={branch}
                   entityFilter="individual" placeholder="Search individuals..."
                   resolvedLabels={resolvedLabels}
                 />
@@ -558,7 +556,7 @@ export function IndividualDetailPanel({
                 assertions={editObjectAssertions}
                 assertionType="object"
                 isEditing={true}
-                projectId={projectId} accessToken={accessToken} branch={branch}
+                projectId={projectId} branch={branch}
                 onAdd={(a) => { setEditObjectAssertions((p) => [...p, a]); requestAnimationFrame(() => triggerSave()); }}
                 onRemove={(idx) => { setEditObjectAssertions((p) => p.filter((_, i) => i !== idx)); requestAnimationFrame(() => triggerSave()); }}
                 onNavigateToEntity={onNavigateToEntity}
@@ -607,7 +605,7 @@ export function IndividualDetailPanel({
                 assertions={editDataAssertions}
                 assertionType="data"
                 isEditing={true}
-                projectId={projectId} accessToken={accessToken} branch={branch}
+                projectId={projectId} branch={branch}
                 onAdd={(a) => { setEditDataAssertions((p) => [...p, a]); requestAnimationFrame(() => triggerSave()); }}
                 onRemove={(idx) => { setEditDataAssertions((p) => p.filter((_, i) => i !== idx)); requestAnimationFrame(() => triggerSave()); }}
                 onNavigateToEntity={onNavigateToEntity}
@@ -712,7 +710,7 @@ export function IndividualDetailPanel({
                   ...(detail.seeAlsoIris.length > 0 ? [{ property_iri: SEE_ALSO_IRI, property_label: "See Also", targets: detail.seeAlsoIris.map((iri) => ({ iri, label: resolvedLabels?.[iri] || getLocalName(iri) })) }] : []),
                   ...(detail.isDefinedByIris.length > 0 ? [{ property_iri: "http://www.w3.org/2000/01/rdf-schema#isDefinedBy", property_label: "Defined By", targets: detail.isDefinedByIris.map((iri) => ({ iri, label: resolvedLabels?.[iri] || getLocalName(iri) })) }] : []),
                 ]} isEditing={isEditing}
-                projectId={projectId} accessToken={accessToken} branch={branch}
+                projectId={projectId} branch={branch}
                 onAddTarget={addRelationshipTarget} onRemoveTarget={removeRelationshipTarget}
                 onChangeProperty={changeRelationshipProperty} onAddGroup={addRelationshipGroup}
                 onNavigateToClass={onNavigateToEntity} onSaveNeeded={() => triggerSave()} />
@@ -759,9 +757,9 @@ function IriLinks({ iris, onNavigate, resolvedLabels }: { iris: string[]; onNavi
   );
 }
 
-function IriList({ iris, onRemove, onAdd, onNavigate, projectId, accessToken, branch, entityFilter, placeholder, resolvedLabels }: {
+function IriList({ iris, onRemove, onAdd, onNavigate, projectId, branch, entityFilter, placeholder, resolvedLabels }: {
   iris: string[]; onRemove: (iri: string) => void; onAdd: (iri: string) => void; onNavigate?: (iri: string) => void;
-  projectId: string; accessToken?: string; branch?: string; entityFilter?: string; placeholder?: string;
+  projectId: string; branch?: string; entityFilter?: string; placeholder?: string;
   resolvedLabels?: Record<string, string>;
 }) {
   const [query, setQuery] = useState("");
@@ -777,12 +775,12 @@ function IriList({ iris, onRemove, onAdd, onNavigate, projectId, accessToken, br
     const timer = setTimeout(async () => {
       try {
         const { projectOntologyApi } = await import("@/lib/api/client");
-        const response = await projectOntologyApi.searchEntities(projectId, query.trim(), accessToken, branch, entityFilter);
+        const response = await projectOntologyApi.searchEntities(projectId, query.trim(), branch, entityFilter);
         if (!cancelled) setResults(response.results.filter((r: { iri: string }) => !iris.includes(r.iri)));
       } catch { if (!cancelled) setResults([]); } finally { if (!cancelled) setIsSearching(false); }
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, projectId, accessToken, branch, entityFilter, iris]);
+  }, [query, projectId, branch, entityFilter, iris]);
 
   useEffect(() => {
     if (!isFocused) return;

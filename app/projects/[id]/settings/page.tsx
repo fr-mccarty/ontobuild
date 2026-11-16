@@ -1,20 +1,10 @@
 "use client";
 
-function isHttpUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useSession } from "@/lib/localUser";
 import { useRouter, useParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Tag, Check, GitPullRequest, AlertCircle, FileText, RefreshCw, History, Play, CheckCircle, XCircle, Database, ExternalLink, Shield } from "lucide-react";
+import { ArrowLeft, Trash2, Tag, Check, GitPullRequest, AlertCircle, FileText, RefreshCw, History, Play, CheckCircle, XCircle, Database, Shield } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { ProjectForm } from "@/components/projects/project-form";
@@ -64,7 +54,6 @@ const NormalizationDiffViewer = dynamic(
 );
 
 export default function ProjectSettingsPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
   const projectId = params.id as string;
@@ -73,18 +62,13 @@ export default function ProjectSettingsPage() {
 
   const queryClient = useQueryClient();
 
-  const accessTokenRef = useRef(session?.accessToken);
-  useEffect(() => {
-    accessTokenRef.current = session?.accessToken;
-  }, [session?.accessToken]);
-
   const {
     project,
-    isLoading: isProjectLoading,
+    isLoading,
     error: projectError,
-  } = useProject(projectId, session?.accessToken);
+  } = useProject(projectId);
 
-  const projectKey = projectQueryKeys.detail(projectId, !!session?.accessToken);
+  const projectKey = projectQueryKeys.detail(projectId);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -102,8 +86,8 @@ export default function ProjectSettingsPage() {
 
   const {
     data: normalizationQueryData,
-  } = useNormalizationStatus(projectId, session?.accessToken, {
-    enabled: !!project?.source_file_path && !!session?.accessToken,
+  } = useNormalizationStatus(projectId, {
+    enabled: !!project?.source_file_path,
   });
   const [normalizationStatus, setNormalizationStatus] = useState<NormalizationStatusResponse | null>(null);
   useEffect(() => {
@@ -127,8 +111,8 @@ export default function ProjectSettingsPage() {
 
   const {
     data: indexQueryData,
-  } = useIndexStatus(projectId, session?.accessToken, {
-    enabled: !!project?.source_file_path && !!session?.accessToken,
+  } = useIndexStatus(projectId, {
+    enabled: !!project?.source_file_path,
   });
   const [indexStatus, setIndexStatus] = useState<IndexStatusResponse | null>(null);
   useEffect(() => {
@@ -138,7 +122,7 @@ export default function ProjectSettingsPage() {
   const [isReindexing, setIsReindexing] = useState(false);
 
   useEffect(() => {
-    if (!project?.id || !session?.accessToken) return;
+    if (!project?.id) return;
 
     const manager = new IndexStatusPoller(
       project.id,
@@ -150,11 +134,9 @@ export default function ProjectSettingsPage() {
           );
         } else if (message.type === "index_complete" || message.type === "index_failed") {
           setIsReindexing(false);
-          const token = accessTokenRef.current;
-          queryClient.invalidateQueries({ queryKey: indexQueryKeys.status(projectId, token) });
+          queryClient.invalidateQueries({ queryKey: indexQueryKeys.status(projectId) });
         }
       },
-      session.accessToken
     );
 
     const timeoutId = setTimeout(() => manager.connect(), 100);
@@ -163,7 +145,7 @@ export default function ProjectSettingsPage() {
       clearTimeout(timeoutId);
       manager.disconnect();
     };
-  }, [project?.id, session?.accessToken, projectId, queryClient]);
+  }, [project?.id, projectId, queryClient]);
 
   useEffect(() => {
     return () => {
@@ -177,12 +159,6 @@ export default function ProjectSettingsPage() {
   const [prApprovalRequired, setPrApprovalRequired] = useState(0);
   const [isSavingPrSettings, setIsSavingPrSettings] = useState(false);
 
-  const isAuthenticated = status === "authenticated";
-  const isLoading = isProjectLoading || status === "loading";
-
-  const canManage =
-    project?.user_role === "owner" || project?.user_role === "admin" || project?.is_superadmin;
-  const isOwner = project?.user_role === "owner";
 
   useEffect(() => {
     if (project) {
@@ -192,8 +168,7 @@ export default function ProjectSettingsPage() {
 
   const prSettingsQuery = useQuery({
     queryKey: ["prSettings", projectId],
-    queryFn: () => prSettingsApi.get(projectId, session!.accessToken!),
-    enabled: !!canManage && !!session?.accessToken,
+    queryFn: () => prSettingsApi.get(projectId),
     retry: false,
   });
   useEffect(() => {
@@ -202,12 +177,6 @@ export default function ProjectSettingsPage() {
       setPrApprovalRequired(prSettingsQuery.data.pr_approval_required);
     }
   }, [prSettingsQuery.data]);
-
-  useEffect(() => {
-    if (status !== "loading" && !isAuthenticated) {
-      setLocalError("You must be signed in to access project settings");
-    }
-  }, [status, isAuthenticated]);
 
   useEffect(() => {
     if (!isLoading && typeof window !== "undefined" && window.location.hash) {
@@ -222,7 +191,7 @@ export default function ProjectSettingsPage() {
   }, [isLoading]);
 
   const handleUpdateProject = async (data: { name: string; description?: string; is_public: boolean }) => {
-    if (!session?.accessToken || !project) return;
+    if (!project) return;
 
     setIsSaving(true);
     setLocalError(null);
@@ -231,7 +200,7 @@ export default function ProjectSettingsPage() {
     try {
       // The form sends undefined for an empty description; send null so clearing it sticks.
       const payload: ProjectUpdate = { ...data, description: data.description ?? null };
-      const updated = await projectApi.update(project.id, payload, session.accessToken);
+      const updated = await projectApi.update(project.id, payload);
       queryClient.setQueryData<Project>(projectKey, updated);
       setSuccessMessage("Project settings saved successfully");
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -243,13 +212,13 @@ export default function ProjectSettingsPage() {
   };
 
   const handleDeleteProject = async () => {
-    if (!session?.accessToken || !project || deleteConfirmText !== project.name)
+    if (!project || deleteConfirmText !== project.name)
       return;
 
     setIsDeleting(true);
 
     try {
-      await projectApi.delete(project.id, session.accessToken);
+      await projectApi.delete(project.id);
       router.push("/");
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Failed to delete project");
@@ -258,7 +227,7 @@ export default function ProjectSettingsPage() {
   };
 
   const handleSaveLabelPreferences = async () => {
-    if (!session?.accessToken || !project) return;
+    if (!project) return;
 
     setIsSavingPreferences(true);
     setPreferencesSaved(false);
@@ -267,8 +236,7 @@ export default function ProjectSettingsPage() {
     try {
       const updated = await projectApi.update(
         project.id,
-        { label_preferences: normalizeLabelPreferences(labelPreferences) },
-        session.accessToken
+        { label_preferences: normalizeLabelPreferences(labelPreferences) }
       );
       queryClient.setQueryData<Project>(projectKey, updated);
       setPreferencesSaved(true);
@@ -281,7 +249,7 @@ export default function ProjectSettingsPage() {
   };
 
   const handleSavePrSettings = async () => {
-    if (!session?.accessToken || !project) return;
+    if (!project) return;
 
     setIsSavingPrSettings(true);
     setLocalError(null);
@@ -289,8 +257,7 @@ export default function ProjectSettingsPage() {
     try {
       const updated = await prSettingsApi.update(
         project.id,
-        { pr_approval_required: prApprovalRequired },
-        session.accessToken
+        { pr_approval_required: prApprovalRequired }
       );
       setPrSettings(updated);
       setSuccessMessage("PR settings saved");
@@ -303,13 +270,13 @@ export default function ProjectSettingsPage() {
   };
 
   const handleReindex = async () => {
-    if (!session?.accessToken || !project) return;
+    if (!project) return;
 
     setIsReindexing(true);
     setLocalError(null);
 
     try {
-      await projectOntologyApi.reindex(project.id, session.accessToken);
+      await projectOntologyApi.reindex(project.id);
       setIndexStatus((prev) =>
         prev ? { ...prev, status: "indexing" as IndexStatus } : prev
       );
@@ -322,15 +289,15 @@ export default function ProjectSettingsPage() {
   };
 
   const handleCheckNormalization = async () => {
-    if (!session?.accessToken || !project) return;
+    if (!project) return;
 
     setIsCheckingNormalization(true);
     setLocalError(null);
 
     try {
-      const status = await normalizationApi.getStatus(project.id, session.accessToken);
+      const status = await normalizationApi.getStatus(project.id);
       setNormalizationStatus(status);
-      queryClient.invalidateQueries({ queryKey: normalizationQueryKeys.status(projectId, session.accessToken) });
+      queryClient.invalidateQueries({ queryKey: normalizationQueryKeys.status(projectId) });
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Failed to check normalization status");
     } finally {
@@ -339,7 +306,7 @@ export default function ProjectSettingsPage() {
   };
 
   const handleRunNormalization = async (dryRun: boolean = false) => {
-    if (!session?.accessToken || !project) return;
+    if (!project) return;
 
     setIsRunningNormalization(true);
     setLocalError(null);
@@ -348,8 +315,7 @@ export default function ProjectSettingsPage() {
       if (dryRun) {
         const result = await normalizationApi.runNormalization(
           project.id,
-          true,
-          session.accessToken
+          true
         );
 
         setNormalizationStatus({
@@ -378,8 +344,7 @@ export default function ProjectSettingsPage() {
       } else {
         const queueResult = await normalizationApi.queueNormalization(
           project.id,
-          false,
-          session.accessToken
+          false
         );
 
         setNormalizationJobId(queueResult.job_id);
@@ -388,11 +353,9 @@ export default function ProjectSettingsPage() {
 
         normalizationPollRef.current = setInterval(async () => {
           try {
-            const token = accessTokenRef.current;
             const jobStatus = await normalizationApi.getJobStatus(
               project.id,
-              queueResult.job_id,
-              token
+              queueResult.job_id
             );
 
             setNormalizationJobStatus(jobStatus.status);
@@ -404,9 +367,9 @@ export default function ProjectSettingsPage() {
               setNormalizationJobStatus(null);
               setIsRunningNormalization(false);
 
-              const newStatus = await normalizationApi.getStatus(project.id, token);
+              const newStatus = await normalizationApi.getStatus(project.id);
               setNormalizationStatus(newStatus);
-              queryClient.invalidateQueries({ queryKey: normalizationQueryKeys.status(projectId, token) });
+              queryClient.invalidateQueries({ queryKey: normalizationQueryKeys.status(projectId) });
               setSuccessMessage("Normalization completed successfully");
               setTimeout(() => setSuccessMessage(null), 3000);
             } else if (jobStatus.status === "failed") {
@@ -438,10 +401,10 @@ export default function ProjectSettingsPage() {
   };
 
   const handleLoadNormalizationHistory = async () => {
-    if (!session?.accessToken || !project) return;
+    if (!project) return;
 
     try {
-      const history = await normalizationApi.getHistory(project.id, 10, true, session.accessToken);
+      const history = await normalizationApi.getHistory(project.id, 10, true);
       setNormalizationHistory(history.items);
       setShowNormalizationHistory(true);
     } catch (err) {
@@ -515,46 +478,6 @@ export default function ProjectSettingsPage() {
     );
   }
 
-  if (!canManage) {
-    return (
-      <>
-        <Header />
-        <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
-          <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-            <Link
-              href={projectHomeHref}
-              className="mb-6 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to project
-            </Link>
-            <div className="mb-8">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                Project Settings
-              </h1>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                View project configuration (read-only)
-              </p>
-            </div>
-            {project.source_file_path ? (
-              <LintConfigSection
-                projectId={projectId}
-                accessToken={session?.accessToken}
-                canManage={false}
-              />
-            ) : (
-              <div className="rounded-lg border border-slate-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-800">
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  No ontology source file has been configured for this project.
-                </p>
-              </div>
-            )}
-          </div>
-        </main>
-      </>
-    );
-  }
-
   return (
     <>
       <Header />
@@ -592,30 +515,6 @@ export default function ProjectSettingsPage() {
             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
               General
             </h2>
-            {project.exemplar_source_url && (
-              <div className="mb-4 rounded-md bg-indigo-50 px-4 py-3 dark:bg-indigo-900/20">
-                <div className="flex items-center gap-2 text-sm text-indigo-700 dark:text-indigo-400">
-                  <FileText className="h-4 w-4" />
-                  <span className="font-medium">Exemplar ontology</span>
-                  <span className="text-indigo-500 dark:text-indigo-500">—</span>
-                  {isHttpUrl(project.exemplar_source_url) ? (
-                    <a
-                      href={project.exemplar_source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 hover:underline"
-                    >
-                      View remote source file
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    <span className="text-indigo-500">
-                      {project.exemplar_source_url}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
             <ProjectForm
               initialData={{
                 name: project.name,
@@ -908,43 +807,41 @@ export default function ProjectSettingsPage() {
                 </div>
               )}
 
-              {canManage && (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      onClick={() => handleRunNormalization(true)}
-                      variant="outline"
-                      disabled={isRunningNormalization || !!normalizationJobId}
-                    >
-                      Preview Changes
-                    </Button>
-                    <Button
-                      onClick={() => handleRunNormalization(false)}
-                      disabled={isRunningNormalization || !!normalizationJobId}
-                      variant={normalizationStatus?.needs_normalization ? "primary" : "outline"}
-                    >
-                      {isRunningNormalization || normalizationJobId ? (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                          {normalizationJobStatus === "running" ? "Processing..." : "Queued..."}
-                        </>
-                      ) : (
-                        <>
-                          <Play className="mr-2 h-4 w-4" />
-                          {normalizationStatus?.needs_normalization
-                            ? "Run Normalization"
-                            : "Re-normalize"}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  {!normalizationStatus?.needs_normalization && !normalizationJobId && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Re-normalizing will apply canonical blank node identifiers for more stable diffs.
-                    </p>
-                  )}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={() => handleRunNormalization(true)}
+                    variant="outline"
+                    disabled={isRunningNormalization || !!normalizationJobId}
+                  >
+                    Preview Changes
+                  </Button>
+                  <Button
+                    onClick={() => handleRunNormalization(false)}
+                    disabled={isRunningNormalization || !!normalizationJobId}
+                    variant={normalizationStatus?.needs_normalization ? "primary" : "outline"}
+                  >
+                    {isRunningNormalization || normalizationJobId ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        {normalizationJobStatus === "running" ? "Processing..." : "Queued..."}
+                      </>
+                    ) : (
+                      <>
+                        <Play className="mr-2 h-4 w-4" />
+                        {normalizationStatus?.needs_normalization
+                          ? "Run Normalization"
+                          : "Re-normalize"}
+                      </>
+                    )}
+                  </Button>
                 </div>
-              )}
+                {!normalizationStatus?.needs_normalization && !normalizationJobId && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Re-normalizing will apply canonical blank node identifiers for more stable diffs.
+                  </p>
+                )}
+              </div>
 
               {showNormalizationHistory && (
                 <div className="mt-4 rounded-lg border border-slate-200 dark:border-slate-600">
@@ -1001,7 +898,7 @@ export default function ProjectSettingsPage() {
             </section>
           )}
 
-          {canManage && project.source_file_path && (
+          {project.source_file_path && (
             <section
               id="ontology-index"
               className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
@@ -1090,130 +987,124 @@ export default function ProjectSettingsPage() {
             </section>
           )}
 
-          {isOwner && (
-            <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
-              <div className="mb-4 flex items-center gap-2">
-                <GitPullRequest className="h-5 w-5 text-slate-500" />
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  Pull Request Settings
-                </h2>
-              </div>
+          <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+            <div className="mb-4 flex items-center gap-2">
+              <GitPullRequest className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Pull Request Settings
+              </h2>
+            </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="pr-approval"
-                    className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="pr-approval"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
+                  Required Approvals
+                </label>
+                <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+                  Minimum number of approvals required before a pull request can be merged.
+                  Set to 0 to allow merging without approvals.
+                </p>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="pr-approval"
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={prApprovalRequired}
+                    onChange={(e) => setPrApprovalRequired(parseInt(e.target.value, 10) || 0)}
+                    className={cn(
+                      "w-20 rounded-md border px-3 py-2 text-sm",
+                      "border-slate-300 focus:border-primary-500 focus:ring-primary-500",
+                      "dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                    )}
+                  />
+                  <Button
+                    onClick={handleSavePrSettings}
+                    disabled={isSavingPrSettings}
+                    size="sm"
                   >
-                    Required Approvals
-                  </label>
-                  <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
-                    Minimum number of approvals required before a pull request can be merged.
-                    Set to 0 to allow merging without approvals.
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <input
-                      id="pr-approval"
-                      type="number"
-                      min="0"
-                      max="10"
-                      value={prApprovalRequired}
-                      onChange={(e) => setPrApprovalRequired(parseInt(e.target.value, 10) || 0)}
-                      className={cn(
-                        "w-20 rounded-md border px-3 py-2 text-sm",
-                        "border-slate-300 focus:border-primary-500 focus:ring-primary-500",
-                        "dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                      )}
-                    />
-                    <Button
-                      onClick={handleSavePrSettings}
-                      disabled={isSavingPrSettings}
-                      size="sm"
-                    >
-                      {isSavingPrSettings ? "Saving..." : "Save"}
-                    </Button>
-                  </div>
+                    {isSavingPrSettings ? "Saving..." : "Save"}
+                  </Button>
                 </div>
               </div>
-            </section>
-          )}
+            </div>
+          </section>
 
           {project.source_file_path && (
             <LintConfigSection
               projectId={projectId}
-              accessToken={session?.accessToken}
-              canManage={canManage ?? false}
             />
           )}
 
-          {(isOwner || project?.is_superadmin) && !(project?.is_exemplar && !project?.is_superadmin) && (
-            <section className="rounded-lg border border-red-200 bg-white p-6 dark:border-red-900/50 dark:bg-slate-800">
-              <h2 className="mb-4 text-lg font-semibold text-red-600 dark:text-red-400">
-                Danger Zone
-              </h2>
+          <section className="rounded-lg border border-red-200 bg-white p-6 dark:border-red-900/50 dark:bg-slate-800">
+            <h2 className="mb-4 text-lg font-semibold text-red-600 dark:text-red-400">
+              Danger Zone
+            </h2>
 
-              {!showDeleteConfirm ? (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-900 dark:text-white">
-                      Delete this project
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Once deleted, this project cannot be recovered.
-                    </p>
-                  </div>
+            {!showDeleteConfirm ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    Delete this project
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Once deleted, this project cannot be recovered.
+                  </p>
+                </div>
+                <Button
+                  variant="danger"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Project
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-900/20">
+                <p className="mb-3 font-medium text-red-700 dark:text-red-400">
+                  Are you sure you want to delete &quot;{project.name}&quot;?
+                </p>
+                <p className="mb-3 text-sm text-red-600 dark:text-red-300">
+                  This action cannot be undone. Type{" "}
+                  <strong>{project.name}</strong> to confirm.
+                </p>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  className={cn(
+                    "mb-3 w-full rounded-md border px-3 py-2 text-sm",
+                    "border-red-300 focus:border-red-500 focus:ring-red-500",
+                    "dark:border-red-800 dark:bg-slate-800 dark:text-slate-100"
+                  )}
+                  placeholder={project.name}
+                  disabled={isDeleting}
+                />
+                <div className="flex gap-3">
                   <Button
                     variant="danger"
-                    onClick={() => setShowDeleteConfirm(true)}
+                    onClick={handleDeleteProject}
+                    disabled={isDeleting || deleteConfirmText !== project.name}
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Project
+                    {isDeleting ? "Deleting..." : "Delete Project"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setDeleteConfirmText("");
+                    }}
+                    disabled={isDeleting}
+                  >
+                    Cancel
                   </Button>
                 </div>
-              ) : (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-900/20">
-                  <p className="mb-3 font-medium text-red-700 dark:text-red-400">
-                    Are you sure you want to delete &quot;{project.name}&quot;?
-                  </p>
-                  <p className="mb-3 text-sm text-red-600 dark:text-red-300">
-                    This action cannot be undone. Type{" "}
-                    <strong>{project.name}</strong> to confirm.
-                  </p>
-                  <input
-                    type="text"
-                    value={deleteConfirmText}
-                    onChange={(e) => setDeleteConfirmText(e.target.value)}
-                    className={cn(
-                      "mb-3 w-full rounded-md border px-3 py-2 text-sm",
-                      "border-red-300 focus:border-red-500 focus:ring-red-500",
-                      "dark:border-red-800 dark:bg-slate-800 dark:text-slate-100"
-                    )}
-                    placeholder={project.name}
-                    disabled={isDeleting}
-                  />
-                  <div className="flex gap-3">
-                    <Button
-                      variant="danger"
-                      onClick={handleDeleteProject}
-                      disabled={isDeleting || deleteConfirmText !== project.name}
-                    >
-                      {isDeleting ? "Deleting..." : "Delete Project"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowDeleteConfirm(false);
-                        setDeleteConfirmText("");
-                      }}
-                      disabled={isDeleting}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
+              </div>
+            )}
+          </section>
         </div>
       </main>
 
@@ -1246,15 +1137,7 @@ export function getSeverityColor(severity: string) {
   }
 }
 
-export function LintConfigSection({
-  projectId,
-  accessToken,
-  canManage,
-}: {
-  projectId: string;
-  accessToken?: string;
-  canManage: boolean;
-}) {
+export function LintConfigSection({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -1299,15 +1182,14 @@ export function LintConfigSection({
 
   const configQuery = useQuery({
     queryKey: ["lintConfig", projectId],
-    queryFn: () => lintApi.getLintConfig(projectId, accessToken),
-    enabled: !!accessToken && rules.length > 0,
+    queryFn: () => lintApi.getLintConfig(projectId),
+    enabled: rules.length > 0,
     retry: false,
   });
 
   const statusQuery = useQuery<LintSummary>({
     queryKey: ["lintSummary", projectId],
-    queryFn: () => lintApi.getStatus(projectId, accessToken),
-    enabled: !!accessToken,
+    queryFn: () => lintApi.getStatus(projectId),
     refetchInterval: (query) => {
       const status = query.state.data?.last_run?.status;
       return status === "pending" || status === "running" ? 2000 : false;
@@ -1353,7 +1235,7 @@ export function LintConfigSection({
     }
   }, [configQuery.data, configQuery.isError, configQuery.error, levelRuleMap]);
 
-  const isLoading = rulesQuery.isLoading || levelsQuery.isLoading || (!!accessToken && rules.length > 0 && configQuery.isLoading);
+  const isLoading = rulesQuery.isLoading || levelsQuery.isLoading || (rules.length > 0 && configQuery.isLoading);
 
   useEffect(() => {
     if (lintLevel !== savedLevel) {
@@ -1394,7 +1276,6 @@ export function LintConfigSection({
   };
 
   const handleSave = async () => {
-    if (!accessToken) return;
     setIsSaving(true);
     setError(null);
     setSuccess(null);
@@ -1403,7 +1284,7 @@ export function LintConfigSection({
         lintLevel === null
           ? { lint_level: null, enabled_rules: [...enabledRules] }
           : { lint_level: lintLevel };
-      await lintApi.updateLintConfig(projectId, config, accessToken);
+      await lintApi.updateLintConfig(projectId, config);
       setSavedLevel(lintLevel);
       setSavedRules(new Set(enabledRules));
       setHasChanges(false);
@@ -1417,12 +1298,11 @@ export function LintConfigSection({
   };
 
   const handleClearResults = async () => {
-    if (!accessToken) return;
     setIsClearing(true);
     setError(null);
     setSuccess(null);
     try {
-      await lintApi.clearResults(projectId, accessToken);
+      await lintApi.clearResults(projectId);
       setSuccess("Lint results cleared");
       queryClient.invalidateQueries({ queryKey: ["lintSummary", projectId] });
       queryClient.invalidateQueries({ queryKey: ["lintIssues", projectId] });
@@ -1435,12 +1315,11 @@ export function LintConfigSection({
   };
 
   const handleRunLint = async () => {
-    if (!accessToken) return;
     setIsRunningLint(true);
     setError(null);
     setSuccess(null);
     try {
-      await lintApi.triggerLint(projectId, accessToken);
+      await lintApi.triggerLint(projectId);
       setSuccess("Lint run started");
       queryClient.invalidateQueries({ queryKey: ["lintSummary", projectId] });
     } catch (err) {
@@ -1524,15 +1403,13 @@ export function LintConfigSection({
                 <button
                   key={lvl.level}
                   type="button"
-                  onClick={() => canManage && handleLevelChange(lvl.level)}
-                  disabled={!canManage}
+                  onClick={() => handleLevelChange(lvl.level)}
                   aria-pressed={lintLevel === lvl.level}
                   className={cn(
                     "rounded-lg border p-3 text-left transition-all",
                     lintLevel === lvl.level
                       ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500 dark:border-primary-400 dark:bg-primary-900/20"
-                      : "border-slate-200 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-500",
-                    !canManage && "cursor-not-allowed opacity-60"
+                      : "border-slate-200 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-500"
                   )}
                 >
                   <p className="text-sm font-medium text-slate-900 dark:text-white">
@@ -1545,15 +1422,13 @@ export function LintConfigSection({
               ))}
               <button
                 type="button"
-                onClick={() => canManage && handleLevelChange(null)}
-                disabled={!canManage}
+                onClick={() => handleLevelChange(null)}
                 aria-pressed={lintLevel === null}
                 className={cn(
                   "rounded-lg border p-3 text-left transition-all",
                   lintLevel === null
                     ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500 dark:border-primary-400 dark:bg-primary-900/20"
-                    : "border-slate-200 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-500",
-                  !canManage && "cursor-not-allowed opacity-60"
+                    : "border-slate-200 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-500"
                 )}
               >
                 <p className="text-sm font-medium text-slate-900 dark:text-white">
@@ -1571,7 +1446,7 @@ export function LintConfigSection({
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 Rules ({enabledRules.size} of {rules.length} enabled)
               </label>
-              {isCustom && canManage && (
+              {isCustom && (
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -1609,13 +1484,13 @@ export function LintConfigSection({
                       role="switch"
                       aria-checked={enabled}
                       onClick={() => handleRuleToggle(rule.rule_id)}
-                      disabled={!canManage || !isCustom}
+                      disabled={!isCustom}
                       className={cn(
                         "relative h-5 w-9 shrink-0 rounded-full transition-colors",
                         enabled
                           ? "bg-primary-600 dark:bg-primary-500"
                           : "bg-slate-300 dark:bg-slate-600",
-                        (!canManage || !isCustom) && "cursor-not-allowed opacity-60"
+                        !isCustom && "cursor-not-allowed opacity-60"
                       )}
                       aria-label={`Toggle ${rule.name}`}
                     >
@@ -1670,45 +1545,38 @@ export function LintConfigSection({
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           )}
 
-          {canManage && (
-            <div className="flex items-center justify-end gap-3">
-              {success && (
-                <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
-              )}
-              {hasResultsToClear ? (
-                <Button
-                  onClick={handleClearResults}
-                  disabled={isClearing}
-                  size="sm"
-                  variant="outline"
-                >
-                  {isClearing ? "Clearing..." : "Clear Results"}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleRunLint}
-                  disabled={isRunningLint || isLintInProgress}
-                  size="sm"
-                  variant="outline"
-                >
-                  {isRunningLint || isLintInProgress ? "Running..." : "Run Lint"}
-                </Button>
-              )}
+          <div className="flex items-center justify-end gap-3">
+            {success && (
+              <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
+            )}
+            {hasResultsToClear ? (
               <Button
-                onClick={handleSave}
-                disabled={isSaving || !hasChanges}
+                onClick={handleClearResults}
+                disabled={isClearing}
                 size="sm"
+                variant="outline"
               >
-                {isSaving ? "Saving..." : "Save Lint Configuration"}
+                {isClearing ? "Clearing..." : "Clear Results"}
               </Button>
-            </div>
-          )}
+            ) : (
+              <Button
+                onClick={handleRunLint}
+                disabled={isRunningLint || isLintInProgress}
+                size="sm"
+                variant="outline"
+              >
+                {isRunningLint || isLintInProgress ? "Running..." : "Run Lint"}
+              </Button>
+            )}
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !hasChanges}
+              size="sm"
+            >
+              {isSaving ? "Saving..." : "Save Lint Configuration"}
+            </Button>
+          </div>
 
-          {!canManage && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Only project owners and admins can modify lint configuration.
-            </p>
-          )}
         </div>
       )}
     </section>

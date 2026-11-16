@@ -12,7 +12,6 @@ interface PropertyAssertionSectionProps {
   assertionType: "object" | "data";
   isEditing: boolean;
   projectId: string;
-  accessToken?: string;
   branch?: string;
   onAdd?: (assertion: PropertyAssertion) => void;
   onRemove?: (index: number) => void;
@@ -26,7 +25,6 @@ export function PropertyAssertionSection({
   assertionType,
   isEditing,
   projectId,
-  accessToken,
   branch,
   onAdd,
   onRemove,
@@ -89,7 +87,6 @@ export function PropertyAssertionSection({
         <AssertionAdder
           assertionType={assertionType}
           projectId={projectId}
-          accessToken={accessToken}
           branch={branch}
           onAdd={(a) => { onAdd(a); onSaveNeeded?.(); }}
         />
@@ -101,12 +98,11 @@ export function PropertyAssertionSection({
 interface AssertionAdderProps {
   assertionType: "object" | "data";
   projectId: string;
-  accessToken?: string;
   branch?: string;
   onAdd: (assertion: PropertyAssertion) => void;
 }
 
-function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }: AssertionAdderProps) {
+function AssertionAdder({ assertionType, projectId, branch, onAdd }: AssertionAdderProps) {
   const [propQuery, setPropQuery] = useState("");
   const [propResults, setPropResults] = useState<{ iri: string; label?: string }[]>([]);
   const [selectedPropIri, setSelectedPropIri] = useState<string | null>(null);
@@ -129,24 +125,24 @@ function AssertionAdder({ assertionType, projectId, accessToken, branch, onAdd }
     setIsPropSearching(true);
     const timer = setTimeout(async () => {
       try {
-        const response = await projectOntologyApi.searchEntities(projectId, propQuery.trim(), accessToken, branch, "property");
+        const response = await projectOntologyApi.searchEntities(projectId, propQuery.trim(), branch, "property");
         setPropResults(response.results);
       } catch { setPropResults([]); } finally { setIsPropSearching(false); }
     }, 300);
     return () => clearTimeout(timer);
-  }, [propQuery, projectId, accessToken, branch]);
+  }, [propQuery, projectId, branch]);
 
   useEffect(() => {
     if (assertionType !== "object" || !valueQuery.trim()) { setValueResults([]); setIsValueSearching(false); return; }
     setIsValueSearching(true);
     const timer = setTimeout(async () => {
       try {
-        const response = await projectOntologyApi.searchEntities(projectId, valueQuery.trim(), accessToken, branch);
+        const response = await projectOntologyApi.searchEntities(projectId, valueQuery.trim(), branch);
         setValueResults(response.results);
       } catch { setValueResults([]); } finally { setIsValueSearching(false); }
     }, 300);
     return () => clearTimeout(timer);
-  }, [valueQuery, projectId, accessToken, branch, assertionType]);
+  }, [valueQuery, projectId, branch, assertionType]);
 
   useEffect(() => {
     if (!isPropFocused) return;

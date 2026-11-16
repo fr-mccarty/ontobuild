@@ -1,13 +1,5 @@
 import { api, type UploadProgress } from "./client";
 
-export type ProjectRole = "owner" | "admin" | "editor" | "viewer";
-
-export interface ProjectOwner {
-  id: string;
-  name?: string;
-  email?: string;
-}
-
 export interface NormalizationReport {
   original_format: string;
   original_filename: string;
@@ -27,21 +19,13 @@ export interface Project {
   name: string;
   description?: string;
   is_public: boolean;
-  owner_id: string;
-  owner?: ProjectOwner;
   created_at: string;
   updated_at?: string;
-  member_count: number;
-  user_role?: ProjectRole;
-  is_superadmin?: boolean;
   source_file_path?: string;
   git_ontology_path?: string;
   ontology_iri?: string;
   label_preferences?: string[];
   normalization_report?: NormalizationReport;
-  is_exemplar?: boolean;
-  exemplar_slug?: string;
-  exemplar_source_url?: string;
 }
 
 export interface ProjectListResponse {
@@ -79,33 +63,21 @@ export interface ProjectImportData {
 }
 
 export const projectApi = {
-  list: (skip = 0, limit = 20, token?: string, search?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  list: (skip = 0, limit = 20, search?: string) => {
     return api.get<ProjectListResponse>("/api/v1/projects", {
       params: { skip, limit, search: search || undefined },
-      headers,
     });
   },
 
-  get: (id: string, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-    return api.get<Project>(`/api/v1/projects/${id}`, { headers });
+  get: (id: string) => {
+    return api.get<Project>(`/api/v1/projects/${id}`);
   },
 
-  create: (data: ProjectCreate, token: string) =>
-    api.post<Project>("/api/v1/projects", data, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  create: (data: ProjectCreate) =>
+    api.post<Project>("/api/v1/projects", data),
 
   import: (
     data: ProjectImportData,
-    token: string,
     onProgress?: (progress: UploadProgress) => void
   ) => {
     const formData = new FormData();
@@ -123,24 +95,17 @@ export const projectApi = {
         "/api/v1/projects/import",
         formData,
         {
-          headers: { Authorization: `Bearer ${token}` },
           onProgress,
         }
       );
     }
 
-    return api.upload<ProjectImportResponse>("/api/v1/projects/import", formData, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    return api.upload<ProjectImportResponse>("/api/v1/projects/import", formData);
   },
 
-  update: (id: string, data: ProjectUpdate, token: string) =>
-    api.patch<Project>(`/api/v1/projects/${id}`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  update: (id: string, data: ProjectUpdate) =>
+    api.patch<Project>(`/api/v1/projects/${id}`, data),
 
-  delete: (id: string, token: string) =>
-    api.delete(`/api/v1/projects/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  delete: (id: string) =>
+    api.delete(`/api/v1/projects/${id}`),
 };

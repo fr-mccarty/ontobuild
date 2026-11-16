@@ -40,7 +40,6 @@ import { IndividualList } from "@/components/editor/standard/IndividualList";
 describe("IndividualList", () => {
   const defaultProps = {
     projectId: "proj-1",
-    accessToken: "token-abc",
     branch: "main",
     selectedIri: null,
     onSelect: vi.fn(),
@@ -63,7 +62,6 @@ describe("IndividualList", () => {
     expect(mockSearchEntities).toHaveBeenCalledWith(
       "proj-1",
       "*",
-      "token-abc",
       "main",
       "individual"
     );

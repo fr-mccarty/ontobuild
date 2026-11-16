@@ -44,7 +44,7 @@ describe("projectApi", () => {
     it("passes paging and search params without a visibility filter", async () => {
       mockOk({ items: [], total: 0, unfiltered_total: 0, skip: 0, limit: 10 });
 
-      await projectApi.list(5, 10, undefined, "test");
+      await projectApi.list(5, 10, "test");
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("skip=5");
@@ -53,30 +53,10 @@ describe("projectApi", () => {
       expect(url).toContain("search=test");
     });
 
-    it("passes Authorization header when token provided", async () => {
-      mockOk({ items: [], total: 0, unfiltered_total: 0, skip: 0, limit: 20 });
-
-      await projectApi.list(0, 20, "my-token");
-
-      const [, options] = mockFetch.mock.calls[0];
-      const headers = options.headers;
-      expect(headers.get("Authorization")).toBeNull();
-    });
-
-    it("omits Authorization header when no token", async () => {
-      mockOk({ items: [], total: 0, unfiltered_total: 0, skip: 0, limit: 20 });
-
-      await projectApi.list();
-
-      const [, options] = mockFetch.mock.calls[0];
-      const headers = options.headers;
-      expect(headers.has("Authorization")).toBe(false);
-    });
-
     it("omits search param when empty string", async () => {
       mockOk({ items: [], total: 0, unfiltered_total: 0, skip: 0, limit: 20 });
 
-      await projectApi.list(0, 20, undefined, "");
+      await projectApi.list(0, 20, "");
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).not.toContain("search=");
@@ -97,38 +77,27 @@ describe("projectApi", () => {
       const project = { id: "p1", name: "Test" };
       mockOk(project);
 
-      const result = await projectApi.get("p1", "tok");
+      const result = await projectApi.get("p1");
       expect(result).toEqual(project);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1");
       expect(options.method).toBe("GET");
-      expect(options.headers.get("Authorization")).toBeNull();
-    });
-
-    it("omits auth header without token", async () => {
-      mockOk({ id: "p1" });
-
-      await projectApi.get("p1");
-
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.headers.has("Authorization")).toBe(false);
     });
   });
 
   describe("create", () => {
-    it("calls POST /api/v1/projects with body and auth", async () => {
+    it("calls POST /api/v1/projects with body", async () => {
       const project = { id: "p1", name: "New" };
       mockOk(project);
 
-      const result = await projectApi.create({ name: "New" }, "tok");
+      const result = await projectApi.create({ name: "New" });
       expect(result).toEqual(project);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects");
       expect(options.method).toBe("POST");
       expect(JSON.parse(options.body)).toEqual({ name: "New" });
-      expect(options.headers.get("Authorization")).toBeNull();
     });
   });
 
@@ -137,7 +106,7 @@ describe("projectApi", () => {
       const updated = { id: "p1", name: "Updated" };
       mockOk(updated);
 
-      const result = await projectApi.update("p1", { name: "Updated" }, "tok");
+      const result = await projectApi.update("p1", { name: "Updated" });
       expect(result).toEqual(updated);
 
       const [url, options] = mockFetch.mock.calls[0];
@@ -148,18 +117,17 @@ describe("projectApi", () => {
   });
 
   describe("delete", () => {
-    it("calls DELETE /api/v1/projects/:id with auth", async () => {
+    it("calls DELETE /api/v1/projects/:id", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         text: () => Promise.resolve(""),
       });
 
-      await projectApi.delete("p1", "tok");
+      await projectApi.delete("p1");
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1");
       expect(options.method).toBe("DELETE");
-      expect(options.headers.get("Authorization")).toBeNull();
     });
   });
 
@@ -170,8 +138,7 @@ describe("projectApi", () => {
 
       const file = new File(["content"], "ontology.ttl", { type: "text/turtle" });
       const result = await projectApi.import(
-        { file, is_public: true, name: "My Ont" },
-        "tok"
+        { file, is_public: true, name: "My Ont" }
       );
       expect(result).toEqual(importResp);
 

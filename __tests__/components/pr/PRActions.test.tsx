@@ -130,7 +130,6 @@ const mockBranchesApi = branchesApi as unknown as {
 
 const defaultProps = {
   projectId: "proj-1",
-  accessToken: "tok-123",
   onUpdate: vi.fn(),
 };
 
@@ -140,48 +139,26 @@ describe("PRActions", () => {
     mockBranchesApi.list.mockResolvedValue({ items: [], current_branch: "main" });
   });
 
-  it("shows merge button for owners when PR is open and can_merge", () => {
+  it("shows merge button when PR is open and can_merge", () => {
     render(
-      <PRActions {...defaultProps} pr={makePR({ can_merge: true })} userRole="owner" />
+      <PRActions {...defaultProps} pr={makePR({ can_merge: true })} />
     );
     expect(screen.getByText("Merge")).toBeDefined();
-  });
-
-  it("shows merge button for admins when PR is open", () => {
-    render(
-      <PRActions {...defaultProps} pr={makePR({ can_merge: true })} userRole="admin" />
-    );
-    expect(screen.getByText("Merge")).toBeDefined();
-  });
-
-  it("hides merge button for editors", () => {
-    render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="editor" />
-    );
-    expect(screen.queryByText("Merge")).toBeNull();
-  });
-
-  it("hides merge button for viewers", () => {
-    render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="viewer" />
-    );
-    expect(screen.queryByText("Merge")).toBeNull();
   });
 
   it("disables merge button when can_merge is false", () => {
     render(
-      <PRActions {...defaultProps} pr={makePR({ can_merge: false })} userRole="owner" />
+      <PRActions {...defaultProps} pr={makePR({ can_merge: false })} />
     );
     const mergeBtn = screen.getByText("Merge");
     expect(mergeBtn.hasAttribute("disabled")).toBe(true);
   });
 
-  it("shows approval requirement message when can_merge is false for admin", () => {
+  it("shows approval requirement message when can_merge is false", () => {
     render(
       <PRActions
         {...defaultProps}
         pr={makePR({ can_merge: false, approval_count: 0 })}
-        userRole="admin"
       />
     );
     expect(
@@ -192,30 +169,30 @@ describe("PRActions", () => {
 
   it("shows close button for open PRs", () => {
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="editor" />
+      <PRActions {...defaultProps} pr={makePR()} />
     );
     expect(screen.getByText("Close")).toBeDefined();
   });
 
   it("shows review button for open PRs", () => {
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="owner" />
+      <PRActions {...defaultProps} pr={makePR()} />
     );
     expect(screen.getByText("Review")).toBeDefined();
   });
 
   it("toggles review form on click", async () => {
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="owner" />
+      <PRActions {...defaultProps} pr={makePR()} />
     );
     fireEvent.click(screen.getByText("Review"));
     expect(screen.getByText("Submit Review")).toBeDefined();
     expect(screen.getByPlaceholderText("Leave a comment (optional)")).toBeDefined();
   });
 
-  it("shows approve and request changes buttons in review form for owners", async () => {
+  it("shows approve and request changes buttons in review form", async () => {
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="owner" />
+      <PRActions {...defaultProps} pr={makePR()} />
     );
     fireEvent.click(screen.getByText("Review"));
     expect(screen.getByText("Approve")).toBeDefined();
@@ -223,19 +200,9 @@ describe("PRActions", () => {
     expect(screen.getByText("Comment")).toBeDefined();
   });
 
-  it("hides approve/request-changes for editors in review form", async () => {
-    render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="editor" />
-    );
-    fireEvent.click(screen.getByText("Review"));
-    expect(screen.queryByText("Approve")).toBeNull();
-    expect(screen.queryByText("Request Changes")).toBeNull();
-    expect(screen.getByText("Comment")).toBeDefined();
-  });
-
   it("closes review form on cancel", () => {
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="owner" />
+      <PRActions {...defaultProps} pr={makePR()} />
     );
     fireEvent.click(screen.getByText("Review"));
     expect(screen.getByText("Submit Review")).toBeDefined();
@@ -254,7 +221,6 @@ describe("PRActions", () => {
       <PRActions
         {...defaultProps}
         pr={makePR({ can_merge: true })}
-        userRole="owner"
         onUpdate={onUpdate}
       />
     );
@@ -274,7 +240,6 @@ describe("PRActions", () => {
         "proj-1",
         7,
         { delete_source_branch: true },
-        "tok-123"
       );
       expect(onUpdate).toHaveBeenCalledWith(mergedPR);
     });
@@ -286,7 +251,7 @@ describe("PRActions", () => {
     const onUpdate = vi.fn();
 
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="editor" onUpdate={onUpdate} />
+      <PRActions {...defaultProps} pr={makePR()} onUpdate={onUpdate} />
     );
 
     fireEvent.click(screen.getByText("Close"));
@@ -299,37 +264,16 @@ describe("PRActions", () => {
     });
 
     await waitFor(() => {
-      expect(mockPrApi.close).toHaveBeenCalledWith("proj-1", 7, "tok-123");
+      expect(mockPrApi.close).toHaveBeenCalledWith("proj-1", 7);
       expect(onUpdate).toHaveBeenCalledWith(closedPR);
     });
   });
 
-  it("shows reopen button for owners on closed PRs", () => {
+  it("shows reopen button on closed PRs", () => {
     render(
-      <PRActions {...defaultProps} pr={makePR({ status: "closed" })} userRole="owner" />
+      <PRActions {...defaultProps} pr={makePR({ status: "closed" })} />
     );
     expect(screen.getByText("Reopen")).toBeDefined();
-  });
-
-  it("shows reopen button for admins on closed PRs", () => {
-    render(
-      <PRActions {...defaultProps} pr={makePR({ status: "closed" })} userRole="admin" />
-    );
-    expect(screen.getByText("Reopen")).toBeDefined();
-  });
-
-  it("hides reopen button for editors on closed PRs", () => {
-    render(
-      <PRActions {...defaultProps} pr={makePR({ status: "closed" })} userRole="editor" />
-    );
-    expect(screen.queryByText("Reopen")).toBeNull();
-  });
-
-  it("hides reopen button for viewers on closed PRs", () => {
-    render(
-      <PRActions {...defaultProps} pr={makePR({ status: "closed" })} userRole="viewer" />
-    );
-    expect(screen.queryByText("Reopen")).toBeNull();
   });
 
   it("calls reopen API via confirm dialog", async () => {
@@ -341,7 +285,6 @@ describe("PRActions", () => {
       <PRActions
         {...defaultProps}
         pr={makePR({ status: "closed" })}
-        userRole="owner"
         onUpdate={onUpdate}
       />
     );
@@ -358,7 +301,7 @@ describe("PRActions", () => {
     });
 
     await waitFor(() => {
-      expect(mockPrApi.reopen).toHaveBeenCalledWith("proj-1", 7, "tok-123");
+      expect(mockPrApi.reopen).toHaveBeenCalledWith("proj-1", 7);
       expect(onUpdate).toHaveBeenCalledWith(reopenedPR);
     });
   });
@@ -368,7 +311,6 @@ describe("PRActions", () => {
       <PRActions
         {...defaultProps}
         pr={makePR({ status: "merged", merged_at: "2025-06-10T00:00:00Z" })}
-        userRole="owner"
       />
     );
     await waitFor(() => {
@@ -383,7 +325,6 @@ describe("PRActions", () => {
       <PRActions
         {...defaultProps}
         pr={makePR({ status: "merged", target_branch: "develop" })}
-        userRole="owner"
       />
     );
     await waitFor(() => {
@@ -399,7 +340,6 @@ describe("PRActions", () => {
       <PRActions
         {...defaultProps}
         pr={makePR({ status: "merged" })}
-        userRole="owner"
       />
     );
     expect(screen.getByText("Checking branch...")).toBeDefined();
@@ -415,7 +355,6 @@ describe("PRActions", () => {
       <PRActions
         {...defaultProps}
         pr={makePR({ status: "merged", source_branch: "feature/thing" })}
-        userRole="owner"
       />
     );
 
@@ -434,7 +373,6 @@ describe("PRActions", () => {
       <PRActions
         {...defaultProps}
         pr={makePR({ status: "merged", source_branch: "feature/thing" })}
-        userRole="owner"
       />
     );
 
@@ -454,7 +392,6 @@ describe("PRActions", () => {
       <PRActions
         {...defaultProps}
         pr={makePR({ status: "merged", source_branch: "feature/thing" })}
-        userRole="owner"
       />
     );
 
@@ -477,7 +414,6 @@ describe("PRActions", () => {
       expect(mockBranchesApi.delete).toHaveBeenCalledWith(
         "proj-1",
         "feature/thing",
-        "tok-123"
       );
     });
   });
@@ -492,7 +428,7 @@ describe("PRActions", () => {
     const onUpdate = vi.fn();
 
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="owner" onUpdate={onUpdate} />
+      <PRActions {...defaultProps} pr={makePR()} onUpdate={onUpdate} />
     );
 
     fireEvent.click(screen.getByText("Review"));
@@ -509,7 +445,6 @@ describe("PRActions", () => {
         "proj-1",
         7,
         { status: "approved", body: "LGTM" },
-        "tok-123"
       );
       expect(onUpdate).toHaveBeenCalledWith(updatedPR);
     });
@@ -523,7 +458,7 @@ describe("PRActions", () => {
     mockPrApi.get.mockResolvedValue(makePR());
 
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="admin" onUpdate={vi.fn()} />
+      <PRActions {...defaultProps} pr={makePR()} onUpdate={vi.fn()} />
     );
 
     fireEvent.click(screen.getByText("Review"));
@@ -536,7 +471,6 @@ describe("PRActions", () => {
         "proj-1",
         7,
         { status: "changes_requested", body: undefined },
-        "tok-123"
       );
     });
   });
@@ -549,7 +483,7 @@ describe("PRActions", () => {
     mockPrApi.get.mockResolvedValue(makePR());
 
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="editor" onUpdate={vi.fn()} />
+      <PRActions {...defaultProps} pr={makePR()} onUpdate={vi.fn()} />
     );
 
     fireEvent.click(screen.getByText("Review"));
@@ -565,7 +499,6 @@ describe("PRActions", () => {
         "proj-1",
         7,
         { status: "commented", body: "Thoughts" },
-        "tok-123"
       );
     });
   });
@@ -574,7 +507,7 @@ describe("PRActions", () => {
     mockPrApi.createReview.mockRejectedValue(new Error("Server error"));
 
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="owner" onUpdate={vi.fn()} />
+      <PRActions {...defaultProps} pr={makePR()} onUpdate={vi.fn()} />
     );
 
     fireEvent.click(screen.getByText("Review"));
@@ -591,7 +524,7 @@ describe("PRActions", () => {
     mockPrApi.createReview.mockRejectedValue("some string error");
 
     render(
-      <PRActions {...defaultProps} pr={makePR()} userRole="owner" onUpdate={vi.fn()} />
+      <PRActions {...defaultProps} pr={makePR()} onUpdate={vi.fn()} />
     );
 
     fireEvent.click(screen.getByText("Review"));

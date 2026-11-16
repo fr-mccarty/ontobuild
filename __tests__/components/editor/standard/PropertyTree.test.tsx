@@ -62,7 +62,6 @@ import { PropertyTree } from "@/components/editor/standard/PropertyTree";
 describe("PropertyTree", () => {
   const defaultProps = {
     projectId: "proj-1",
-    accessToken: "token-abc",
     branch: "main",
     selectedIri: null,
     onSelect: vi.fn(),
@@ -84,7 +83,6 @@ describe("PropertyTree", () => {
     expect(mockSearchEntities).toHaveBeenCalledWith(
       "proj-1",
       "*",
-      "token-abc",
       "main",
       "property"
     );

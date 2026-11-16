@@ -11,7 +11,6 @@ const MAX_RESOLVED_NODES = 100;
 interface UseGraphDataOptions {
   focusIri: string | null;
   projectId: string;
-  accessToken?: string;
   branch?: string;
   initialDepth?: number;
   labelHints?: Map<string, string>;
@@ -28,7 +27,6 @@ interface UseGraphDataReturn {
 export function useGraphData({
   focusIri,
   projectId,
-  accessToken,
   branch,
   initialDepth = 2,
   labelHints,
@@ -51,7 +49,6 @@ export function useGraphData({
         const detail = await projectOntologyApi.getClassDetail(
           projectId,
           iri,
-          accessToken,
           branch,
         );
         resolvedNodesRef.current.set(iri, detail);
@@ -61,7 +58,7 @@ export function useGraphData({
         return null;
       }
     },
-    [projectId, accessToken, branch],
+    [projectId, branch],
   );
 
   const fetchNeighbors = useCallback(
@@ -124,7 +121,6 @@ export function useGraphData({
           const response = await projectOntologyApi.getClassAncestors(
             projectId,
             iri,
-            accessToken,
             branch,
           );
           for (const node of response.nodes) {
@@ -142,7 +138,7 @@ export function useGraphData({
         [...ancestorIrisToResolve].map((iri) => fetchDetail(iri)),
       );
     }
-  }, [projectId, accessToken, branch, fetchDetail]);
+  }, [projectId, branch, fetchDetail]);
 
   const getUnresolvedReferenced = useCallback((): string[] => {
     const referenced = new Set<string>();
@@ -170,7 +166,6 @@ export function useGraphData({
           const response = await projectOntologyApi.searchEntities(
             projectId,
             localName,
-            accessToken,
             branch,
           );
           const match = response.results.find((r) => r.iri === iri);
@@ -184,7 +179,7 @@ export function useGraphData({
         }
       }),
     );
-  }, [projectId, accessToken, branch]);
+  }, [projectId, branch]);
 
   const buildGraph = useCallback(
     (focus: string) => {
@@ -206,7 +201,7 @@ export function useGraphData({
   );
 
   useEffect(() => {
-    if (!focusIri || !accessToken) {
+    if (!focusIri) {
       setGraphData(null);
       return;
     }
@@ -266,7 +261,7 @@ export function useGraphData({
     return () => {
       cancelled = true;
     };
-  }, [focusIri, accessToken, branch, fetchDetail, fetchNeighbors, getUnresolvedReferenced, resolveAncestry, resolveNonClassLabels, buildGraph, initialDepth]);
+  }, [focusIri, branch, fetchDetail, fetchNeighbors, getUnresolvedReferenced, resolveAncestry, resolveNonClassLabels, buildGraph, initialDepth]);
 
   const expandNode = useCallback(
     async (iri: string) => {

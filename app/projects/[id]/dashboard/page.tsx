@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "@/lib/localUser";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,18 +9,16 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
-import { useProject, derivePermissions } from "@/lib/hooks/useProject";
+import { useProject } from "@/lib/hooks/useProject";
 import { formatDate } from "@/lib/utils";
 
 export default function ProjectDashboardPage() {
-  const { data: session, status } = useSession();
   const params = useParams();
   const projectId = params.id as string;
 
-  const { project, isLoading, error } = useProject(projectId, session?.accessToken);
-  const { canEdit, canManage } = derivePermissions(project, session?.accessToken);
+  const { project, isLoading, error } = useProject(projectId);
 
-  if (isLoading || status === "loading") {
+  if (isLoading) {
     return (
       <>
         <Header />
@@ -101,60 +98,52 @@ export default function ProjectDashboardPage() {
               </div>
 
               <div className="flex shrink-0 gap-2">
-                {canManage && (
-                  <Link href={`/projects/${project.id}/settings`}>
-                    <Button variant="outline" size="sm">
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
-                    </Button>
-                  </Link>
-                )}
-                {canEdit && (
-                  <Link href={`/projects/${project.id}`}>
-                    <Button size="sm">
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Open Editor
-                    </Button>
-                  </Link>
-                )}
+                <Link href={`/projects/${project.id}/settings`}>
+                  <Button variant="outline" size="sm">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Button>
+                </Link>
+                <Link href={`/projects/${project.id}`}>
+                  <Button size="sm">
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Open Editor
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {canEdit && (
-              <Link
-                href={`/projects/${project.id}`}
-                className="rounded-lg border border-slate-200 bg-white p-5 transition-all hover:border-primary-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-600"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400">
-                  <Pencil className="h-5 w-5" />
-                </div>
-                <h3 className="mt-3 font-semibold text-slate-900 dark:text-white">
-                  Ontology Editor
-                </h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Edit classes, properties, and individuals
-                </p>
-              </Link>
-            )}
+            <Link
+              href={`/projects/${project.id}`}
+              className="rounded-lg border border-slate-200 bg-white p-5 transition-all hover:border-primary-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-600"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400">
+                <Pencil className="h-5 w-5" />
+              </div>
+              <h3 className="mt-3 font-semibold text-slate-900 dark:text-white">
+                Ontology Editor
+              </h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Edit classes, properties, and individuals
+              </p>
+            </Link>
 
-            {canManage && (
-              <Link
-                href={`/projects/${project.id}/settings`}
-                className="rounded-lg border border-slate-200 bg-white p-5 transition-all hover:border-primary-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-600"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">
-                  <Settings className="h-5 w-5" />
-                </div>
-                <h3 className="mt-3 font-semibold text-slate-900 dark:text-white">
-                  Project Settings
-                </h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Manage visibility, imports, and project details
-                </p>
-              </Link>
-            )}
+            <Link
+              href={`/projects/${project.id}/settings`}
+              className="rounded-lg border border-slate-200 bg-white p-5 transition-all hover:border-primary-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-600"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">
+                <Settings className="h-5 w-5" />
+              </div>
+              <h3 className="mt-3 font-semibold text-slate-900 dark:text-white">
+                Project Settings
+              </h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Manage visibility, imports, and project details
+              </p>
+            </Link>
           </div>
         </div>
       </main>

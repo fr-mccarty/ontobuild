@@ -47,26 +47,17 @@ describe("useOpenPRCount", () => {
   it("returns the total open PR count", async () => {
     mockedPRList.mockResolvedValue({ total: 7, items: [] });
 
-    const { result } = renderHook(() => useOpenPRCount("p1", "tok"), {
+    const { result } = renderHook(() => useOpenPRCount("p1"), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBe(7);
-    expect(mockedPRList).toHaveBeenCalledWith("p1", "tok", "open", undefined, 0, 1);
-  });
-
-  it("does not fetch when accessToken is missing", () => {
-    const { result } = renderHook(() => useOpenPRCount("p1", undefined), {
-      wrapper: createWrapper(),
-    });
-
-    expect(result.current.fetchStatus).toBe("idle");
-    expect(mockedPRList).not.toHaveBeenCalled();
+    expect(mockedPRList).toHaveBeenCalledWith("p1", "open", undefined, 0, 1);
   });
 
   it("does not fetch when projectId is empty", () => {
-    const { result } = renderHook(() => useOpenPRCount("", "tok"), {
+    const { result } = renderHook(() => useOpenPRCount(""), {
       wrapper: createWrapper(),
     });
 
@@ -81,22 +72,13 @@ describe("useLintSummary", () => {
   it("returns lint summary data", async () => {
     mockedLintStatus.mockResolvedValue(summary);
 
-    const { result } = renderHook(() => useLintSummary("p1", "tok"), {
+    const { result } = renderHook(() => useLintSummary("p1"), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(summary);
-    expect(mockedLintStatus).toHaveBeenCalledWith("p1", "tok");
-  });
-
-  it("does not fetch when accessToken is missing", () => {
-    const { result } = renderHook(() => useLintSummary("p1", undefined), {
-      wrapper: createWrapper(),
-    });
-
-    expect(result.current.fetchStatus).toBe("idle");
-    expect(mockedLintStatus).not.toHaveBeenCalled();
+    expect(mockedLintStatus).toHaveBeenCalledWith("p1");
   });
 });
 
@@ -106,17 +88,17 @@ describe("useNormalizationStatus", () => {
   it("returns normalization status", async () => {
     mockedNormStatus.mockResolvedValue(normStatus);
 
-    const { result } = renderHook(() => useNormalizationStatus("p1", "tok"), {
+    const { result } = renderHook(() => useNormalizationStatus("p1"), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(normStatus);
-    expect(mockedNormStatus).toHaveBeenCalledWith("p1", "tok");
+    expect(mockedNormStatus).toHaveBeenCalledWith("p1");
   });
 
   it("does not fetch when projectId is empty", () => {
-    const { result } = renderHook(() => useNormalizationStatus("", "tok"), {
+    const { result } = renderHook(() => useNormalizationStatus(""), {
       wrapper: createWrapper(),
     });
 
@@ -126,7 +108,7 @@ describe("useNormalizationStatus", () => {
 
   it("respects enabled: false option", () => {
     const { result } = renderHook(
-      () => useNormalizationStatus("p1", "tok", { enabled: false }),
+      () => useNormalizationStatus("p1", { enabled: false }),
       { wrapper: createWrapper() },
     );
 
@@ -141,17 +123,17 @@ describe("useIndexStatus", () => {
   it("returns index status", async () => {
     mockedIndexStatus.mockResolvedValue(idxStatus);
 
-    const { result } = renderHook(() => useIndexStatus("p1", "tok"), {
+    const { result } = renderHook(() => useIndexStatus("p1"), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(idxStatus);
-    expect(mockedIndexStatus).toHaveBeenCalledWith("p1", "tok");
+    expect(mockedIndexStatus).toHaveBeenCalledWith("p1");
   });
 
   it("does not fetch when projectId is empty", () => {
-    const { result } = renderHook(() => useIndexStatus("", "tok"), {
+    const { result } = renderHook(() => useIndexStatus(""), {
       wrapper: createWrapper(),
     });
 
@@ -161,7 +143,7 @@ describe("useIndexStatus", () => {
 
   it("respects enabled: false option", () => {
     const { result } = renderHook(
-      () => useIndexStatus("p1", "tok", { enabled: false }),
+      () => useIndexStatus("p1", { enabled: false }),
       { wrapper: createWrapper() },
     );
 

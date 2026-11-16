@@ -41,12 +41,11 @@ describe("pullRequestsApi", () => {
       const summary = { total_open: 3, by_project: [] };
       mockOk(summary);
 
-      const result = await pullRequestsApi.getOpenSummary("tok");
+      const result = await pullRequestsApi.getOpenSummary();
       expect(result).toEqual(summary);
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/pull-requests/open-summary");
-      expect(options.headers.get("Authorization")).toBeNull();
     });
   });
 
@@ -65,23 +64,13 @@ describe("pullRequestsApi", () => {
     it("passes status and author_id filters", async () => {
       mockOk({ items: [], total: 0, skip: 0, limit: 10 });
 
-      await pullRequestsApi.list("p1", "tok", "open", "user1", 5, 10);
+      await pullRequestsApi.list("p1", "open", "user1", 5, 10);
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("status=open");
       expect(url).toContain("author_id=user1");
       expect(url).toContain("skip=5");
       expect(url).toContain("limit=10");
-      expect(options.headers.get("Authorization")).toBeNull();
-    });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ items: [], total: 0, skip: 0, limit: 20 });
-
-      await pullRequestsApi.list("p1");
-
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.headers.has("Authorization")).toBe(false);
     });
 
     it("throws ApiError on failure", async () => {
@@ -94,7 +83,7 @@ describe("pullRequestsApi", () => {
       mockError(403, "Forbidden", "Access denied");
 
       try {
-        await pullRequestsApi.create("p1", { title: "test", source_branch: "feat", target_branch: "main" }, "tok");
+        await pullRequestsApi.create("p1", { title: "test", source_branch: "feat", target_branch: "main" });
         expect.unreachable("should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(ApiError);
@@ -108,32 +97,22 @@ describe("pullRequestsApi", () => {
       const pr = { id: "pr1", pr_number: 5, title: "Add class" };
       mockOk(pr);
 
-      const result = await pullRequestsApi.get("p1", 5, "tok");
+      const result = await pullRequestsApi.get("p1", 5);
       expect(result).toEqual(pr);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/5");
     });
-
-    it("omits auth header when no token", async () => {
-      mockOk({ id: "pr1" });
-
-      await pullRequestsApi.get("p1", 1);
-
-      const [, options] = mockFetch.mock.calls[0];
-      expect(options.headers.has("Authorization")).toBe(false);
-    });
   });
 
   describe("create", () => {
-    it("calls POST with PR data and auth", async () => {
+    it("calls POST with PR data", async () => {
       const pr = { id: "pr1", title: "New PR" };
       mockOk(pr);
 
       const result = await pullRequestsApi.create(
         "p1",
-        { title: "New PR", source_branch: "feat", target_branch: "main" },
-        "tok"
+        { title: "New PR", source_branch: "feat", target_branch: "main" }
       );
       expect(result).toEqual(pr);
 
@@ -141,7 +120,6 @@ describe("pullRequestsApi", () => {
       expect(url).toContain("/api/v1/projects/p1/pull-requests");
       expect(options.method).toBe("POST");
       expect(JSON.parse(options.body).title).toBe("New PR");
-      expect(options.headers.get("Authorization")).toBeNull();
     });
   });
 
@@ -149,7 +127,7 @@ describe("pullRequestsApi", () => {
     it("calls PATCH with update data", async () => {
       mockOk({ id: "pr1", title: "Updated" });
 
-      await pullRequestsApi.update("p1", 3, { title: "Updated" }, "tok");
+      await pullRequestsApi.update("p1", 3, { title: "Updated" });
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/3");
@@ -161,7 +139,7 @@ describe("pullRequestsApi", () => {
     it("calls POST /close endpoint", async () => {
       mockOk({ id: "pr1", status: "closed" });
 
-      await pullRequestsApi.close("p1", 2, "tok");
+      await pullRequestsApi.close("p1", 2);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/2/close");
@@ -173,7 +151,7 @@ describe("pullRequestsApi", () => {
     it("calls POST /reopen endpoint", async () => {
       mockOk({ id: "pr1", status: "open" });
 
-      await pullRequestsApi.reopen("p1", 2, "tok");
+      await pullRequestsApi.reopen("p1", 2);
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/2/reopen");
@@ -189,8 +167,7 @@ describe("pullRequestsApi", () => {
       const result = await pullRequestsApi.merge(
         "p1",
         4,
-        { merge_message: "Merging", delete_source_branch: true },
-        "tok"
+        { merge_message: "Merging", delete_source_branch: true }
       );
       expect(result).toEqual(mergeResp);
 
@@ -205,7 +182,7 @@ describe("pullRequestsApi", () => {
     it("calls GET /commits endpoint", async () => {
       mockOk({ items: [], total: 0 });
 
-      await pullRequestsApi.getCommits("p1", 1, "tok");
+      await pullRequestsApi.getCommits("p1", 1);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/1/commits");
@@ -216,7 +193,7 @@ describe("pullRequestsApi", () => {
     it("calls GET /diff endpoint", async () => {
       mockOk({ files: [], total_additions: 0, total_deletions: 0, files_changed: 0 });
 
-      await pullRequestsApi.getDiff("p1", 1, "tok");
+      await pullRequestsApi.getDiff("p1", 1);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/1/diff");
@@ -227,7 +204,7 @@ describe("pullRequestsApi", () => {
     it("calls GET /reviews endpoint", async () => {
       mockOk({ items: [], total: 0 });
 
-      await pullRequestsApi.listReviews("p1", 1, "tok");
+      await pullRequestsApi.listReviews("p1", 1);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/1/reviews");
@@ -238,7 +215,7 @@ describe("pullRequestsApi", () => {
     it("calls POST /reviews with review data", async () => {
       mockOk({ id: "r1", status: "approved" });
 
-      await pullRequestsApi.createReview("p1", 1, { status: "approved", body: "LGTM" }, "tok");
+      await pullRequestsApi.createReview("p1", 1, { status: "approved", body: "LGTM" });
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/1/reviews");
@@ -251,7 +228,7 @@ describe("pullRequestsApi", () => {
     it("calls GET /comments endpoint", async () => {
       mockOk({ items: [], total: 0 });
 
-      await pullRequestsApi.listComments("p1", 1, "tok");
+      await pullRequestsApi.listComments("p1", 1);
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/1/comments");
@@ -262,7 +239,7 @@ describe("pullRequestsApi", () => {
     it("calls POST /comments with body", async () => {
       mockOk({ id: "c1", body: "Nice work" });
 
-      await pullRequestsApi.createComment("p1", 1, { body: "Nice work" }, "tok");
+      await pullRequestsApi.createComment("p1", 1, { body: "Nice work" });
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/1/comments");
@@ -274,7 +251,7 @@ describe("pullRequestsApi", () => {
     it("calls PATCH /comments/:commentId", async () => {
       mockOk({ id: "c1", body: "Updated" });
 
-      await pullRequestsApi.updateComment("p1", 1, "c1", { body: "Updated" }, "tok");
+      await pullRequestsApi.updateComment("p1", 1, "c1", { body: "Updated" });
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/1/comments/c1");
@@ -286,12 +263,11 @@ describe("pullRequestsApi", () => {
     it("calls DELETE /comments/:commentId", async () => {
       mockEmpty();
 
-      await pullRequestsApi.deleteComment("p1", 1, "c1", "tok");
+      await pullRequestsApi.deleteComment("p1", 1, "c1");
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pull-requests/1/comments/c1");
       expect(options.method).toBe("DELETE");
-      expect(options.headers.get("Authorization")).toBeNull();
     });
   });
 });
@@ -305,7 +281,7 @@ describe("prSettingsApi", () => {
     it("calls GET /pr-settings", async () => {
       mockOk({ pr_approval_required: 1 });
 
-      await prSettingsApi.get("p1", "tok");
+      await prSettingsApi.get("p1");
 
       const [url] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pr-settings");
@@ -316,7 +292,7 @@ describe("prSettingsApi", () => {
     it("calls PATCH /pr-settings", async () => {
       mockOk({ pr_approval_required: 2 });
 
-      await prSettingsApi.update("p1", { pr_approval_required: 2 }, "tok");
+      await prSettingsApi.update("p1", { pr_approval_required: 2 });
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toContain("/api/v1/projects/p1/pr-settings");

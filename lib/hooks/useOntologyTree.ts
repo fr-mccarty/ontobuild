@@ -6,7 +6,6 @@ import type { ClassTreeNode } from "@/lib/ontology/types";
 
 interface UseOntologyTreeOptions {
   projectId: string;
-  accessToken?: string;
   branchKey?: string;
 }
 
@@ -96,7 +95,6 @@ function updateNodeInTree(
 
 export function useOntologyTree({
   projectId,
-  accessToken,
   branchKey,
 }: UseOntologyTreeOptions): UseOntologyTreeReturn {
   const [nodes, setNodes] = useState<ClassTreeNode[]>([]);
@@ -124,7 +122,7 @@ export function useOntologyTree({
     setError(null);
 
     try {
-      const response = await projectOntologyApi.getRootClasses(projectId, accessToken, branchKey);
+      const response = await projectOntologyApi.getRootClasses(projectId, branchKey);
       setNodes(response.nodes.map(apiNodeToTreeNode));
       setTotalClasses(response.total_classes);
     } catch (err) {
@@ -133,7 +131,7 @@ export function useOntologyTree({
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, accessToken, branchKey]);
+  }, [projectId, branchKey]);
 
   const expandNode = useCallback(
     async (iri: string) => {
@@ -145,7 +143,7 @@ export function useOntologyTree({
       );
 
       try {
-        const response = await projectOntologyApi.getClassChildren(projectId, iri, accessToken, branchKey);
+        const response = await projectOntologyApi.getClassChildren(projectId, iri, branchKey);
         const children = response.nodes.map(apiNodeToTreeNode);
 
         setNodes((prev) =>
@@ -166,7 +164,7 @@ export function useOntologyTree({
         console.error("Failed to expand node:", err);
       }
     },
-    [projectId, accessToken, branchKey]
+    [projectId, branchKey]
   );
 
   // Reload the tree from the server in place: roots, every expanded subtree, labels and the
@@ -185,7 +183,7 @@ export function useOntologyTree({
           items.map(async (node) => {
             if (!expanded.has(node.iri) || !node.hasChildren || path.has(node.iri)) return node;
             try {
-              const response = await projectOntologyApi.getClassChildren(projectId, node.iri, accessToken, branchKey);
+              const response = await projectOntologyApi.getClassChildren(projectId, node.iri, branchKey);
               const childPath = new Set(path).add(node.iri);
               const children = await fill(response.nodes.map(apiNodeToTreeNode), childPath);
               return { ...node, children, isExpanded: true };
@@ -199,7 +197,7 @@ export function useOntologyTree({
       let roots: ClassTreeNode[];
       let total: number;
       try {
-        const response = await projectOntologyApi.getRootClasses(projectId, accessToken, branchKey);
+        const response = await projectOntologyApi.getRootClasses(projectId, branchKey);
         roots = await fill(response.nodes.map(apiNodeToTreeNode), new Set());
         total = response.total_classes;
       } catch (err) {
@@ -222,7 +220,7 @@ export function useOntologyTree({
       // parent, or it is gone. Reveal it at its new place, or clear the selection.
       if (!isVisibleInTree(before, selected) || isVisibleInTree(roots, selected)) return;
       try {
-        const response = await projectOntologyApi.getClassAncestors(projectId, selected, accessToken, branchKey);
+        const response = await projectOntologyApi.getClassAncestors(projectId, selected, branchKey);
         if (gen !== refreshGenRef.current) return;
         for (const ancestor of response.nodes) {
           await expandNode(ancestor.iri);
@@ -231,7 +229,7 @@ export function useOntologyTree({
         if (gen === refreshGenRef.current && selectedIriRef.current === selected) setSelectedIri(null);
       }
     },
-    [projectId, accessToken, branchKey, expandNode],
+    [projectId, branchKey, expandNode],
   );
 
   const collapseNode = useCallback((iri: string) => {
@@ -250,7 +248,7 @@ export function useOntologyTree({
   const navigateToNode = useCallback(
     async (iri: string) => {
       try {
-        const response = await projectOntologyApi.getClassAncestors(projectId, iri, accessToken, branchKey);
+        const response = await projectOntologyApi.getClassAncestors(projectId, iri, branchKey);
         const ancestorNodes = response.nodes;
 
         for (const ancestor of ancestorNodes) {
@@ -263,7 +261,7 @@ export function useOntologyTree({
         setSelectedIri(iri);
       }
     },
-    [projectId, accessToken, branchKey, expandNode]
+    [projectId, branchKey, expandNode]
   );
 
   const addOptimisticNode = useCallback(

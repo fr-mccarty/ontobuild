@@ -255,26 +255,17 @@ describe("PRDetail", () => {
     expect(screen.queryByText("Some details here.")).toBeNull();
   });
 
-  it("renders PRActions when accessToken is provided", async () => {
+  it("renders PRActions", async () => {
     setupSuccessfulLoad();
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok-123" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => {
       expect(screen.getByTestId("pr-actions")).toBeDefined();
     });
   });
 
-  it("does not render PRActions when accessToken is absent", async () => {
-    setupSuccessfulLoad();
-    render(<PRDetail projectId="proj-1" prNumber={7} />);
-    await waitFor(() => {
-      expect(screen.getByText("Add owl:Thing subclass")).toBeDefined();
-    });
-    expect(screen.queryByTestId("pr-actions")).toBeNull();
-  });
-
   it("defaults to conversation tab", async () => {
     setupSuccessfulLoad(makePR(), [], [makeComment()]);
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => {
       expect(screen.getByText("Comments")).toBeDefined();
       expect(screen.getByTestId("pr-comment-thread")).toBeDefined();
@@ -303,7 +294,7 @@ describe("PRDetail", () => {
     const commits = [makeCommit({ message: "Implement subclass hierarchy\n\nDetailed changes" })];
     mockApi.getCommits.mockResolvedValue({ items: commits, total: 1 });
 
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => {
       expect(screen.getByText("Commits")).toBeDefined();
     });
@@ -313,7 +304,7 @@ describe("PRDetail", () => {
     });
 
     await waitFor(() => {
-      expect(mockApi.getCommits).toHaveBeenCalledWith("proj-1", 7, "tok");
+      expect(mockApi.getCommits).toHaveBeenCalledWith("proj-1", 7);
       expect(screen.getByText("Implement subclass hierarchy")).toBeDefined();
       expect(screen.getAllByText("abc123d").length).toBeGreaterThanOrEqual(1);
     });
@@ -323,7 +314,7 @@ describe("PRDetail", () => {
     setupSuccessfulLoad();
     mockApi.getCommits.mockResolvedValue({ items: [], total: 0 });
 
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => screen.getByText("Commits"));
 
     await act(async () => {
@@ -354,7 +345,7 @@ describe("PRDetail", () => {
     };
     mockApi.getDiff.mockResolvedValue(diffData);
 
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => screen.getByText("Files Changed"));
 
     await act(async () => {
@@ -362,7 +353,7 @@ describe("PRDetail", () => {
     });
 
     await waitFor(() => {
-      expect(mockApi.getDiff).toHaveBeenCalledWith("proj-1", 7, "tok");
+      expect(mockApi.getDiff).toHaveBeenCalledWith("proj-1", 7);
       expect(screen.getAllByText("1 file changed").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("+10").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("-2").length).toBeGreaterThanOrEqual(1);
@@ -383,7 +374,7 @@ describe("PRDetail", () => {
     };
     mockApi.getDiff.mockResolvedValue(diffData);
 
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => screen.getByText("Files Changed"));
 
     await act(async () => {
@@ -404,7 +395,7 @@ describe("PRDetail", () => {
       files_changed: 0,
     });
 
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => screen.getByText("Files Changed"));
 
     await act(async () => {
@@ -452,22 +443,13 @@ describe("PRDetail", () => {
     });
   });
 
-  it("shows comment form when accessToken is provided", async () => {
+  it("shows the comment form", async () => {
     setupSuccessfulLoad(makePR(), [], []);
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => {
       expect(screen.getByPlaceholderText("Leave a comment...")).toBeDefined();
       expect(screen.getByText("Comment")).toBeDefined();
     });
-  });
-
-  it("does not show comment form when accessToken is absent", async () => {
-    setupSuccessfulLoad(makePR(), [], []);
-    render(<PRDetail projectId="proj-1" prNumber={7} />);
-    await waitFor(() => {
-      expect(screen.getByText("Comments")).toBeDefined();
-    });
-    expect(screen.queryByPlaceholderText("Leave a comment...")).toBeNull();
   });
 
   it("submits a new comment and reloads comments", async () => {
@@ -479,7 +461,7 @@ describe("PRDetail", () => {
       total: 1,
     });
 
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => screen.getByPlaceholderText("Leave a comment..."));
 
     const textarea = screen.getByPlaceholderText("Leave a comment...");
@@ -495,14 +477,13 @@ describe("PRDetail", () => {
         "proj-1",
         7,
         { body: "New comment" },
-        "tok"
       );
     });
   });
 
   it("disables comment button when textarea is empty", async () => {
     setupSuccessfulLoad(makePR(), [], []);
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => screen.getByText("Comment"));
 
     const commentBtn = screen.getByText("Comment");
@@ -528,7 +509,7 @@ describe("PRDetail", () => {
     };
     mockApi.getDiff.mockResolvedValue(diffData);
 
-    render(<PRDetail projectId="proj-1" prNumber={7} accessToken="tok" />);
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
     await waitFor(() => screen.getByText("Files Changed"));
 
     await act(async () => {

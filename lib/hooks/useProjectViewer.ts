@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useOntologyTree } from "@/lib/hooks/useOntologyTree";
-import { useProject, derivePermissions } from "@/lib/hooks/useProject";
+import { useProject } from "@/lib/hooks/useProject";
 import { useOpenPRCount } from "@/lib/hooks/useOpenPRCount";
 import { useLintSummary } from "@/lib/hooks/useLintSummary";
 import { useNormalizationStatus } from "@/lib/hooks/useNormalizationStatus";
@@ -10,32 +10,22 @@ import type { IriPosition } from "@/lib/ontology/iriGeneration";
 
 export interface UseProjectViewerOptions {
   projectId: string;
-  accessToken?: string;
-  sessionStatus: "loading" | "authenticated" | "unauthenticated";
   activeBranch?: string;
 }
 
 export function useProjectViewer({
   projectId,
-  accessToken,
-  sessionStatus,
   activeBranch,
 }: UseProjectViewerOptions) {
   const {
     project, isLoading, error, errorKind,
-  } = useProject(projectId, accessToken);
-  const permissions = derivePermissions(project, accessToken);
-  const {
-    canManage, canEdit,
-    hasValidAccess: _hasValidAccess, hasOntology,
-  } = permissions;
-  const hasValidAccess = sessionStatus === "authenticated" && !!accessToken;
+  } = useProject(projectId);
+  const hasOntology = !!project?.source_file_path;
 
-  const { data: openPRCount = 0 } = useOpenPRCount(projectId, accessToken);
-  const { data: lintSummary = null } = useLintSummary(projectId, accessToken);
+  const { data: openPRCount = 0 } = useOpenPRCount(projectId);
+  const { data: lintSummary = null } = useLintSummary(projectId);
   const { data: normalizationStatus = null } = useNormalizationStatus(
     projectId,
-    accessToken,
     { enabled: !!project?.source_file_path },
   );
 
@@ -50,7 +40,6 @@ export function useProjectViewer({
 
   const tree = useOntologyTree({
     projectId,
-    accessToken,
     branchKey: activeBranch,
   });
 
@@ -89,7 +78,6 @@ export function useProjectViewer({
       const response = await revisionsApi.getFileAtVersion(
         projectId,
         activeBranch,
-        accessToken,
         project?.git_ontology_path
       );
       setSourceContent(response.content);
@@ -105,7 +93,7 @@ export function useProjectViewer({
         setIsLoadingSource(false);
       }
     }
-  }, [projectId, accessToken, sourceContent, activeBranch, project?.git_ontology_path]);
+  }, [projectId, sourceContent, activeBranch, project?.git_ontology_path]);
 
   useEffect(() => {
     if (!sourceContent && !isLoadingSource && !isPreloading && !preloadStartedRef.current && hasOntology) {
@@ -219,9 +207,6 @@ export function useProjectViewer({
     lintSummary,
     normalizationStatus,
 
-    canManage,
-    canEdit,
-    hasValidAccess,
     hasOntology,
 
     nodes: tree.nodes,

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "@/lib/localUser";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, GitPullRequest } from "lucide-react";
@@ -10,21 +9,19 @@ import { Button } from "@/components/ui/button";
 import { PRList } from "@/components/pr/PRList";
 import { PRCreateModal } from "@/components/pr/PRCreateModal";
 import { BranchProvider } from "@/lib/context/BranchContext";
-import { useProject, derivePermissions } from "@/lib/hooks/useProject";
+import { useProject } from "@/lib/hooks/useProject";
 import { useProjectHomeHref } from "@/lib/hooks/useProjectHomeHref";
 
 export default function PullRequestsPage() {
-  const { data: session, status } = useSession();
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
 
-  const { project, isLoading, error } = useProject(projectId, session?.accessToken);
-  const { canEdit: canCreatePR } = derivePermissions(project, session?.accessToken);
+  const { project, isLoading, error } = useProject(projectId);
   const projectHomeHref = useProjectHomeHref(projectId);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  if (isLoading || status === "loading") {
+  if (isLoading) {
     return (
       <>
         <Header />
@@ -66,7 +63,7 @@ export default function PullRequestsPage() {
   }
 
   return (
-    <BranchProvider projectId={projectId} accessToken={session?.accessToken}>
+    <BranchProvider projectId={projectId}>
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
@@ -95,27 +92,22 @@ export default function PullRequestsPage() {
               </div>
             </div>
 
-            {canCreatePR && (
-              <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Pull Request
-              </Button>
-            )}
+            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Pull Request
+            </Button>
           </div>
 
-          <PRList projectId={projectId} accessToken={session?.accessToken} />
+          <PRList projectId={projectId} />
 
-          {session?.accessToken && (
-            <PRCreateModal
-              projectId={projectId}
-              accessToken={session.accessToken}
-              isOpen={showCreateModal}
-              onClose={() => setShowCreateModal(false)}
-              onCreated={(pr) => {
-                router.push(`/projects/${projectId}/pull-requests/${pr.pr_number}`);
-              }}
-            />
-          )}
+          <PRCreateModal
+            projectId={projectId}
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onCreated={(pr) => {
+              router.push(`/projects/${projectId}/pull-requests/${pr.pr_number}`);
+            }}
+          />
         </div>
       </main>
     </BranchProvider>

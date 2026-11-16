@@ -31,7 +31,6 @@ describe("PropertyAssertionSection", () => {
     assertionType: "object" as const,
     isEditing: false,
     projectId: "proj-1",
-    accessToken: "token",
     branch: "main",
   };
 
@@ -366,7 +365,6 @@ describe("PropertyAssertionSection", () => {
       expect(searchMock).toHaveBeenCalledWith(
         "proj-1",
         "has",
-        "token",
         "main",
         "property"
       );

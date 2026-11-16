@@ -145,7 +145,6 @@ function makeLintIssue(overrides: Record<string, unknown> = {}) {
 const DEFAULT_PROPS = {
   projectId: "proj-1",
   classIri: "http://example.org/ontology#Person",
-  accessToken: "test-token",
   branch: "main",
 };
 
@@ -294,7 +293,6 @@ describe("ClassDetailPanel", () => {
       expect(mockGetClassDetail).toHaveBeenCalledWith(
         "proj-1",
         "http://example.org/ontology#Person",
-        "test-token",
         "main"
       );
     });
@@ -306,7 +304,6 @@ describe("ClassDetailPanel", () => {
     await waitFor(() => {
       expect(mockGetIssues).toHaveBeenCalledWith(
         "proj-1",
-        "test-token",
         expect.objectContaining({
           subject_iri: "http://example.org/ontology#Person",
           limit: 50,

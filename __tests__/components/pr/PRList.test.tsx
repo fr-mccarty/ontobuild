@@ -74,14 +74,14 @@ describe("PRList", () => {
   it("shows loading spinner initially", () => {
     mockList.mockReturnValue(new Promise(() => {}));
     const { container } = render(
-      <PRList projectId="proj-1" accessToken="token-123" />
+      <PRList projectId="proj-1" />
     );
     expect(container.querySelector(".animate-spin")).not.toBeNull();
   });
 
   it("renders status filter tabs", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([], 0));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Open")).toBeDefined();
@@ -93,7 +93,7 @@ describe("PRList", () => {
 
   it("renders total count", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([], 0));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("0 pull requests")).toBeDefined();
@@ -102,7 +102,7 @@ describe("PRList", () => {
 
   it("renders singular pull request text for total of 1", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([makePR()], 1));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("1 pull request")).toBeDefined();
@@ -112,7 +112,7 @@ describe("PRList", () => {
   it("renders empty state for open filter", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([], 0));
     render(
-      <PRList projectId="proj-1" accessToken="token-123" defaultStatus="open" />
+      <PRList projectId="proj-1" defaultStatus="open" />
     );
 
     await waitFor(() => {
@@ -127,7 +127,7 @@ describe("PRList", () => {
 
   it("renders empty state for merged filter", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([], 0));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("No pull requests")).toBeDefined();
@@ -147,7 +147,7 @@ describe("PRList", () => {
 
   it("renders empty state for closed filter", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([], 0));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("No pull requests")).toBeDefined();
@@ -167,7 +167,7 @@ describe("PRList", () => {
 
   it("renders empty state for all filter", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([], 0));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("No pull requests")).toBeDefined();
@@ -193,7 +193,7 @@ describe("PRList", () => {
       makePR({ id: "pr-2", title: "Second PR" }),
     ];
     mockList.mockResolvedValueOnce(makeListResponse(prs, 2));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByTestId("pr-item-pr-1")).toBeDefined();
@@ -203,7 +203,7 @@ describe("PRList", () => {
 
   it("renders error state", async () => {
     mockList.mockRejectedValueOnce(new Error("Network error"));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Network error")).toBeDefined();
@@ -212,7 +212,7 @@ describe("PRList", () => {
 
   it("shows generic error for non-Error exceptions", async () => {
     mockList.mockRejectedValueOnce("something");
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Failed to load pull requests")).toBeDefined();
@@ -222,13 +222,12 @@ describe("PRList", () => {
   it("calls API with correct params for status filter", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([], 0));
     render(
-      <PRList projectId="proj-1" accessToken="token-123" defaultStatus="open" />
+      <PRList projectId="proj-1" defaultStatus="open" />
     );
 
     await waitFor(() => {
       expect(mockList).toHaveBeenCalledWith(
         "proj-1",
-        "token-123",
         "open",
         undefined,
         0,
@@ -242,7 +241,6 @@ describe("PRList", () => {
     render(
       <PRList
         projectId="proj-1"
-        accessToken="token-123"
         defaultStatus="all"
       />
     );
@@ -250,7 +248,6 @@ describe("PRList", () => {
     await waitFor(() => {
       expect(mockList).toHaveBeenCalledWith(
         "proj-1",
-        "token-123",
         undefined,
         undefined,
         0,
@@ -261,7 +258,7 @@ describe("PRList", () => {
 
   it("changes status filter and resets skip to 0", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([], 0));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(mockList).toHaveBeenCalledTimes(1);
@@ -275,7 +272,6 @@ describe("PRList", () => {
     await waitFor(() => {
       expect(mockList).toHaveBeenCalledWith(
         "proj-1",
-        "token-123",
         "merged",
         undefined,
         0,
@@ -289,7 +285,7 @@ describe("PRList", () => {
       makePR({ id: `pr-${i}`, title: `PR ${i}` })
     );
     mockList.mockResolvedValueOnce(makeListResponse(prs, 25));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Previous")).toBeDefined();
@@ -301,7 +297,7 @@ describe("PRList", () => {
   it("Previous button is disabled on first page", async () => {
     const prs = [makePR()];
     mockList.mockResolvedValueOnce(makeListResponse(prs, 25));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       const prevBtn = screen.getByText("Previous");
@@ -314,7 +310,7 @@ describe("PRList", () => {
       makePR({ id: `pr-${i}`, title: `PR ${i}` })
     );
     mockList.mockResolvedValueOnce(makeListResponse(prs, 25));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Next")).toBeDefined();
@@ -330,7 +326,6 @@ describe("PRList", () => {
     await waitFor(() => {
       expect(mockList).toHaveBeenLastCalledWith(
         "proj-1",
-        "token-123",
         "open",
         undefined,
         20,
@@ -341,7 +336,7 @@ describe("PRList", () => {
 
   it("does not render pagination when total is within limit", async () => {
     mockList.mockResolvedValueOnce(makeListResponse([makePR()], 1));
-    render(<PRList projectId="proj-1" accessToken="token-123" />);
+    render(<PRList projectId="proj-1" />);
 
     await waitFor(() => {
       expect(screen.getByTestId("pr-item-pr-1")).toBeDefined();

@@ -49,87 +49,56 @@ export interface NormalizationHistoryResponse {
 }
 
 export const normalizationApi = {
-  getStatus: (projectId: string, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  getStatus: (projectId: string) => {
     return api.get<NormalizationStatusResponse>(
-      `/api/v1/projects/${projectId}/normalization/status`,
-      { headers }
+      `/api/v1/projects/${projectId}/normalization/status`
     );
   },
 
   runNormalization: (
     projectId: string,
-    dryRun: boolean = false,
-    token: string
+    dryRun: boolean = false
   ) =>
     api.post<NormalizationRunResponse>(
       `/api/v1/projects/${projectId}/normalization`,
-      { dry_run: dryRun },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      { dry_run: dryRun }
     ),
 
   getHistory: (
     projectId: string,
     limit: number = 10,
-    includeDryRuns: boolean = false,
-    token?: string
+    includeDryRuns: boolean = false
   ) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
     return api.get<NormalizationHistoryResponse>(
       `/api/v1/projects/${projectId}/normalization/history`,
       {
         params: { limit, include_dry_runs: includeDryRuns },
-        headers,
       }
     );
   },
 
-  getRun: (projectId: string, runId: string, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  getRun: (projectId: string, runId: string) => {
     return api.get<NormalizationRunResponse>(
-      `/api/v1/projects/${projectId}/normalization/runs/${runId}`,
-      { headers }
+      `/api/v1/projects/${projectId}/normalization/runs/${runId}`
     );
   },
 
-  refreshStatus: (projectId: string, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  refreshStatus: (projectId: string) => {
     return api.post<RefreshStatusResponse>(
       `/api/v1/projects/${projectId}/normalization/refresh`,
-      {},
-      { headers }
+      {}
     );
   },
 
-  queueNormalization: (projectId: string, dryRun: boolean, token: string) =>
+  queueNormalization: (projectId: string, dryRun: boolean) =>
     api.post<QueuedJobResponse>(
       `/api/v1/projects/${projectId}/normalization/queue`,
-      { dry_run: dryRun },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { dry_run: dryRun }
     ),
 
-  getJobStatus: (projectId: string, jobId: string, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  getJobStatus: (projectId: string, jobId: string) => {
     return api.get<JobStatusResponse>(
-      `/api/v1/projects/${projectId}/normalization/jobs/${jobId}`,
-      { headers }
+      `/api/v1/projects/${projectId}/normalization/jobs/${jobId}`
     );
   },
 };

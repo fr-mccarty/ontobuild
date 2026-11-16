@@ -17,10 +17,8 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     name: "Test Ontology",
     description: "A test project for ontology editing",
     is_public: true,
-    owner_id: "user-1",
     created_at: "2024-06-01T12:00:00Z",
     updated_at: "2024-06-15T12:00:00Z",
-    member_count: 3,
     ...overrides,
   };
 }
@@ -42,7 +40,7 @@ describe("ProjectCard", () => {
   });
 
   it("links to the project editor", () => {
-    render(<ProjectCard project={makeProject({ user_role: "owner" })} />);
+    render(<ProjectCard project={makeProject()} />);
     const link = screen.getByRole("link", { name: /Open project Test Ontology/ });
     expect(link.getAttribute("href")).toBe("/projects/proj-123");
   });
@@ -51,24 +49,6 @@ describe("ProjectCard", () => {
     render(<ProjectCard project={makeProject({ is_public: true })} />);
     expect(screen.queryByTitle("Public project")).toBeNull();
     expect(screen.queryByTitle("Private project")).toBeNull();
-  });
-
-  it("does not show role badge when user_role is absent", () => {
-    render(<ProjectCard project={makeProject({ user_role: undefined })} />);
-    expect(screen.queryByText("Owner")).toBeNull();
-    expect(screen.queryByText("Admin")).toBeNull();
-    expect(screen.queryByText("Editor")).toBeNull();
-    expect(screen.queryByText("Viewer")).toBeNull();
-  });
-
-  it("shows Exemplar badge when is_exemplar is true", () => {
-    render(<ProjectCard project={makeProject({ is_exemplar: true })} />);
-    expect(screen.getByText("Exemplar")).toBeDefined();
-  });
-
-  it("does not show Exemplar badge when is_exemplar is false", () => {
-    render(<ProjectCard project={makeProject({ is_exemplar: false })} />);
-    expect(screen.queryByText("Exemplar")).toBeNull();
   });
 
   it("shows the updated_at date when present", () => {

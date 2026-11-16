@@ -61,7 +61,6 @@ interface PropertyDetailPanelProps {
   refreshKey?: number;
   onNavigateToEntity?: (iri: string) => void;
   onCopyIri?: (iri: string) => void;
-  accessToken?: string;
   labelHints?: Record<string, string>;
 }
 
@@ -75,7 +74,6 @@ export function PropertyDetailPanel({
   refreshKey,
   onNavigateToEntity,
   onCopyIri,
-  accessToken,
   labelHints,
 }: PropertyDetailPanelProps) {
   const detail = useMemo((): ParsedPropertyDetail | null => {
@@ -101,7 +99,7 @@ export function PropertyDetailPanel({
     return iris;
   }, [detail]);
 
-  const resolvedLabels = useIriLabels(allDisplayedIris, { projectId, accessToken, branch, labelHints });
+  const resolvedLabels = useIriLabels(allDisplayedIris, { projectId, branch, labelHints });
 
   const [isEditing, setIsEditing] = useState(false);
   const [editLabels, setEditLabels] = useState<LocalizedString[]>([]);
@@ -562,7 +560,6 @@ export function PropertyDetailPanel({
                   onAdd={(iri) => { setEditDomainIris((p) => [...p, iri]); requestAnimationFrame(() => triggerSave()); }}
                   onNavigate={onNavigateToEntity}
                   projectId={projectId}
-                  accessToken={accessToken}
                   branch={branch}
                   entityFilter="class"
                   placeholder="Search classes for domain..."
@@ -583,7 +580,6 @@ export function PropertyDetailPanel({
                   onAdd={(iri) => { setEditRangeIris((p) => [...p, iri]); requestAnimationFrame(() => triggerSave()); }}
                   onNavigate={onNavigateToEntity}
                   projectId={projectId}
-                  accessToken={accessToken}
                   branch={branch}
                   entityFilter="class"
                   placeholder="Search classes for range..."
@@ -604,7 +600,6 @@ export function PropertyDetailPanel({
                   onAdd={(iri) => { setEditParentIris((p) => [...p, iri]); requestAnimationFrame(() => triggerSave()); }}
                   onNavigate={onNavigateToEntity}
                   projectId={projectId}
-                  accessToken={accessToken}
                   branch={branch}
                   entityFilter="property"
                   placeholder="Search parent properties..."
@@ -625,7 +620,6 @@ export function PropertyDetailPanel({
                   onAdd={(iri) => { setEditInverseOf(iri); requestAnimationFrame(() => triggerSave()); }}
                   onNavigate={onNavigateToEntity}
                   projectId={projectId}
-                  accessToken={accessToken}
                   branch={branch}
                   entityFilter="property"
                   placeholder="Search inverse property..."
@@ -740,7 +734,6 @@ export function PropertyDetailPanel({
                 groups={editRelationships}
                 isEditing={isEditing}
                 projectId={projectId}
-                accessToken={accessToken}
                 branch={branch}
                 onAddTarget={addRelationshipTarget}
                 onRemoveTarget={removeRelationshipTarget}
@@ -819,7 +812,6 @@ function IriList({
   onAdd,
   onNavigate,
   projectId,
-  accessToken,
   branch,
   entityFilter,
   placeholder,
@@ -831,7 +823,6 @@ function IriList({
   onAdd: (iri: string) => void;
   onNavigate?: (iri: string) => void;
   projectId: string;
-  accessToken?: string;
   branch?: string;
   entityFilter?: string;
   placeholder?: string;
@@ -850,12 +841,12 @@ function IriList({
     const timer = setTimeout(async () => {
       try {
         const { projectOntologyApi } = await import("@/lib/api/client");
-        const response = await projectOntologyApi.searchEntities(projectId, query.trim(), accessToken, branch, entityFilter);
+        const response = await projectOntologyApi.searchEntities(projectId, query.trim(), branch, entityFilter);
         setResults(response.results.filter((r: { iri: string }) => !iris.includes(r.iri)));
       } catch { setResults([]); } finally { setIsSearching(false); }
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, projectId, accessToken, branch, entityFilter, iris]);
+  }, [query, projectId, branch, entityFilter, iris]);
 
   useEffect(() => {
     if (!isFocused) return;

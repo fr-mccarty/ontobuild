@@ -27,8 +27,6 @@ import { Tooltip } from "@/components/ui/tooltip";
 interface PRActionsProps {
   projectId: string;
   pr: PullRequest;
-  accessToken: string;
-  userRole?: string;
   onUpdate: (pr: PullRequest) => void;
   className?: string;
 }
@@ -36,8 +34,6 @@ interface PRActionsProps {
 export function PRActions({
   projectId,
   pr,
-  accessToken,
-  userRole,
   onUpdate,
   className,
 }: PRActionsProps) {
@@ -52,9 +48,6 @@ export function PRActions({
   const [showDeleteBranchDialog, setShowDeleteBranchDialog] = useState(false);
   const [sourceBranchExists, setSourceBranchExists] = useState<boolean | null>(null);
 
-  const canMerge = userRole === "owner" || userRole === "admin";
-  const canReview = userRole === "owner" || userRole === "admin";
-  const canReopen = userRole === "owner" || userRole === "admin";
   const isClosed = pr.status === "closed";
   const isMerged = pr.status === "merged";
   const nothingToMerge = pr.status === "open" && pr.commits_ahead === 0;
@@ -62,7 +55,7 @@ export function PRActions({
   useEffect(() => {
     if (isMerged && sourceBranchExists === null) {
       branchesApi
-        .list(projectId, accessToken)
+        .list(projectId)
         .then((response) => {
           const branchNames = response.items.map((b) => b.name);
           setSourceBranchExists(branchNames.includes(pr.source_branch));
@@ -71,20 +64,18 @@ export function PRActions({
           setSourceBranchExists(true);
         });
     }
-  }, [isMerged, sourceBranchExists, projectId, accessToken, pr.source_branch]);
+  }, [isMerged, sourceBranchExists, projectId, pr.source_branch]);
 
   const handleMerge = async () => {
     await pullRequestsApi.merge(
       projectId,
       pr.pr_number,
-      { delete_source_branch: deleteSourceBranch },
-      accessToken
+      { delete_source_branch: deleteSourceBranch }
     );
 
     const updatedPR = await pullRequestsApi.get(
       projectId,
-      pr.pr_number,
-      accessToken
+      pr.pr_number
     );
     onUpdate(updatedPR);
 
@@ -96,15 +87,14 @@ export function PRActions({
   };
 
   const handleDeleteSourceBranch = async () => {
-    await branchesApi.delete(projectId, pr.source_branch, accessToken);
+    await branchesApi.delete(projectId, pr.source_branch);
     setSourceBranchExists(false);
   };
 
   const handleClose = async () => {
     const updatedPR = await pullRequestsApi.close(
       projectId,
-      pr.pr_number,
-      accessToken
+      pr.pr_number
     );
     onUpdate(updatedPR);
   };
@@ -112,8 +102,7 @@ export function PRActions({
   const handleReopen = async () => {
     const updatedPR = await pullRequestsApi.reopen(
       projectId,
-      pr.pr_number,
-      accessToken
+      pr.pr_number
     );
     onUpdate(updatedPR);
   };
@@ -129,14 +118,12 @@ export function PRActions({
         {
           status,
           body: reviewBody.trim() || undefined,
-        },
-        accessToken
+        }
       );
 
       const updatedPR = await pullRequestsApi.get(
         projectId,
-        pr.pr_number,
-        accessToken
+        pr.pr_number
       );
       onUpdate(updatedPR);
 
@@ -223,22 +210,20 @@ export function PRActions({
         )}
 
         <div className="flex flex-wrap gap-2">
-          {canReopen && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setShowReopenDialog(true)}
-              disabled={isSubmitting}
-              className="gap-1"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RotateCcw className="h-4 w-4" />
-              )}
-              Reopen
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setShowReopenDialog(true)}
+            disabled={isSubmitting}
+            className="gap-1"
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+            Reopen
+          </Button>
         </div>
 
         <ConfirmDialog
@@ -273,29 +258,27 @@ export function PRActions({
             className="mb-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden dark:border-slate-600 dark:bg-slate-700"
           />
           <div className="flex flex-wrap gap-2">
-            {canReview && (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => handleReview("approved")}
-                  disabled={isSubmitting}
-                  className="gap-1 bg-green-600 hover:bg-green-500"
-                >
-                  <Check className="h-4 w-4" />
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleReview("changes_requested")}
-                  disabled={isSubmitting}
-                  className="gap-1 border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20"
-                >
-                  <X className="h-4 w-4" />
-                  Request Changes
-                </Button>
-              </>
-            )}
+            <>
+              <Button
+                size="sm"
+                onClick={() => handleReview("approved")}
+                disabled={isSubmitting}
+                className="gap-1 bg-green-600 hover:bg-green-500"
+              >
+                <Check className="h-4 w-4" />
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleReview("changes_requested")}
+                disabled={isSubmitting}
+                className="gap-1 border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20"
+              >
+                <X className="h-4 w-4" />
+                Request Changes
+              </Button>
+            </>
             <Button
               size="sm"
               variant="secondary"
@@ -332,25 +315,23 @@ export function PRActions({
             Review
           </Button>
 
-          {canMerge && (
-            <Tooltip content={!pr.can_merge ? `Cannot merge: ${nothingToMerge ? "nothing to merge" : "approval requirements not met"}` : undefined}>
-              <span className="inline-flex">
-                <Button
-                  size="sm"
-                  onClick={() => setShowMergeDialog(true)}
-                  disabled={isSubmitting || !pr.can_merge}
-                  className="gap-1"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <GitMerge className="h-4 w-4" />
-                  )}
-                  Merge
-                </Button>
-              </span>
-            </Tooltip>
-          )}
+          <Tooltip content={!pr.can_merge ? `Cannot merge: ${nothingToMerge ? "nothing to merge" : "approval requirements not met"}` : undefined}>
+            <span className="inline-flex">
+              <Button
+                size="sm"
+                onClick={() => setShowMergeDialog(true)}
+                disabled={isSubmitting || !pr.can_merge}
+                className="gap-1"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <GitMerge className="h-4 w-4" />
+                )}
+                Merge
+              </Button>
+            </span>
+          </Tooltip>
 
           <Button
             size="sm"
@@ -397,12 +378,12 @@ export function PRActions({
         variant="danger"
       />
 
-      {!pr.can_merge && canMerge && nothingToMerge && (
+      {!pr.can_merge && nothingToMerge && (
         <p className="text-sm text-slate-600 dark:text-slate-400">
           Nothing to merge: {pr.target_branch} already contains all commits from {pr.source_branch}.
         </p>
       )}
-      {!pr.can_merge && canMerge && !nothingToMerge && (
+      {!pr.can_merge && !nothingToMerge && (
         <p className="text-sm text-amber-600 dark:text-amber-400">
           This pull request requires additional approvals before it can be merged.
           Current: {pr.approval_count} approvals

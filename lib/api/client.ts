@@ -5,11 +5,6 @@ function buildUrl(endpoint: string): URL {
   return new URL(`${API_BASE}${endpoint}`, origin);
 }
 
-function stripAuth(headers: Headers): Headers {
-  headers.delete("Authorization");
-  return headers;
-}
-
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -40,7 +35,7 @@ async function request<T>(
     });
   }
 
-  const headers = stripAuth(new Headers(fetchOptions.headers));
+  const headers = new Headers(fetchOptions.headers);
   if (!headers.has("Content-Type") && fetchOptions.body) {
     headers.set("Content-Type", "application/json");
   }
@@ -97,7 +92,7 @@ async function uploadFile<T>(
     });
   }
 
-  const headers = stripAuth(new Headers(fetchOptions.headers));
+  const headers = new Headers(fetchOptions.headers);
   headers.delete("Content-Type");
 
   const response = await fetch(url.toString(), {
@@ -215,7 +210,7 @@ function uploadFileWithProgress<T>(
 
     if (options.headers) {
       Object.entries(options.headers).forEach(([key, value]) => {
-        if (key.toLowerCase() !== "content-type" && key.toLowerCase() !== "authorization") {
+        if (key.toLowerCase() !== "content-type") {
           xhr.setRequestHeader(key, value);
         }
       });
@@ -306,35 +301,31 @@ export interface OWLClassDetail {
 }
 
 export const projectOntologyApi = {
-  getRootClasses: (projectId: string, token?: string, branch?: string) =>
+  getRootClasses: (projectId: string, branch?: string) =>
     api.get<OWLClassTreeResponse>(`/api/v1/projects/${projectId}/ontology/tree`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       params: { branch },
     }),
 
-  getClassChildren: (projectId: string, classIri: string, token?: string, branch?: string) =>
+  getClassChildren: (projectId: string, classIri: string, branch?: string) =>
     api.get<OWLClassTreeResponse>(
       `/api/v1/projects/${projectId}/ontology/tree/${encodeURIComponent(classIri)}/children`,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         params: { branch },
       }
     ),
 
-  getClassAncestors: (projectId: string, classIri: string, token?: string, branch?: string) =>
+  getClassAncestors: (projectId: string, classIri: string, branch?: string) =>
     api.get<OWLClassTreeResponse>(
       `/api/v1/projects/${projectId}/ontology/tree/${encodeURIComponent(classIri)}/ancestors`,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         params: { branch },
       }
     ),
 
-  getClassDetail: (projectId: string, classIri: string, token?: string, branch?: string) =>
+  getClassDetail: (projectId: string, classIri: string, branch?: string) =>
     api.get<OWLClassDetail>(
       `/api/v1/projects/${projectId}/ontology/classes/${encodeURIComponent(classIri)}`,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         params: { branch },
       }
     ),
@@ -342,14 +333,12 @@ export const projectOntologyApi = {
   searchEntities: (
     projectId: string,
     query: string,
-    token?: string,
     branch?: string,
     entityTypes?: string,
   ) =>
     api.get<EntitySearchResponse>(
       `/api/v1/projects/${projectId}/ontology/search`,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         params: { q: query, branch, entity_types: entityTypes },
       }
     ),
@@ -359,14 +348,12 @@ export const projectOntologyApi = {
     classIri: string,
     data: ClassUpdatePayload,
     commitMessage: string,
-    token: string,
     branch?: string
   ) =>
     api.patch<OWLClassDetail>(
       `/api/v1/projects/${projectId}/ontology/classes/${encodeURIComponent(classIri)}`,
       { ...data, commit_message: commitMessage },
       {
-        headers: { Authorization: `Bearer ${token}` },
         params: { branch },
       }
     ),
@@ -375,29 +362,25 @@ export const projectOntologyApi = {
     projectId: string,
     classIri: string,
     commitMessage: string,
-    token: string,
     branch?: string
   ) =>
     api.delete(`/api/v1/projects/${projectId}/ontology/classes/${encodeURIComponent(classIri)}`, {
-      headers: { Authorization: `Bearer ${token}` },
       params: { commit_message: commitMessage, branch },
     }),
 
-  reindex: (projectId: string, token: string, branch?: string) =>
+  reindex: (projectId: string, branch?: string) =>
     api.post<ReindexResponse>(
       `/api/v1/projects/${projectId}/ontology/reindex`,
       undefined,
       {
-        headers: { Authorization: `Bearer ${token}` },
         params: { branch },
       }
     ),
 
-  getIndexStatus: (projectId: string, token?: string, branch?: string) =>
+  getIndexStatus: (projectId: string, branch?: string) =>
     api.get<IndexStatusResponse>(
       `/api/v1/projects/${projectId}/ontology/index-status`,
       {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         params: { branch },
       }
     ),
@@ -406,14 +389,12 @@ export const projectOntologyApi = {
     projectId: string,
     content: string,
     commitMessage: string,
-    token: string,
     branch?: string
   ) =>
     api.put<SourceContentSaveResponse>(
       `/api/v1/projects/${projectId}/source`,
       { content, commit_message: commitMessage },
       {
-        headers: { Authorization: `Bearer ${token}` },
         params: { branch },
       }
     ),

@@ -107,42 +107,33 @@ export interface LintConfigResponse {
 }
 
 export const lintApi = {
-  triggerLint: (projectId: string, token: string) =>
+  triggerLint: (projectId: string) =>
     api.post<LintTriggerResponse>(
       `/api/v1/projects/${projectId}/lint/run`,
-      undefined,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      undefined
     ),
 
-  getStatus: (projectId: string, token?: string) =>
-    api.get<LintSummary>(`/api/v1/projects/${projectId}/lint/status`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    }),
+  getStatus: (projectId: string) =>
+    api.get<LintSummary>(`/api/v1/projects/${projectId}/lint/status`),
 
   listRuns: (
     projectId: string,
-    token?: string,
     options?: { skip?: number; limit?: number }
   ) =>
     api.get<LintRunListResponse>(`/api/v1/projects/${projectId}/lint/runs`, {
       params: options,
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     }),
 
-  getRun: (projectId: string, runId: string, token?: string, options?: { include_resolved?: boolean }) =>
+  getRun: (projectId: string, runId: string, options?: { include_resolved?: boolean }) =>
     api.get<LintRunDetail>(
       `/api/v1/projects/${projectId}/lint/runs/${runId}`,
       {
         params: options,
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       }
     ),
 
   getIssues: (
     projectId: string,
-    token?: string,
     options?: {
       issue_type?: LintIssueType;
       rule_id?: string;
@@ -156,37 +147,27 @@ export const lintApi = {
       `/api/v1/projects/${projectId}/lint/issues`,
       {
         params: options,
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       }
     ),
 
-  dismissIssue: (projectId: string, issueId: string, token: string) =>
-    api.delete(`/api/v1/projects/${projectId}/lint/issues/${issueId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  dismissIssue: (projectId: string, issueId: string) =>
+    api.delete(`/api/v1/projects/${projectId}/lint/issues/${issueId}`),
 
   getRules: () => api.get<LintRulesResponse>("/api/v1/projects/lint/rules"),
 
   getLevels: () => api.get<LintLevelsResponse>("/api/v1/projects/lint/levels"),
 
-  getLintConfig: (projectId: string, token?: string) =>
-    api.get<LintConfigResponse>(`/api/v1/projects/${projectId}/lint/config`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    }),
+  getLintConfig: (projectId: string) =>
+    api.get<LintConfigResponse>(`/api/v1/projects/${projectId}/lint/config`),
 
-  updateLintConfig: (projectId: string, config: LintConfig, token?: string) =>
+  updateLintConfig: (projectId: string, config: LintConfig) =>
     api.put<LintConfigResponse>(
       `/api/v1/projects/${projectId}/lint/config`,
-      config,
-      {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      }
+      config
     ),
 
-  clearResults: (projectId: string, token: string) =>
-    api.delete(`/api/v1/projects/${projectId}/lint/results`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  clearResults: (projectId: string) =>
+    api.delete(`/api/v1/projects/${projectId}/lint/results`),
 };
 
 export function isLintRunActive(summary: LintSummary | null | undefined): boolean {
@@ -196,12 +177,12 @@ export function isLintRunActive(summary: LintSummary | null | undefined): boolea
 
 export async function waitForLintRun(
   projectId: string,
-  options: { token?: string; intervalMs?: number; signal?: AbortSignal } = {}
+  options: { intervalMs?: number; signal?: AbortSignal } = {}
 ): Promise<LintSummary | null> {
   const interval = options.intervalMs ?? 1500;
   for (;;) {
     if (options.signal?.aborted) return null;
-    const summary = await lintApi.getStatus(projectId, options.token);
+    const summary = await lintApi.getStatus(projectId);
     if (!isLintRunActive(summary)) return summary;
     await new Promise<void>((resolve) => {
       const t = setTimeout(resolve, interval);

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "@/lib/localUser";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Upload, AlertCircle } from "lucide-react";
@@ -19,7 +18,6 @@ import { cn } from "@/lib/utils";
 type TabType = "create" | "import";
 
 export default function NewProjectPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("create");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,20 +25,14 @@ export default function NewProjectPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
-  const isLoading = status === "loading";
-
   const handleCreateSubmit = async (data: {
     name: string;
     description?: string;
     is_public: boolean;
   }) => {
-    if (!session?.accessToken) {
-      throw new Error("You must be signed in to create a project");
-    }
-
     setIsSubmitting(true);
     try {
-      const project = await projectApi.create(data as ProjectCreate, session.accessToken);
+      const project = await projectApi.create(data as ProjectCreate);
       router.push(`/projects/${project.id}`);
     } finally {
       setIsSubmitting(false);
@@ -52,10 +44,6 @@ export default function NewProjectPage() {
     description?: string;
     is_public: boolean;
   }) => {
-    if (!session?.accessToken) {
-      throw new Error("You must be signed in to import a project");
-    }
-
     if (!selectedFile) {
       throw new Error("Please select a file to import");
     }
@@ -74,7 +62,6 @@ export default function NewProjectPage() {
 
       const project = await projectApi.import(
         importData,
-        session.accessToken,
         (progress) => setUploadProgress(progress)
       );
       router.push(`/projects/${project.id}`);
@@ -98,21 +85,6 @@ export default function NewProjectPage() {
   const handleCancel = () => {
     router.push("/");
   };
-
-  if (isLoading) {
-    return (
-      <>
-        <Header />
-        <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
-          <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
-            <div className="flex h-64 items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-            </div>
-          </div>
-        </main>
-      </>
-    );
-  }
 
   return (
     <>

@@ -21,7 +21,7 @@ describe("useIriLabels", () => {
 
   it("returns empty object when iris array is empty", () => {
     const { result } = renderHook(() =>
-      useIriLabels([], { projectId: "proj-1", accessToken: "token" }),
+      useIriLabels([], { projectId: "proj-1" }),
     );
     expect(result.current).toEqual({});
     expect(mockedGetClassDetail).not.toHaveBeenCalled();
@@ -37,7 +37,6 @@ describe("useIriLabels", () => {
     const { result } = renderHook(() =>
       useIriLabels(["http://example.org/hasPart"], {
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 
@@ -57,7 +56,6 @@ describe("useIriLabels", () => {
     const { result } = renderHook(() =>
       useIriLabels(["http://example.org/Person"], {
         projectId: "proj-1",
-        accessToken: "token",
         branch: "main",
       }),
     );
@@ -69,7 +67,6 @@ describe("useIriLabels", () => {
     expect(mockedGetClassDetail).toHaveBeenCalledWith(
       "proj-1",
       "http://example.org/Person",
-      "token",
       "main",
     );
   });
@@ -83,7 +80,6 @@ describe("useIriLabels", () => {
     const { result } = renderHook(() =>
       useIriLabels(["http://example.org/Person"], {
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 
@@ -98,7 +94,6 @@ describe("useIriLabels", () => {
     const { result } = renderHook(() =>
       useIriLabels(["http://example.org/Known"], {
         projectId: "proj-1",
-        accessToken: "token",
         labelHints: hints,
       }),
     );
@@ -119,7 +114,6 @@ describe("useIriLabels", () => {
         ["http://example.org/Known", "http://example.org/Unknown"],
         {
           projectId: "proj-1",
-          accessToken: "token",
           labelHints: hints,
         },
       ),
@@ -135,7 +129,7 @@ describe("useIriLabels", () => {
 
   it("filters out falsy IRIs", () => {
     const { result } = renderHook(() =>
-      useIriLabels(["", ""], { projectId: "proj-1", accessToken: "token" }),
+      useIriLabels(["", ""], { projectId: "proj-1" }),
     );
     expect(result.current).toEqual({});
     expect(mockedGetClassDetail).not.toHaveBeenCalled();
@@ -150,7 +144,6 @@ describe("useIriLabels", () => {
       ({ projectId, iris }: { projectId: string; iris: string[] }) =>
         useIriLabels(iris, {
           projectId,
-          accessToken: "token",
         }),
       { initialProps: { projectId: "proj-1", iris: ["http://example.org/E"] } },
     );
@@ -181,7 +174,6 @@ describe("useIriLabels", () => {
     const { result } = renderHook(() =>
       useIriLabels(["http://example.org/Unknown"], {
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 
@@ -206,7 +198,7 @@ describe("useIriLabels", () => {
     mockedSearchEntities.mockResolvedValue({ results: [] });
 
     const { result } = renderHook(() =>
-      useIriLabels([iri], { projectId: "proj-1", accessToken: "token" }),
+      useIriLabels([iri], { projectId: "proj-1" }),
     );
 
     await waitFor(() => {
@@ -225,7 +217,7 @@ describe("useIriLabels", () => {
     mockedGetClassDetail.mockRejectedValue(new Error("not found"));
 
     renderHook(() =>
-      useIriLabels([iri], { projectId: "proj-1", accessToken: "token" }),
+      useIriLabels([iri], { projectId: "proj-1" }),
     );
 
     await waitFor(() => {
@@ -240,7 +232,6 @@ describe("useIriLabels", () => {
     const { result } = renderHook(() =>
       useIriLabels(["https://ontology.example.org/Person"], {
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 

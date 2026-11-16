@@ -194,7 +194,6 @@ import type { ClassTreeNode } from "@/lib/ontology/types";
 function defaultProps(overrides: Partial<StandardEditorLayoutProps> = {}): StandardEditorLayoutProps {
   return {
     projectId: "proj-1",
-    accessToken: "token-123",
     activeBranch: "main",
     canEdit: false,
     nodes: [],
@@ -510,7 +509,6 @@ describe("StandardEditorLayout", () => {
     fireEvent.click(screen.getByText("Properties"));
     expect(_propertyTreeProps.projectId).toBe("proj-1");
     expect(_propertyTreeProps.branch).toBe("dev");
-    expect(_propertyTreeProps.accessToken).toBe("token-123");
   });
 
   it("forwards projectId and branch to IndividualList", () => {
@@ -522,7 +520,6 @@ describe("StandardEditorLayout", () => {
     fireEvent.click(screen.getByText("Individuals"));
     expect(_individualListProps.projectId).toBe("proj-1");
     expect(_individualListProps.branch).toBe("feature");
-    expect(_individualListProps.accessToken).toBe("token-123");
   });
 
   it("passes selectedPropertyIri=null initially to PropertyTree", () => {

@@ -5,13 +5,13 @@ export const openPRCountQueryKeys = {
   count: (projectId: string) => ["pullRequests", "openCount", projectId] as const,
 };
 
-export function useOpenPRCount(projectId: string, accessToken?: string) {
+export function useOpenPRCount(projectId: string) {
   return useQuery({
     queryKey: openPRCountQueryKeys.count(projectId),
     queryFn: async () => {
-      const res = await pullRequestsApi.list(projectId, accessToken, "open", undefined, 0, 1);
+      const res = await pullRequestsApi.list(projectId, "open", undefined, 0, 1);
       return res.total;
     },
-    enabled: !!projectId && !!accessToken,
+    enabled: !!projectId,
   });
 }

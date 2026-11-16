@@ -166,210 +166,139 @@ export interface OpenPRsSummary {
 }
 
 export const pullRequestsApi = {
-  getOpenSummary: (token: string) =>
+  getOpenSummary: () =>
     api.get<OpenPRsSummary>(
-      `/api/v1/projects/pull-requests/open-summary`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      `/api/v1/projects/pull-requests/open-summary`
     ),
 
   list: (
     projectId: string,
-    token?: string,
     status?: PRStatus,
     authorId?: string,
     skip = 0,
     limit = 20
   ) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
     return api.get<PRListResponse>(
       `/api/v1/projects/${projectId}/pull-requests`,
       {
         params: { status, author_id: authorId, skip, limit },
-        headers,
       }
     );
   },
 
-  get: (projectId: string, prNumber: number, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  get: (projectId: string, prNumber: number) => {
     return api.get<PullRequest>(
-      `/api/v1/projects/${projectId}/pull-requests/${prNumber}`,
-      { headers }
+      `/api/v1/projects/${projectId}/pull-requests/${prNumber}`
     );
   },
 
-  create: (projectId: string, data: PRCreate, token: string) =>
+  create: (projectId: string, data: PRCreate) =>
     api.post<PullRequest>(
       `/api/v1/projects/${projectId}/pull-requests`,
-      data,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      data
     ),
 
   update: (
     projectId: string,
     prNumber: number,
-    data: PRUpdate,
-    token: string
+    data: PRUpdate
   ) =>
     api.patch<PullRequest>(
       `/api/v1/projects/${projectId}/pull-requests/${prNumber}`,
-      data,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      data
     ),
 
-  close: (projectId: string, prNumber: number, token: string) =>
+  close: (projectId: string, prNumber: number) =>
     api.post<PullRequest>(
       `/api/v1/projects/${projectId}/pull-requests/${prNumber}/close`,
-      undefined,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      undefined
     ),
 
-  reopen: (projectId: string, prNumber: number, token: string) =>
+  reopen: (projectId: string, prNumber: number) =>
     api.post<PullRequest>(
       `/api/v1/projects/${projectId}/pull-requests/${prNumber}/reopen`,
-      undefined,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      undefined
     ),
 
   merge: (
     projectId: string,
     prNumber: number,
-    data: PRMergeRequest,
-    token: string
+    data: PRMergeRequest
   ) =>
     api.post<PRMergeResponse>(
       `/api/v1/projects/${projectId}/pull-requests/${prNumber}/merge`,
-      data,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      data
     ),
 
-  getCommits: (projectId: string, prNumber: number, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  getCommits: (projectId: string, prNumber: number) => {
     return api.get<PRCommitListResponse>(
-      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/commits`,
-      { headers }
+      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/commits`
     );
   },
 
-  getDiff: (projectId: string, prNumber: number, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  getDiff: (projectId: string, prNumber: number) => {
     return api.get<PRDiffResponse>(
-      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/diff`,
-      { headers }
+      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/diff`
     );
   },
 
-  listReviews: (projectId: string, prNumber: number, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  listReviews: (projectId: string, prNumber: number) => {
     return api.get<ReviewListResponse>(
-      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/reviews`,
-      { headers }
+      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/reviews`
     );
   },
 
   createReview: (
     projectId: string,
     prNumber: number,
-    data: ReviewCreate,
-    token: string
+    data: ReviewCreate
   ) =>
     api.post<Review>(
       `/api/v1/projects/${projectId}/pull-requests/${prNumber}/reviews`,
-      data,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      data
     ),
 
-  listComments: (projectId: string, prNumber: number, token?: string) => {
-    const headers: HeadersInit = {};
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+  listComments: (projectId: string, prNumber: number) => {
     return api.get<CommentListResponse>(
-      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/comments`,
-      { headers }
+      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/comments`
     );
   },
 
   createComment: (
     projectId: string,
     prNumber: number,
-    data: CommentCreate,
-    token: string
+    data: CommentCreate
   ) =>
     api.post<Comment>(
       `/api/v1/projects/${projectId}/pull-requests/${prNumber}/comments`,
-      data,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      data
     ),
 
   updateComment: (
     projectId: string,
     prNumber: number,
     commentId: string,
-    data: CommentUpdate,
-    token: string
+    data: CommentUpdate
   ) =>
     api.patch<Comment>(
       `/api/v1/projects/${projectId}/pull-requests/${prNumber}/comments/${commentId}`,
-      data,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      data
     ),
 
   deleteComment: (
     projectId: string,
     prNumber: number,
-    commentId: string,
-    token: string
+    commentId: string
   ) =>
     api.delete(
-      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/comments/${commentId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      `/api/v1/projects/${projectId}/pull-requests/${prNumber}/comments/${commentId}`
     ),
 };
 
 export const prSettingsApi = {
-  get: (projectId: string, token: string) =>
-    api.get<PRSettings>(`/api/v1/projects/${projectId}/pr-settings`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  get: (projectId: string) =>
+    api.get<PRSettings>(`/api/v1/projects/${projectId}/pr-settings`),
 
-  update: (projectId: string, data: PRSettingsUpdate, token: string) =>
-    api.patch<PRSettings>(`/api/v1/projects/${projectId}/pr-settings`, data, {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  update: (projectId: string, data: PRSettingsUpdate) =>
+    api.patch<PRSettings>(`/api/v1/projects/${projectId}/pr-settings`, data),
 };

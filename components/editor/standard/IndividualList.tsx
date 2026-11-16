@@ -8,7 +8,6 @@ import type { EntityTreeNode } from "@/lib/ontology/types";
 
 interface IndividualListProps {
   projectId: string;
-  accessToken?: string;
   branch?: string;
   selectedIri: string | null;
   onSelect: (iri: string) => void;
@@ -18,7 +17,6 @@ interface IndividualListProps {
 
 export function IndividualList({
   projectId,
-  accessToken,
   branch,
   selectedIri,
   onSelect,
@@ -47,7 +45,6 @@ export function IndividualList({
         const response = await projectOntologyApi.searchEntities(
           projectId,
           "*",
-          accessToken,
           branch,
           "individual",
         );
@@ -68,7 +65,7 @@ export function IndividualList({
 
     fetchIndividuals();
     return () => { cancelled = true; };
-  }, [projectId, accessToken, branch, refreshKey]);
+  }, [projectId, branch, refreshKey]);
 
   const entityNodes = useMemo((): EntityTreeNode[] => {
     return individuals.map((ind) => ({

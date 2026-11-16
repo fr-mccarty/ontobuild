@@ -3,11 +3,9 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import type { Project } from "@/lib/api/projects";
 
 const mockUseProject = vi.fn();
-const mockDerivePermissions = vi.fn();
 
 vi.mock("@/lib/hooks/useProject", () => ({
   useProject: (...args: unknown[]) => mockUseProject(...args),
-  derivePermissions: (...args: unknown[]) => mockDerivePermissions(...args),
 }));
 
 vi.mock("@/lib/hooks/useOntologyTree", () => ({
@@ -69,24 +67,11 @@ function makeProject(overrides?: Partial<Project>): Project {
     id: "p1",
     name: "Test Ontology",
     is_public: true,
-    owner_id: "u1",
     created_at: "2025-01-01T00:00:00Z",
-    member_count: 1,
     source_file_path: "ontology.ttl",
     git_ontology_path: "ontology.ttl",
-    user_role: "editor",
     ...overrides,
   } as Project;
-}
-
-function defaultPermissions(overrides?: Record<string, unknown>) {
-  return {
-    canManage: false,
-    canEdit: true,
-    hasValidAccess: true,
-    hasOntology: true,
-    ...overrides,
-  };
 }
 
 describe("useProjectViewer", () => {
@@ -99,7 +84,6 @@ describe("useProjectViewer", () => {
       error: null,
       errorKind: null,
     });
-    mockDerivePermissions.mockReturnValue(defaultPermissions());
 
     mockUseOpenPRCount.mockReturnValue({ data: 3 });
     mockUseLintSummary.mockReturnValue({
@@ -128,8 +112,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -150,8 +132,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -172,64 +152,12 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
 
     expect(result.current.error).toBe("Not found");
     expect(result.current.errorKind).toBe("not-found");
-  });
-
-  it("passes through permission flags from derivePermissions", () => {
-    const project = makeProject();
-    mockUseProject.mockReturnValue({
-      project,
-      isLoading: false,
-      error: null,
-      errorKind: null,
-    });
-    mockDerivePermissions.mockReturnValue(
-      defaultPermissions({ canManage: true, canEdit: true })
-    );
-
-    const { result } = renderHook(() =>
-      useProjectViewer({
-        projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
-        activeBranch: "main",
-      })
-    );
-
-    expect(result.current.canManage).toBe(true);
-    expect(result.current.canEdit).toBe(true);
-    expect(result.current.hasOntology).toBe(true);
-  });
-
-  it("overrides hasValidAccess based on sessionStatus", () => {
-    const project = makeProject();
-    mockUseProject.mockReturnValue({
-      project,
-      isLoading: false,
-      error: null,
-      errorKind: null,
-    });
-    mockDerivePermissions.mockReturnValue(
-      defaultPermissions({ hasValidAccess: true })
-    );
-
-    const { result } = renderHook(() =>
-      useProjectViewer({
-        projectId: "p1",
-        accessToken: undefined,
-        sessionStatus: "unauthenticated",
-        activeBranch: "main",
-      })
-    );
-
-    expect(result.current.hasValidAccess).toBe(false);
   });
 
   it("returns secondary data (openPRCount, lintSummary) from React Query hooks", () => {
@@ -244,8 +172,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -254,8 +180,8 @@ describe("useProjectViewer", () => {
     expect(result.current.lintSummary).not.toBeNull();
     expect(result.current.lintSummary?.total_issues).toBe(3);
 
-    expect(mockUseOpenPRCount).toHaveBeenCalledWith("p1", "tok");
-    expect(mockUseLintSummary).toHaveBeenCalledWith("p1", "tok");
+    expect(mockUseOpenPRCount).toHaveBeenCalledWith("p1");
+    expect(mockUseLintSummary).toHaveBeenCalledWith("p1");
   });
 
   it("passes normalization status from React Query hook", () => {
@@ -270,8 +196,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -279,7 +203,6 @@ describe("useProjectViewer", () => {
     expect(result.current.normalizationStatus).not.toBeNull();
     expect(mockUseNormalizationStatus).toHaveBeenCalledWith(
       "p1",
-      "tok",
       { enabled: true },
     );
   });
@@ -292,21 +215,17 @@ describe("useProjectViewer", () => {
       error: null,
       errorKind: null,
     });
-    mockDerivePermissions.mockReturnValue(defaultPermissions({ hasOntology: false }));
     mockUseNormalizationStatus.mockReturnValue({ data: undefined });
 
     renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
 
     expect(mockUseNormalizationStatus).toHaveBeenCalledWith(
       "p1",
-      "tok",
       { enabled: false },
     );
   });
@@ -322,8 +241,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -345,8 +262,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -375,8 +290,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -398,8 +311,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -411,7 +322,6 @@ describe("useProjectViewer", () => {
     expect(revisionsApi.getFileAtVersion).toHaveBeenCalledWith(
       "p1",
       "main",
-      "tok",
       "ontology.ttl"
     );
     expect(result.current.sourceContent).toBe(
@@ -436,8 +346,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -463,8 +371,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -497,8 +403,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -539,8 +443,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -564,8 +466,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -619,8 +519,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -688,8 +586,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -714,8 +610,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -750,8 +644,6 @@ describe("useProjectViewer", () => {
     const { result } = renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -781,13 +673,10 @@ describe("useProjectViewer", () => {
       error: null,
       errorKind: null,
     });
-    mockDerivePermissions.mockReturnValue(defaultPermissions({ hasOntology: true }));
 
     renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );
@@ -813,13 +702,10 @@ describe("useProjectViewer", () => {
       error: null,
       errorKind: null,
     });
-    mockDerivePermissions.mockReturnValue(defaultPermissions({ hasOntology: false }));
 
     renderHook(() =>
       useProjectViewer({
         projectId: "p1",
-        accessToken: "tok",
-        sessionStatus: "authenticated",
         activeBranch: "main",
       })
     );

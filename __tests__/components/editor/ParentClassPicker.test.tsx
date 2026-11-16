@@ -13,7 +13,6 @@ import { projectOntologyApi } from "@/lib/api/client";
 describe("ParentClassPicker", () => {
   const defaultProps = {
     projectId: "proj-1",
-    accessToken: "token-123",
     branch: "main",
     excludeIris: [] as string[],
     onSelect: vi.fn(),

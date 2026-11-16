@@ -16,7 +16,7 @@ import {
 } from "@/lib/api/revisions";
 
 export const branchQueryKeys = {
-  list: (projectId: string, accessToken?: string) => ["branches", projectId, !!accessToken] as const,
+  list: (projectId: string) => ["branches", projectId] as const,
 };
 
 function getStoredBranch(projectId: string): string | null {
@@ -54,14 +54,12 @@ const BranchContext = createContext<BranchContextValue | null>(null);
 
 interface BranchProviderProps {
   projectId: string;
-  accessToken?: string;
   initialBranch?: string;
   children: ReactNode;
 }
 
 export function BranchProvider({
   projectId,
-  accessToken,
   initialBranch,
   children,
 }: BranchProviderProps) {
@@ -72,8 +70,8 @@ export function BranchProvider({
     isLoading,
     error: queryError,
   } = useQuery({
-    queryKey: branchQueryKeys.list(projectId, accessToken),
-    queryFn: () => branchesApi.list(projectId, accessToken),
+    queryKey: branchQueryKeys.list(projectId),
+    queryFn: () => branchesApi.list(projectId),
     enabled: !!projectId,
   });
 
@@ -93,26 +91,22 @@ export function BranchProvider({
   const isFeatureBranch = currentBranch !== defaultBranch;
 
   // Reconcile the selected branch with each new branch-list response (and when the
-  // project or auth changes). Done while rendering — the "adjust state when inputs
+  // project changes). Done while rendering — the "adjust state when inputs
   // change" pattern — so consumers never see an unreconciled branch.
   const [lastSync, setLastSync] = useState<{
     response: typeof response;
     projectId: string;
-    accessToken: string | undefined;
     clearStoredBranch: boolean;
   } | null>(null);
   if (
     lastSync === null ||
     lastSync.response !== response ||
-    lastSync.projectId !== projectId ||
-    lastSync.accessToken !== accessToken
+    lastSync.projectId !== projectId
   ) {
     let clearStoredBranch = false;
     if (response) {
       let nextBranch: string;
-      if (!accessToken) {
-        nextBranch = response.default_branch ?? response.current_branch;
-      } else if (response.items.some((b) => b.name === currentBranch)) {
+      if (response.items.some((b) => b.name === currentBranch)) {
         nextBranch = currentBranch;
       } else {
         clearStoredBranch = true;
@@ -123,7 +117,7 @@ export function BranchProvider({
       }
       if (nextBranch !== currentBranch) setCurrentBranch(nextBranch);
     }
-    setLastSync({ response, projectId, accessToken, clearStoredBranch });
+    setLastSync({ response, projectId, clearStoredBranch });
   }
 
   // The remembered branch no longer exists on the server: forget it.
@@ -138,7 +132,6 @@ export function BranchProvider({
   // Once the branch list is available, honour an explicitly requested initial branch.
   const [initialBranchHandled, setInitialBranchHandled] = useState(false);
   if (
-    accessToken &&
     initialBranch &&
     !initialBranchHandled &&
     !isLoading &&
@@ -153,39 +146,30 @@ export function BranchProvider({
 
   const refreshBranches = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: branchQueryKeys.list(projectId, accessToken),
+      queryKey: branchQueryKeys.list(projectId),
     });
-  }, [queryClient, projectId, accessToken]);
+  }, [queryClient, projectId]);
 
   const createBranch = useCallback(
     async (name: string, fromBranch?: string): Promise<BranchInfo> => {
-      if (!accessToken) {
-        throw new Error("Authentication required");
-      }
-
       const newBranch = await branchesApi.create(
         projectId,
-        { name, from_branch: fromBranch },
-        accessToken
+        { name, from_branch: fromBranch }
       );
 
       await refreshBranches();
 
       setCurrentBranch(name);
       setStoredBranch(projectId, name);
-      branchesApi.savePreference(projectId, name, accessToken).catch(() => {});
+      branchesApi.savePreference(projectId, name).catch(() => {});
 
       return newBranch;
     },
-    [projectId, accessToken, refreshBranches]
+    [projectId, refreshBranches]
   );
 
   const switchBranch = useCallback(
     async (name: string) => {
-      if (!accessToken) {
-        throw new Error("Authentication required to switch branches");
-      }
-
       if (pendingChanges) {
         throw new Error(
           "You have pending changes. Please commit or discard them before switching branches."
@@ -200,17 +184,13 @@ export function BranchProvider({
       setCurrentBranch(name);
       setStoredBranch(projectId, name);
 
-      branchesApi.savePreference(projectId, name, accessToken).catch(() => {});
+      branchesApi.savePreference(projectId, name).catch(() => {});
     },
-    [branches, pendingChanges, projectId, accessToken]
+    [branches, pendingChanges, projectId]
   );
 
   const deleteBranch = useCallback(
     async (name: string, force = false) => {
-      if (!accessToken) {
-        throw new Error("Authentication required");
-      }
-
       if (name === currentBranch) {
         throw new Error("Cannot delete the current branch");
       }
@@ -219,11 +199,11 @@ export function BranchProvider({
         throw new Error("Cannot delete the default branch");
       }
 
-      await branchesApi.delete(projectId, name, accessToken, force);
+      await branchesApi.delete(projectId, name, force);
 
       await refreshBranches();
     },
-    [projectId, accessToken, currentBranch, defaultBranch, refreshBranches]
+    [projectId, currentBranch, defaultBranch, refreshBranches]
   );
 
   const value: BranchContextValue = {

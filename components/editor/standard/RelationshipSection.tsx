@@ -37,7 +37,6 @@ interface RelationshipSectionProps {
   groups: RelationshipGroup[];
   isEditing: boolean;
   projectId: string;
-  accessToken?: string;
   branch?: string;
   onAddTarget?: (groupIdx: number, target: RelationshipTarget) => void;
   onRemoveTarget?: (groupIdx: number, targetIdx: number) => void;
@@ -51,7 +50,6 @@ export function RelationshipSection({
   groups,
   isEditing,
   projectId,
-  accessToken,
   branch,
   onAddTarget,
   onRemoveTarget,
@@ -109,7 +107,6 @@ export function RelationshipSection({
               currentIri={group.property_iri}
               currentLabel={group.property_label}
               projectId={projectId}
-              accessToken={accessToken}
               branch={branch}
               onChange={(iri, label) => onChangeProperty?.(gIdx, iri, label)}
             />
@@ -140,7 +137,6 @@ export function RelationshipSection({
 
             <RelationshipEntitySearch
               projectId={projectId}
-              accessToken={accessToken}
               branch={branch}
               excludeIris={group.targets.map((t) => t.iri)}
               onSelect={(result) => {
@@ -170,7 +166,6 @@ interface RelationshipPropertyPickerProps {
   currentIri: string;
   currentLabel: string;
   projectId: string;
-  accessToken?: string;
   branch?: string;
   onChange: (iri: string, label: string) => void;
 }
@@ -179,7 +174,6 @@ function RelationshipPropertyPicker({
   currentIri,
   currentLabel,
   projectId,
-  accessToken,
   branch,
   onChange,
 }: RelationshipPropertyPickerProps) {
@@ -220,7 +214,6 @@ function RelationshipPropertyPicker({
         const response = await projectOntologyApi.searchEntities(
           projectId,
           query.trim(),
-          accessToken,
           branch,
           "property",
         );
@@ -232,7 +225,7 @@ function RelationshipPropertyPicker({
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, projectId, accessToken, branch]);
+  }, [query, projectId, branch]);
 
   const filteredBuiltIn = BUILT_IN_RELATIONSHIP_PROPERTIES.filter((p) => {
     if (!query.trim()) return true;
@@ -338,7 +331,6 @@ function RelationshipPropertyPicker({
 
 interface RelationshipEntitySearchProps {
   projectId: string;
-  accessToken?: string;
   branch?: string;
   excludeIris?: string[];
   onSelect: (result: EntitySearchResult) => void;
@@ -346,7 +338,6 @@ interface RelationshipEntitySearchProps {
 
 function RelationshipEntitySearch({
   projectId,
-  accessToken,
   branch,
   excludeIris,
   onSelect,
@@ -370,7 +361,6 @@ function RelationshipEntitySearch({
         const response = await projectOntologyApi.searchEntities(
           projectId,
           query.trim(),
-          accessToken,
           branch,
         );
         if (!cancelled) {
@@ -384,7 +374,7 @@ function RelationshipEntitySearch({
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, projectId, accessToken, branch, excludeIris]);
+  }, [query, projectId, branch, excludeIris]);
 
   useEffect(() => {
     if (!isFocused) return;

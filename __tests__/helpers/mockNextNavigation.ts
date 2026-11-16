@@ -29,27 +29,3 @@ export const nextLinkMock = {
   default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [key: string]: unknown }) =>
     React.createElement("a", { href, ...props }, children),
 };
-
-export function nextAuthMock(overrides?: {
-  status?: "loading" | "authenticated" | "unauthenticated";
-  user?: { name?: string; email?: string; image?: string };
-  accessToken?: string;
-}) {
-  const status = overrides?.status ?? "authenticated";
-  return {
-    useSession: () => ({
-      data: status === "authenticated"
-        ? {
-            user: overrides?.user ?? { name: "Test User", email: "test@example.com" },
-            accessToken: overrides?.accessToken ?? "test-token",
-            expires: "2099-01-01T00:00:00.000Z",
-          }
-        : null,
-      status,
-    }),
-    signIn: vi.fn(),
-    signOut: vi.fn(),
-    SessionProvider: ({ children }: { children: React.ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
-  };
-}

@@ -35,7 +35,7 @@ describe("useOntologyTree", () => {
     });
 
     const { result } = renderHook(() =>
-      useOntologyTree({ projectId: "p1", accessToken: "tok" })
+      useOntologyTree({ projectId: "p1" })
     );
 
     expect(result.current.isLoading).toBe(true);
@@ -86,7 +86,7 @@ describe("useOntologyTree", () => {
     });
 
     const { result } = renderHook(() =>
-      useOntologyTree({ projectId: "p1", accessToken: "tok" })
+      useOntologyTree({ projectId: "p1" })
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -413,7 +413,7 @@ describe("useOntologyTree", () => {
     });
 
     expect(result.current.selectedIri).toBe("urn:Target");
-    expect(mockedGetClassAncestors).toHaveBeenCalledWith("p1", "urn:Target", undefined, undefined);
+    expect(mockedGetClassAncestors).toHaveBeenCalledWith("p1", "urn:Target", undefined);
 
     const rootNode = result.current.nodes.find((n) => n.iri === "urn:Root");
     expect(rootNode).toBeDefined();
@@ -585,7 +585,7 @@ describe("useOntologyTree refreshTree", () => {
   });
 
   async function renderExpanded() {
-    const hook = renderHook(() => useOntologyTree({ projectId: "p1", accessToken: "tok", branchKey: "main" }));
+    const hook = renderHook(() => useOntologyTree({ projectId: "p1", branchKey: "main" }));
     await waitFor(() => expect(hook.result.current.nodes).toHaveLength(2));
     await act(async () => {
       await hook.result.current.expandNode("urn:Food");

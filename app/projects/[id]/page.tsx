@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useSession } from "@/lib/localUser";
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Settings, FileCode, RefreshCw, Keyboard, LayoutDashboard, History, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose } from "lucide-react";
@@ -87,7 +86,6 @@ function detectIriSettings(
 }
 
 export default function ProjectEditorPage() {
-  const { data: session, status } = useSession();
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -109,16 +107,13 @@ export default function ProjectEditorPage() {
 
   const viewer = useProjectViewer({
     projectId,
-    accessToken: session?.accessToken,
-    sessionStatus: status,
     activeBranch,
   });
 
   const {
     project, isLoading, error,
     openPRCount, lintSummary, normalizationStatus,
-    canManage, canEdit,
-    hasValidAccess, hasOntology,
+    hasOntology,
     nodes, totalClasses, isTreeLoading, treeError,
     selectedIri, loadRootClasses, refreshTree, expandNode, collapseNode, selectNode,
     navigateToNode, addOptimisticNode, removeOptimisticNode, updateNodeLabel,
@@ -224,9 +219,7 @@ export default function ProjectEditorPage() {
 
   const handleEntityConfirm = useCallback(
     async (entity: NewEntityInfo) => {
-      if (!canEdit) return;
-
-      if (!projectId || !session?.accessToken || !activeBranch) return;
+      if (!projectId || !activeBranch) return;
 
       let base: string;
       if (sourceContent) {
@@ -236,7 +229,6 @@ export default function ProjectEditorPage() {
           const response = await revisionsApi.getFileAtVersion(
             projectId,
             activeBranch,
-            session.accessToken,
             project?.git_ontology_path
           );
           base = response.content;
@@ -268,7 +260,6 @@ export default function ProjectEditorPage() {
           projectId,
           newContent,
           `Add ${typeLabel[entity.entityType] ?? entity.entityType} ${entity.label}`,
-          session.accessToken,
           activeBranch,
         );
       } catch (err) {
@@ -285,9 +276,9 @@ export default function ProjectEditorPage() {
       setDetailRefreshKey((k) => k + 1);
       setSourceIriIndex(new Map());
       setIriDetectionPending(true);
-      queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId, session?.accessToken) });
+      queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId) });
     },
-    [canEdit, ontologyPrefix, ontologyNamespace, addOptimisticNode, sourceContent, projectId, session, activeBranch, project, toast, setSourceContent, setSourceIriIndex, queryClient],
+    [ontologyPrefix, ontologyNamespace, addOptimisticNode, sourceContent, projectId, activeBranch, project, toast, setSourceContent, setSourceIriIndex, queryClient],
   );
 
   const handleCopyIri = useCallback(async (iri: string) => {
@@ -306,7 +297,7 @@ export default function ProjectEditorPage() {
   }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
-    if (!deleteTargetIri || !session?.accessToken) return;
+    if (!deleteTargetIri) return;
 
     removeOptimisticNode(deleteTargetIri);
 
@@ -315,13 +306,12 @@ export default function ProjectEditorPage() {
         projectId,
         deleteTargetIri,
         `Delete class ${deleteTargetLabel}`,
-        session.accessToken,
         activeBranch
       );
       toast.success(`Deleted "${deleteTargetLabel}"`);
       setSourceContent("");
       loadRootClasses();
-      queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId, session?.accessToken) });
+      queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId) });
     } catch (err) {
       toast.error(
         "Failed to delete class",
@@ -329,12 +319,9 @@ export default function ProjectEditorPage() {
       );
       loadRootClasses();
     }
-  }, [deleteTargetIri, deleteTargetLabel, session, projectId, activeBranch, removeOptimisticNode, toast, loadRootClasses, queryClient, setSourceContent]);
+  }, [deleteTargetIri, deleteTargetLabel, projectId, activeBranch, removeOptimisticNode, toast, loadRootClasses, queryClient, setSourceContent]);
 
   const handleUpdateClass = useCallback(async (classIri: string, data: ClassUpdatePayload) => {
-    if (!session?.accessToken) {
-      throw new Error("Not authenticated");
-    }
     if (!activeBranch) {
       throw new Error("No branch selected");
     }
@@ -344,7 +331,6 @@ export default function ProjectEditorPage() {
       const response = await revisionsApi.getFileAtVersion(
         projectId,
         activeBranch,
-        session.accessToken,
         project?.git_ontology_path,
       );
       source = response.content;
@@ -352,7 +338,7 @@ export default function ProjectEditorPage() {
 
     let previousParents: string[] | null = null;
     try {
-      const before = await projectOntologyApi.getClassDetail(projectId, classIri, session.accessToken, activeBranch);
+      const before = await projectOntologyApi.getClassDetail(projectId, classIri, activeBranch);
       previousParents = before.parent_iris;
     } catch {
       previousParents = null;
@@ -367,7 +353,6 @@ export default function ProjectEditorPage() {
       projectId,
       modifiedSource,
       commitMessage,
-      session.accessToken,
       activeBranch,
     );
 
@@ -387,13 +372,10 @@ export default function ProjectEditorPage() {
 
     setSourceIriIndex(new Map());
     setIriDetectionPending(true);
-    queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId, session?.accessToken) });
-  }, [session, projectId, activeBranch, project, sourceContent, toast, updateNodeLabel, queryClient, setSourceContent, setSourceIriIndex, loadRootClasses, navigateToNode]);
+    queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId) });
+  }, [projectId, activeBranch, project, sourceContent, toast, updateNodeLabel, queryClient, setSourceContent, setSourceIriIndex, loadRootClasses, navigateToNode]);
 
   const handleUpdateProperty = useCallback(async (propertyIri: string, data: TurtlePropertyUpdateData) => {
-    if (!session?.accessToken) {
-      throw new Error("Not authenticated");
-    }
     if (!activeBranch) {
       throw new Error("No branch selected");
     }
@@ -403,7 +385,6 @@ export default function ProjectEditorPage() {
       const response = await revisionsApi.getFileAtVersion(
         projectId,
         activeBranch,
-        session.accessToken,
         project?.git_ontology_path,
       );
       source = response.content;
@@ -417,7 +398,6 @@ export default function ProjectEditorPage() {
       projectId,
       modifiedSource,
       commitMessage,
-      session.accessToken,
       activeBranch,
     );
 
@@ -426,13 +406,10 @@ export default function ProjectEditorPage() {
     setDetailRefreshKey((k) => k + 1);
     setSourceIriIndex(new Map());
     setIriDetectionPending(true);
-    queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId, session?.accessToken) });
-  }, [session, projectId, activeBranch, project, sourceContent, toast, queryClient, setSourceContent, setSourceIriIndex]);
+    queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId) });
+  }, [projectId, activeBranch, project, sourceContent, toast, queryClient, setSourceContent, setSourceIriIndex]);
 
   const handleUpdateIndividual = useCallback(async (individualIri: string, data: TurtleIndividualUpdateData) => {
-    if (!session?.accessToken) {
-      throw new Error("Not authenticated");
-    }
     if (!activeBranch) {
       throw new Error("No branch selected");
     }
@@ -442,7 +419,6 @@ export default function ProjectEditorPage() {
       const response = await revisionsApi.getFileAtVersion(
         projectId,
         activeBranch,
-        session.accessToken,
         project?.git_ontology_path,
       );
       source = response.content;
@@ -456,7 +432,6 @@ export default function ProjectEditorPage() {
       projectId,
       modifiedSource,
       commitMessage,
-      session.accessToken,
       activeBranch,
     );
 
@@ -465,8 +440,8 @@ export default function ProjectEditorPage() {
     setDetailRefreshKey((k) => k + 1);
     setSourceIriIndex(new Map());
     setIriDetectionPending(true);
-    queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId, session?.accessToken) });
-  }, [session, projectId, activeBranch, project, sourceContent, toast, queryClient, setSourceContent, setSourceIriIndex]);
+    queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId) });
+  }, [projectId, activeBranch, project, sourceContent, toast, queryClient, setSourceContent, setSourceIriIndex]);
 
   const handleReparentClass = useCallback(async (
     classIri: string,
@@ -474,9 +449,7 @@ export default function ProjectEditorPage() {
     newParentIris: string[],
     mode: "move" | "add",
   ) => {
-    if (!session?.accessToken) throw new Error("Not authenticated");
-
-    const detail = await projectOntologyApi.getClassDetail(projectId, classIri, session.accessToken, activeBranch);
+    const detail = await projectOntologyApi.getClassDetail(projectId, classIri, activeBranch);
 
     let updatedParentIris: string[];
     if (newParentIris.length === 0) {
@@ -511,7 +484,7 @@ export default function ProjectEditorPage() {
     };
 
     await handleUpdateClass(classIri, payload);
-  }, [session, projectId, activeBranch, handleUpdateClass]);
+  }, [projectId, activeBranch, handleUpdateClass]);
 
   const handleBranchChange = useCallback((branchName: string) => {
     setActiveBranch(branchName);
@@ -533,7 +506,6 @@ export default function ProjectEditorPage() {
       const response = await revisionsApi.getFileAtVersion(
         projectId,
         activeBranch,
-        session?.accessToken,
         project?.git_ontology_path,
       );
       // Same path as the editor's own saves: new source, re-index, re-detect IRI settings.
@@ -571,7 +543,7 @@ export default function ProjectEditorPage() {
   }), [projectId, project?.name, activeBranch, leftTab, selectionIri, selectionType, selectedNodeFallback]);
 
   const lintDotSeverity = lintSeverity(lintSummary);
-  const showNormalize = !!(hasValidAccess && normalizationStatus?.needs_normalization);
+  const showNormalize = !!normalizationStatus?.needs_normalization;
 
   const keyboardShortcuts = useMemo((): ShortcutDefinition[] => [
     {
@@ -588,7 +560,7 @@ export default function ProjectEditorPage() {
       global: true,
       ignoreWhenEditorFocused: true,
     },
-    ...(canEdit ? [{
+    {
       id: "add-entity",
       key: "n",
       modifiers: { ctrl: true },
@@ -596,7 +568,7 @@ export default function ProjectEditorPage() {
       category: "Editing",
       action: () => handleAddEntity(),
       global: true,
-    }] : []),
+    },
     {
       id: "help",
       key: "?",
@@ -621,11 +593,11 @@ export default function ProjectEditorPage() {
       global: true,
       ignoreWhenEditorFocused: false,
     },
-  ], [handleAddEntity, shortcutDialogOpen, showHistory, showRightSidebar, closeRight, canEdit]);
+  ], [handleAddEntity, shortcutDialogOpen, showHistory, showRightSidebar, closeRight]);
 
   useKeyboardShortcuts(keyboardShortcuts);
 
-  if (isLoading || status === "loading") {
+  if (isLoading) {
     return (
       <>
         <Header />
@@ -667,20 +639,6 @@ export default function ProjectEditorPage() {
     );
   }
 
-  if (status === "unauthenticated" || (project && !canEdit)) {
-    router.replace("/");
-    return (
-      <>
-        <Header />
-        <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
-          <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
-          </div>
-        </main>
-      </>
-    );
-  }
-
   if (!hasOntology) {
     return (
       <>
@@ -703,15 +661,13 @@ export default function ProjectEditorPage() {
                   <h1 className="font-semibold text-slate-900 dark:text-white">{project.name}</h1>
                 </Tooltip>
               </div>
-              {canManage && (
-                <Tooltip side="bottom" content="Project settings: settings for this project only (ontology import, normalization, lint rules)">
-                  <Link href={`/projects/${projectId}/settings`} aria-label="Project settings">
-                    <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </Tooltip>
-              )}
+              <Tooltip side="bottom" content="Project settings: settings for this project only (ontology import, normalization, lint rules)">
+                <Link href={`/projects/${projectId}/settings`} aria-label="Project settings">
+                  <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </Tooltip>
             </div>
           </div>
           <div className="flex h-[calc(100vh-4rem-3.5rem)] items-center justify-center">
@@ -735,7 +691,7 @@ export default function ProjectEditorPage() {
   }
 
   return (
-    <BranchProvider projectId={projectId} accessToken={session?.accessToken} initialBranch={initialBranch}>
+    <BranchProvider projectId={projectId} initialBranch={initialBranch}>
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-100 dark:bg-slate-900">
         <div className="border-b border-slate-200 bg-white px-2 py-3 sm:px-4 dark:border-slate-700 dark:bg-slate-800">
@@ -786,9 +742,6 @@ export default function ProjectEditorPage() {
               <BranchSelector
                 className="hidden md:block"
                 onBranchChange={handleBranchChange}
-                canCreateBranch={canEdit}
-                readOnly={!hasValidAccess}
-                readOnlyReason="Sign in to switch or create branches."
               />
 
               <ShareButton
@@ -801,11 +754,7 @@ export default function ProjectEditorPage() {
                   <>
                     <div role="group" aria-label="Branch" className="px-3 py-1.5 md:hidden">
                       {/* The inline selector stays mounted (hidden) and reports branch changes. */}
-                      <BranchSelector
-                        canCreateBranch={canEdit}
-                        readOnly={!hasValidAccess}
-                        readOnlyReason="Sign in to switch or create branches."
-                      />
+                      <BranchSelector />
                     </div>
                     <button
                       type="button"
@@ -852,17 +801,15 @@ export default function ProjectEditorPage() {
                       <LayoutDashboard className="h-3.5 w-3.5 flex-shrink-0" />
                       Project dashboard
                     </Link>
-                    {canManage && (
-                      <Link
-                        href={`/projects/${projectId}/settings`}
-                        role="menuitem"
-                        className={`${SHARE_MENU_ITEM_CLASSES} sm:hidden`}
-                        onClick={closeMenu}
-                      >
-                        <Settings className="h-3.5 w-3.5 flex-shrink-0" />
-                        Project settings
-                      </Link>
-                    )}
+                    <Link
+                      href={`/projects/${projectId}/settings`}
+                      role="menuitem"
+                      className={`${SHARE_MENU_ITEM_CLASSES} sm:hidden`}
+                      onClick={closeMenu}
+                    >
+                      <Settings className="h-3.5 w-3.5 flex-shrink-0" />
+                      Project settings
+                    </Link>
                   </>
                 )}
               />
@@ -909,15 +856,13 @@ export default function ProjectEditorPage() {
                 </Button>
               </Tooltip>
 
-              {canManage && (
-                <Tooltip side="bottom" content="Project settings: settings for this project only (ontology import, normalization, lint rules)">
-                  <Link href={`/projects/${projectId}/settings`} aria-label="Project settings" className="hidden sm:inline-flex">
-                    <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </Tooltip>
-              )}
+              <Tooltip side="bottom" content="Project settings: settings for this project only (ontology import, normalization, lint rules)">
+                <Link href={`/projects/${projectId}/settings`} aria-label="Project settings" className="hidden sm:inline-flex">
+                  <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </Tooltip>
 
               <Tooltip
                 side="bottom"
@@ -958,9 +903,8 @@ export default function ProjectEditorPage() {
           <div className="flex-1 flex overflow-hidden">
             <StandardEditorLayout
               projectId={projectId}
-              accessToken={session?.accessToken}
               activeBranch={activeBranch}
-              canEdit={!!canEdit}
+              canEdit
               entityNavigationRef={entityNavigationRef}
               entityRemovalRef={entityRemovalRef}
               entityListRefreshKey={agentSync.entityListRefreshKey}
@@ -1014,7 +958,6 @@ export default function ProjectEditorPage() {
                   <HealthCheckPanel
                     key={agentSync.sidePanelsRefreshKey}
                     projectId={projectId}
-                    accessToken={session?.accessToken}
                     branch={activeBranch}
                     isOpen={isActive}
                     embedded
@@ -1026,7 +969,7 @@ export default function ProjectEditorPage() {
                         navigateToNode(iri);
                       }
                     }}
-                    canRunLint={!!canManage}
+                    canRunLint
                   />
                 </div>
               )}
@@ -1035,7 +978,6 @@ export default function ProjectEditorPage() {
 
           <RevisionHistoryPanel
             projectId={projectId}
-            accessToken={session?.accessToken}
             isOpen={showHistory}
             onClose={() => setShowHistory(false)}
             refreshKey={agentSync.sidePanelsRefreshKey}
@@ -1043,19 +985,17 @@ export default function ProjectEditorPage() {
         </div>
       </main>
 
-      {canEdit && (
-        <AddEntityDialog
-          open={addEntityDialogOpen}
-          onOpenChange={setAddEntityDialogOpen}
-          onConfirm={handleEntityConfirm}
-          iriPattern={iriPattern}
-          nextNumeric={nextNumeric}
-          ontologyNamespace={ontologyNamespace}
-          parentIri={addEntityParentIri}
-          parentLabel={addEntityParentLabel}
-          initialType={addEntityInitialType}
-        />
-      )}
+      <AddEntityDialog
+        open={addEntityDialogOpen}
+        onOpenChange={setAddEntityDialogOpen}
+        onConfirm={handleEntityConfirm}
+        iriPattern={iriPattern}
+        nextNumeric={nextNumeric}
+        ontologyNamespace={ontologyNamespace}
+        parentIri={addEntityParentIri}
+        parentLabel={addEntityParentLabel}
+        initialType={addEntityInitialType}
+      />
 
       <ConfirmDialog
         open={deleteDialogOpen}
@@ -1073,7 +1013,6 @@ export default function ProjectEditorPage() {
         <DeleteImpactAnalysis
           projectId={projectId}
           entityIri={deleteTargetIri}
-          accessToken={session?.accessToken}
           branch={activeBranch}
           onAcknowledge={setDeleteImpactAcknowledged}
         />

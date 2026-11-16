@@ -7,7 +7,6 @@ import { projectOntologyApi, type EntitySearchResult } from "@/lib/api/client";
 
 interface ParentClassPickerProps {
   projectId: string;
-  accessToken?: string;
   branch?: string;
   excludeIris: string[];
   onSelect: (iri: string, label: string) => void;
@@ -16,7 +15,6 @@ interface ParentClassPickerProps {
 
 export function ParentClassPicker({
   projectId,
-  accessToken,
   branch,
   excludeIris,
   onSelect,
@@ -54,7 +52,6 @@ export function ParentClassPicker({
         const response = await projectOntologyApi.searchEntities(
           projectId,
           query.trim(),
-          accessToken,
           branch,
           "class",
         );
@@ -67,7 +64,7 @@ export function ParentClassPicker({
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, projectId, accessToken, branch, excludeIris]);
+  }, [query, projectId, branch, excludeIris]);
 
   const handleSelect = useCallback(
     (result: EntitySearchResult) => {

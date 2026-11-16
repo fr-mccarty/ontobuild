@@ -60,23 +60,11 @@ describe("useGraphData", () => {
       useGraphData({
         focusIri: null,
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 
     expect(result.current.graphData).toBeNull();
     expect(result.current.isLoading).toBe(false);
-  });
-
-  it("returns null graphData when accessToken is missing", () => {
-    const { result } = renderHook(() =>
-      useGraphData({
-        focusIri: "http://example.org/A",
-        projectId: "proj-1",
-      }),
-    );
-
-    expect(result.current.graphData).toBeNull();
   });
 
   it("fetches focus node and builds graph", async () => {
@@ -87,7 +75,6 @@ describe("useGraphData", () => {
       useGraphData({
         focusIri: "http://example.org/A",
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 
@@ -96,7 +83,6 @@ describe("useGraphData", () => {
     expect(mockedGetClassDetail).toHaveBeenCalledWith(
       "proj-1",
       "http://example.org/A",
-      "token",
       undefined,
     );
     expect(mockedBuildGraph).toHaveBeenCalled();
@@ -115,7 +101,6 @@ describe("useGraphData", () => {
       useGraphData({
         focusIri: "http://example.org/A",
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 
@@ -131,7 +116,6 @@ describe("useGraphData", () => {
       useGraphData({
         focusIri: "http://example.org/A",
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 
@@ -152,7 +136,6 @@ describe("useGraphData", () => {
       useGraphData({
         focusIri: "http://example.org/A",
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 
@@ -178,7 +161,6 @@ describe("useGraphData", () => {
       useGraphData({
         focusIri: "http://example.org/A",
         projectId: "proj-1",
-        accessToken: "token",
       }),
     );
 
@@ -202,7 +184,6 @@ describe("useGraphData", () => {
       useGraphData({
         focusIri: "http://example.org/A",
         projectId: "proj-1",
-        accessToken: "token",
         branch: "dev",
       }),
     );
@@ -212,7 +193,6 @@ describe("useGraphData", () => {
     expect(mockedGetClassDetail).toHaveBeenCalledWith(
       "proj-1",
       "http://example.org/A",
-      "token",
       "dev",
     );
   });

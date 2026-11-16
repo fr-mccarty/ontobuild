@@ -29,12 +29,11 @@ export function useIriLabels(
   iris: string[],
   opts: {
     projectId: string;
-    accessToken?: string;
     branch?: string;
     labelHints?: Record<string, string>;
   },
 ): Record<string, string> {
-  const { projectId, accessToken, branch, labelHints } = opts;
+  const { projectId, branch, labelHints } = opts;
   const [labels, setLabels] = useState<Record<string, string>>({});
   const pendingRef = useRef(new Set<string>());
   const contextRef = useRef("");
@@ -71,7 +70,7 @@ export function useIriLabels(
             try {
               const localName = getLocalName(iri);
               const result = await projectOntologyApi.searchEntities(
-                projectId, localName, accessToken, branch,
+                projectId, localName, branch,
               );
               const match = result.results.find(
                 (r: { iri: string; label?: string }) => r.iri === iri,
@@ -82,7 +81,7 @@ export function useIriLabels(
 
             try {
               const detail = await projectOntologyApi.getClassDetail(
-                projectId, iri, accessToken, branch,
+                projectId, iri, branch,
               );
               const label = getPreferredLabel(detail.labels);
               if (label) { newLabels[iri] = label; return; }
@@ -102,7 +101,7 @@ export function useIriLabels(
     resolve();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [iris.join(","), projectId, accessToken, branch]);
+  }, [iris.join(","), projectId, branch]);
 
   return labelHints ? { ...labelHints, ...labels } : labels;
 }

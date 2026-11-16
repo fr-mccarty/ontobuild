@@ -9,7 +9,6 @@ const MAX_MATCHES = 20;
 interface UseFilteredTreeOptions {
   searchResults: EntitySearchResult[] | null;
   projectId: string;
-  accessToken?: string;
   branch?: string;
 }
 
@@ -23,7 +22,6 @@ interface UseFilteredTreeReturn {
 export function useFilteredTree({
   searchResults,
   projectId,
-  accessToken,
   branch,
 }: UseFilteredTreeOptions): UseFilteredTreeReturn {
   const [filteredNodes, setFilteredNodes] = useState<EntityTreeNode[] | null>(null);
@@ -66,7 +64,6 @@ export function useFilteredTree({
               const response = await projectOntologyApi.getClassAncestors(
                 projectId,
                 result.iri,
-                accessToken,
                 branch,
               );
               return {
@@ -101,7 +98,7 @@ export function useFilteredTree({
         }
       }
     })();
-  }, [searchResults, projectId, accessToken, branch]);
+  }, [searchResults, projectId, branch]);
 
   return { filteredNodes, isBuilding, firstMatchIri, truncated };
 }

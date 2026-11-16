@@ -103,7 +103,6 @@ const baseIssues = {
 function setup(overrides: Partial<React.ComponentProps<typeof HealthCheckPanel>> = {}) {
   const defaults = {
     projectId: "p1",
-    accessToken: "tok",
     isOpen: true,
     onClose: vi.fn(),
     onNavigateToClass: vi.fn(),
@@ -194,7 +193,7 @@ describe("HealthCheckPanel", () => {
     });
     const btn = screen.getByText("Run Lint");
     await userEvent.click(btn);
-    expect(mockLintApi.triggerLint).toHaveBeenCalledWith("p1", "tok");
+    expect(mockLintApi.triggerLint).toHaveBeenCalledWith("p1");
   });
 
   it("shows Clear button after completed run", async () => {
@@ -204,7 +203,7 @@ describe("HealthCheckPanel", () => {
       expect(screen.getByText("Clear")).toBeDefined();
     });
     await userEvent.click(screen.getByText("Clear"));
-    expect(mockLintApi.clearResults).toHaveBeenCalledWith("p1", "tok");
+    expect(mockLintApi.clearResults).toHaveBeenCalledWith("p1");
     await waitFor(() => {
       expect(screen.getByText("Run Lint")).toBeDefined();
     });
@@ -326,16 +325,6 @@ describe("HealthCheckPanel", () => {
   it("disables Run Lint when canRunLint is false", async () => {
     mockLintApi.getStatus.mockResolvedValue({ ...baseSummary, last_run: null });
     setup({ canRunLint: false });
-    await waitFor(() => {
-      expect(screen.getByText("Run Lint")).toBeDefined();
-    });
-    const btn = screen.getByText("Run Lint").closest("button")!;
-    expect(btn.hasAttribute("disabled")).toBe(true);
-  });
-
-  it("shows error when lint requires auth but none provided", async () => {
-    mockLintApi.getStatus.mockResolvedValue({ ...baseSummary, last_run: null });
-    setup({ accessToken: undefined, canRunLint: true });
     await waitFor(() => {
       expect(screen.getByText("Run Lint")).toBeDefined();
     });
@@ -959,7 +948,7 @@ describe("HealthCheckPanel", () => {
     const dismissBtns = screen.getAllByLabelText("Dismiss issue");
     expect(dismissBtns.length).toBeGreaterThan(0);
     await userEvent.click(dismissBtns[0]);
-    expect(mockLintApi.dismissIssue).toHaveBeenCalledWith("p1", "i1", "tok");
+    expect(mockLintApi.dismissIssue).toHaveBeenCalledWith("p1", "i1");
   });
 
   it("shows error when duplicate detection trigger fails", async () => {
@@ -1095,7 +1084,7 @@ describe("HealthCheckPanel", () => {
   });
 
   it("consistency check does nothing without access token", async () => {
-    setup({ accessToken: undefined });
+    setup({  });
     await waitFor(() => {
       expect(screen.getByText("Consistency")).toBeDefined();
     });
@@ -1107,7 +1096,7 @@ describe("HealthCheckPanel", () => {
   });
 
   it("duplicate detection does nothing without access token", async () => {
-    setup({ accessToken: undefined });
+    setup({  });
     await waitFor(() => {
       expect(screen.getByText("Duplicates")).toBeDefined();
     });
