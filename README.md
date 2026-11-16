@@ -1,4 +1,4 @@
-# OntoKit Full
+# OntoKit Monorepo
 
 OntoKit as a single local Node app. It combines the Next.js frontend from `ontokit-web` with
 the API from the FastAPI `ontokit-api`, which now runs inside the same Next server under
@@ -38,8 +38,8 @@ No Postgres, Redis, MinIO, Zitadel or Docker is needed.
 ## Installation and getting started
 
 ```bash
-git clone <this repository> ontokit-full
-cd ontokit-full
+git clone <this repository> ontokit-monorepo
+cd ontokit-monorepo
 npm install
 npm run dev          # development server on http://localhost:3000
 ```
@@ -93,7 +93,7 @@ or shown by the UI. Put it in `.env.local` at the project root (the directory yo
 `npm run dev` from, next to `package.json`):
 
 ```bash
-# ontokit-full/.env.local
+# ontokit-monorepo/.env.local
 OPENROUTER_API_KEY=sk-or-...
 ```
 
