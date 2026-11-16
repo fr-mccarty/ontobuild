@@ -6,6 +6,8 @@ Each project's ontology is stored in its own bare git repository, and metadata i
 SQLite. Everything runs on your machine except the optional editor agent, which calls
 OpenRouter (see [Editor agent](#editor-agent)).
 
+![The OntoKit editor showing a class form, the class tree and the agent panel](docs/screenshot.png)
+
 ## Features
 
 - **Projects.** Create an empty project or import an ontology in Turtle (`.ttl`), N3,
