@@ -33,10 +33,6 @@ export function getDb(): DatabaseSync {
   return g.__ontokitDb;
 }
 
-export function reloadSchema() {
-  applySchema(getDb());
-}
-
 export type Param = SQLInputValue | boolean | undefined;
 
 function norm(params: Param[]): SQLInputValue[] {

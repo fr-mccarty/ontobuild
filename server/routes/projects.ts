@@ -271,7 +271,6 @@ r.post("/projects/import", async (c) => {
   }
   const file = form.file;
   if (!(file instanceof File)) httpError(422, "Field 'file' is required");
-  if (form.is_public === undefined) httpError(422, "Field 'is_public' is required");
   const isPublic = String(form.is_public).toLowerCase() === "true";
   const nameOverride = typeof form.name === "string" && form.name.trim() ? form.name.trim() : null;
   const descOverride = typeof form.description === "string" && form.description ? form.description : null;

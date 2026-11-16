@@ -71,10 +71,6 @@ export function getAnnotationPropertyInfo(iri: string): { displayLabel: string; 
   return { displayLabel: localName, curie: localName };
 }
 
-export function getAnnotationPropertyLabel(iri: string): string {
-  return getAnnotationPropertyInfo(iri).displayLabel;
-}
-
 export function getAnnotationPropertiesByVocabulary(): Record<string, KnownAnnotationProperty[]> {
   const groups: Record<string, KnownAnnotationProperty[]> = {};
   for (const prop of ANNOTATION_PROPERTIES) {

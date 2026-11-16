@@ -259,10 +259,6 @@ export async function listBranches(projectId: string): Promise<BranchInfo[]> {
   return result;
 }
 
-export async function getBranch(projectId: string, name: string): Promise<BranchInfo | null> {
-  return (await listBranches(projectId)).find((b) => b.name === name) ?? null;
-}
-
 export async function createBranch(projectId: string, name: string, fromRef = "HEAD"): Promise<BranchInfo> {
   if (!(await isValidBranchName(name))) throw new GitError(`Invalid branch name: ${name}`, "", null);
   return withRepoLock(projectId, async () => {
@@ -318,12 +314,6 @@ export async function readFileOrNull(projectId: string, ref: string, filePath: s
   }
 }
 
-export async function listFiles(projectId: string, ref = "HEAD"): Promise<string[]> {
-  const sha = await resolveRef(projectId, ref);
-  const out = await git(projectId, ["ls-tree", "-r", "--name-only", "-z", sha]);
-  return out.split("\0").filter(Boolean);
-}
-
 const LOG_FORMAT = "%H%x1f%P%x1f%an%x1f%ae%x1f%ct%x1f%B%x1e";
 
 function parseLog(out: string): CommitInfo[] {
@@ -375,15 +365,6 @@ export async function getHistory(
     return parseLog(await git(projectId, args));
   } catch {
     return [];
-  }
-}
-
-export async function countCommits(projectId: string, ref?: string): Promise<number> {
-  try {
-    const out = await git(projectId, ["rev-list", "--count", ref ? await resolveRef(projectId, ref) : "--branches"]);
-    return Number(out.trim()) || 0;
-  } catch {
-    return 0;
   }
 }
 

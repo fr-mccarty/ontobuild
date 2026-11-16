@@ -21,11 +21,6 @@ export interface BranchSegment {
   colorIndex: number;
 }
 
-export interface GraphBranch {
-  colorIndex: number;
-  segments: BranchSegment[];
-}
-
 export interface GraphLayout {
   vertices: GraphVertex[];
   segments: BranchSegment[];

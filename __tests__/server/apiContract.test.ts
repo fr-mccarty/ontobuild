@@ -381,4 +381,39 @@ describe("projects", () => {
     });
     expect(res.status).toBe(413);
   });
+
+  it("rejects an OWL/XML (.owx) import instead of misreading it as RDF/XML", async () => {
+    const owx = `<?xml version="1.0"?><Ontology xmlns="http://www.w3.org/2002/07/owl#" ontologyIRI="http://ex.org/o"><Declaration><Class IRI="http://ex.org/A"/></Declaration></Ontology>`;
+    const boundary = "owxboundary";
+    const body = [
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="file"; filename="ontology.owx"',
+      "Content-Type: application/owl+xml",
+      "",
+      owx,
+      `--${boundary}`,
+      'Content-Disposition: form-data; name="is_public"',
+      "",
+      "false",
+      `--${boundary}--`,
+      "",
+    ].join("\r\n");
+    const init = { method: "POST", headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` }, body };
+    // jsdom's File is not the class undici's FormData returns, so the route's instanceof check needs the real one.
+    const parsed = await new Request("http://localhost/", init).formData();
+    const g = globalThis as { File: typeof File };
+    const jsdomFile = g.File;
+    g.File = (parsed.get("file") as File).constructor as typeof File;
+    let res: Response;
+    try {
+      res = await app.request("/api/v1/projects/import", init);
+    } finally {
+      g.File = jsdomFile;
+    }
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.status).toBeLessThan(500);
+    const { detail } = (await res.json()) as { detail: string };
+    expect(detail).toContain("Unsupported file format: .owx");
+    expect(detail).not.toContain(".owx,");
+  });
 });

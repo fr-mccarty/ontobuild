@@ -47,12 +47,6 @@ export function queryBool(c: Context, name: string, def = false): boolean {
   return ["true", "1", "yes", "on"].includes(raw.toLowerCase());
 }
 
-export function requireString(body: Record<string, unknown>, field: string): string {
-  const v = body[field];
-  if (typeof v !== "string" || v.length === 0) httpError(422, `Field '${field}' is required`);
-  return v;
-}
-
 /** Reads an entity IRI path parameter, URL-decoding it (a malformed escape is returned as-is). */
 export function iriParam(c: Context, name = "iri"): string {
   const raw = c.req.param(name) ?? "";

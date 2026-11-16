@@ -31,7 +31,7 @@ const mockDiscardDraft = vi.fn();
 const mockClearRestoredDraft = vi.fn();
 
 let autoSaveOverrides: Record<string, unknown> = {};
-let editorModeOverrides: Record<string, unknown> = {};
+let preferencesOverrides: Record<string, unknown> = {};
 
 vi.mock("@/lib/hooks/useEntityAutoSave", () => ({
   useEntityAutoSave: () => ({
@@ -49,9 +49,9 @@ vi.mock("@/lib/hooks/useEntityAutoSave", () => ({
   }),
 }));
 
-vi.mock("@/lib/stores/editorModeStore", () => ({
-  useEditorModeStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ ...editorModeOverrides }),
+vi.mock("@/lib/stores/preferencesStore", () => ({
+  usePreferencesStore: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({ ...preferencesOverrides }),
 }));
 
 vi.mock("@/lib/hooks/useIriLabels", () => ({
@@ -138,7 +138,7 @@ describe("PropertyDetailPanel", () => {
     vi.clearAllMocks();
     mockFlushToGit.mockResolvedValue(true);
     autoSaveOverrides = {};
-    editorModeOverrides = {};
+    preferencesOverrides = {};
     capturedAnnotationRowProps = [];
     capturedRelationshipSectionProps = null;
     capturedAutoSaveBarProps = null;

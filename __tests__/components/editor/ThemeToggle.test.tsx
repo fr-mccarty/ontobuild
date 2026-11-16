@@ -10,8 +10,8 @@ import userEvent from "@testing-library/user-event";
 const mockSetTheme = vi.fn();
 let mockTheme = "system";
 
-vi.mock("@/lib/stores/editorModeStore", () => ({
-  useEditorModeStore: (selector: (state: Record<string, unknown>) => unknown) =>
+vi.mock("@/lib/stores/preferencesStore", () => ({
+  usePreferencesStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       theme: mockTheme,
       setTheme: mockSetTheme,

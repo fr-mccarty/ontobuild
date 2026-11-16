@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { ProjectForm } from "@/components/projects/project-form";
 import { LabelPreferences, normalizeLabelPreferences } from "@/components/projects/label-preferences";
 import { ApiError, projectOntologyApi, type IndexStatusResponse, type IndexStatus } from "@/lib/api/client";
-import { IndexWebSocketManager, type IndexWebSocketMessage } from "@/lib/api/indexStatus";
+import { IndexStatusPoller, type IndexStatusEvent } from "@/lib/api/indexStatus";
 import {
   projectApi,
   type Project,
@@ -140,9 +140,9 @@ export default function ProjectSettingsPage() {
   useEffect(() => {
     if (!project?.id || !session?.accessToken) return;
 
-    const manager = new IndexWebSocketManager(
+    const manager = new IndexStatusPoller(
       project.id,
-      (message: IndexWebSocketMessage) => {
+      (message: IndexStatusEvent) => {
         if (message.type === "index_started") {
           setIsReindexing(true);
           setIndexStatus((prev) =>

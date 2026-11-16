@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 export type ThemePreference = "light" | "dark" | "system";
 
-interface EditorModeState {
+interface PreferencesState {
   theme: ThemePreference;
   hideSaveButton: boolean;
   setTheme: (theme: ThemePreference) => void;
@@ -24,7 +24,7 @@ export function applyThemeToDOM(theme: ThemePreference) {
   }
 }
 
-export const useEditorModeStore = create<EditorModeState>()(
+export const usePreferencesStore = create<PreferencesState>()(
   persist(
     (set) => ({
       theme: "system",
@@ -49,11 +49,11 @@ export const useEditorModeStore = create<EditorModeState>()(
 );
 
 if (typeof window !== "undefined") {
-  useEditorModeStore.persist.onFinishHydration(() => {
-    applyThemeToDOM(useEditorModeStore.getState().theme);
+  usePreferencesStore.persist.onFinishHydration(() => {
+    applyThemeToDOM(usePreferencesStore.getState().theme);
   });
 
-  useEditorModeStore.subscribe((state, prev) => {
+  usePreferencesStore.subscribe((state, prev) => {
     if (state.theme !== prev.theme) {
       applyThemeToDOM(state.theme);
     }
@@ -62,7 +62,7 @@ if (typeof window !== "undefined") {
   window
     .matchMedia("(prefers-color-scheme: dark)")
     .addEventListener("change", () => {
-      if (useEditorModeStore.getState().theme === "system") {
+      if (usePreferencesStore.getState().theme === "system") {
         applyThemeToDOM("system");
       }
     });

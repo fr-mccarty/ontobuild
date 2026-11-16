@@ -12,8 +12,8 @@ vi.mock("@/lib/context/ToastContext", () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn(), info: vi.fn() }),
 }));
 
-vi.mock("@/lib/stores/editorModeStore", () => ({
-  useEditorModeStore: (selector: (s: Record<string, unknown>) => unknown) => selector({}),
+vi.mock("@/lib/stores/preferencesStore", () => ({
+  usePreferencesStore: (selector: (s: Record<string, unknown>) => unknown) => selector({}),
 }));
 
 vi.mock("@/lib/hooks/useIriLabels", () => ({

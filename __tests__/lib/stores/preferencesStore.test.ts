@@ -21,7 +21,7 @@ vi.hoisted(() => {
   }
 });
 
-import { useEditorModeStore, applyThemeToDOM } from "@/lib/stores/editorModeStore";
+import { usePreferencesStore, applyThemeToDOM } from "@/lib/stores/preferencesStore";
 
 describe("applyThemeToDOM", () => {
   let addSpy: ReturnType<typeof vi.fn>;
@@ -72,9 +72,9 @@ describe("applyThemeToDOM", () => {
   });
 });
 
-describe("useEditorModeStore", () => {
+describe("usePreferencesStore", () => {
   beforeEach(() => {
-    useEditorModeStore.setState({
+    usePreferencesStore.setState({
       theme: "system",
       hideSaveButton: false,
     });
@@ -82,7 +82,7 @@ describe("useEditorModeStore", () => {
 
   describe("defaults", () => {
     it("has correct initial state", () => {
-      const state = useEditorModeStore.getState();
+      const state = usePreferencesStore.getState();
       expect(state.theme).toBe("system");
       expect(state.hideSaveButton).toBe(false);
     });
@@ -98,28 +98,28 @@ describe("useEditorModeStore", () => {
     });
 
     it("sets the theme to dark and adds 'dark' class", () => {
-      useEditorModeStore.getState().setTheme("dark");
-      expect(useEditorModeStore.getState().theme).toBe("dark");
+      usePreferencesStore.getState().setTheme("dark");
+      expect(usePreferencesStore.getState().theme).toBe("dark");
       expect(document.documentElement.classList.add).toHaveBeenCalledWith("dark");
     });
 
     it("sets the theme to light and removes 'dark' class", () => {
-      useEditorModeStore.getState().setTheme("light");
-      expect(useEditorModeStore.getState().theme).toBe("light");
+      usePreferencesStore.getState().setTheme("light");
+      expect(usePreferencesStore.getState().theme).toBe("light");
       expect(document.documentElement.classList.remove).toHaveBeenCalledWith("dark");
     });
   });
 
   describe("setHideSaveButton", () => {
     it("hides the save button", () => {
-      useEditorModeStore.getState().setHideSaveButton(true);
-      expect(useEditorModeStore.getState().hideSaveButton).toBe(true);
+      usePreferencesStore.getState().setHideSaveButton(true);
+      expect(usePreferencesStore.getState().hideSaveButton).toBe(true);
     });
 
     it("shows the save button again", () => {
-      useEditorModeStore.getState().setHideSaveButton(true);
-      useEditorModeStore.getState().setHideSaveButton(false);
-      expect(useEditorModeStore.getState().hideSaveButton).toBe(false);
+      usePreferencesStore.getState().setHideSaveButton(true);
+      usePreferencesStore.getState().setHideSaveButton(false);
+      expect(usePreferencesStore.getState().hideSaveButton).toBe(false);
     });
   });
 });

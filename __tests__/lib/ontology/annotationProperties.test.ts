@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   getAnnotationPropertyInfo,
-  getAnnotationPropertyLabel,
   getAnnotationPropertiesByVocabulary,
   ANNOTATION_PROPERTIES,
   LABEL_IRI,
@@ -59,22 +58,6 @@ describe("getAnnotationPropertyInfo", () => {
     );
     expect(info.displayLabel).toBe("myProperty");
     expect(info.curie).toBe("myProperty");
-  });
-});
-
-describe("getAnnotationPropertyLabel", () => {
-  it("returns the display label for a known property", () => {
-    expect(
-      getAnnotationPropertyLabel(
-        "http://www.w3.org/2004/02/skos/core#definition",
-      ),
-    ).toBe("Definition");
-  });
-
-  it("falls back to local name for unknown property", () => {
-    expect(
-      getAnnotationPropertyLabel("http://example.org/ont#unknownProp"),
-    ).toBe("unknownProp");
   });
 });
 

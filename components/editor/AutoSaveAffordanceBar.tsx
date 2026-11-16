@@ -2,7 +2,7 @@
 
 import { Cloud, Loader2, Check, AlertTriangle, Save, X, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEditorModeStore } from "@/lib/stores/editorModeStore";
+import { usePreferencesStore } from "@/lib/stores/preferencesStore";
 import { Tooltip } from "@/components/ui/tooltip";
 import Link from "next/link";
 import type { SaveStatus } from "@/lib/hooks/useAutoSave";
@@ -24,7 +24,7 @@ export function AutoSaveAffordanceBar({
   onManualSave,
   onCancel,
 }: AutoSaveAffordanceBarProps) {
-  const hideSaveButton = useEditorModeStore((s) => s.hideSaveButton);
+  const hideSaveButton = usePreferencesStore((s) => s.hideSaveButton);
 
   const effectiveStatus = validationError ? "validationError" : status;
 

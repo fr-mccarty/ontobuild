@@ -4,18 +4,8 @@ import { useCallback, useState } from "react";
 import { Upload, X, FileText, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
+import { RDF_FILE_EXTENSIONS as SUPPORTED_EXTENSIONS } from "@/lib/ontology/rdfFormats";
 
-const SUPPORTED_EXTENSIONS = [".owl", ".rdf", ".ttl", ".n3", ".jsonld"];
-const _SUPPORTED_MIME_TYPES = [
-  "application/rdf+xml",
-  "application/owl+xml",
-  "text/turtle",
-  "text/n3",
-  "application/ld+json",
-  "application/json",
-  "text/xml",
-  "application/xml",
-];
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 interface FileUploadProps {

@@ -267,14 +267,6 @@ function lineOf(text: string, offset: number): number {
   return line;
 }
 
-/** Index of the line holding the `.` that ends the statement starting on line `start`. */
-export function scanToBlockEnd(lines: string[], start: number): number {
-  const text = lines.slice(start).join("\n");
-  const stmt = turtleStatements(text).next().value;
-  if (!stmt?.terminated) return lines.length - 1;
-  return start + lineOf(text, stmt.end - 1);
-}
-
 /**
  * Finds the statement whose subject is `iri` and returns its exact character span in
  * `source`. Only subjects are matched, so an IRI used as an object elsewhere never selects
@@ -314,10 +306,6 @@ export function findBlock(
   const span = findBlockSpan(text, iri, prefixes, base);
   if (!span) return null;
   return { startLine: lineOf(text, span.start), endLine: lineOf(text, Math.max(span.start, span.end - 1)) };
-}
-
-export function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function esc(s: string): string {

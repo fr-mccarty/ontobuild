@@ -2,7 +2,7 @@
 
 import { Sun, Moon, Monitor } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEditorModeStore, type ThemePreference } from "@/lib/stores/editorModeStore";
+import { usePreferencesStore, type ThemePreference } from "@/lib/stores/preferencesStore";
 import { Tooltip } from "@/components/ui/tooltip";
 
 interface ThemeToggleProps {
@@ -16,8 +16,8 @@ const themes: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
 ];
 
 export function ThemeToggle({ className }: ThemeToggleProps) {
-  const theme = useEditorModeStore((s) => s.theme);
-  const setTheme = useEditorModeStore((s) => s.setTheme);
+  const theme = usePreferencesStore((s) => s.theme);
+  const setTheme = usePreferencesStore((s) => s.setTheme);
 
   return (
     <div

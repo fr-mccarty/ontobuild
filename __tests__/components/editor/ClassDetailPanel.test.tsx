@@ -15,7 +15,7 @@ const mockEditStateRef = { current: null as Record<string, unknown> | null };
 
 let autoSaveOverrides: Record<string, unknown> = {};
 
-let editorModeOverrides: Record<string, unknown> = {};
+let preferencesOverrides: Record<string, unknown> = {};
 
 vi.mock("@/lib/api/client", () => ({
   projectOntologyApi: {
@@ -49,9 +49,9 @@ vi.mock("@/lib/hooks/useAutoSave", () => ({
   }),
 }));
 
-vi.mock("@/lib/stores/editorModeStore", () => ({
-  useEditorModeStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ ...editorModeOverrides }),
+vi.mock("@/lib/stores/preferencesStore", () => ({
+  usePreferencesStore: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({ ...preferencesOverrides }),
 }));
 
 vi.mock("@/components/editor/ParentClassPicker", () => ({
@@ -156,7 +156,7 @@ describe("ClassDetailPanel", () => {
     mockGetIssues.mockResolvedValue({ items: [] });
     mockSearchEntities.mockResolvedValue({ results: [] });
     autoSaveOverrides = {};
-    editorModeOverrides = {};
+    preferencesOverrides = {};
     mockEditStateRef.current = null;
     mockFlushToGit.mockResolvedValue(true);
     capturedAnnotationRowProps = [];

@@ -1,6 +1,6 @@
 import { projectOntologyApi, type IndexStatus } from "@/lib/api/client";
 
-export interface IndexWebSocketMessage {
+export interface IndexStatusEvent {
   type: "index_started" | "index_complete" | "index_failed";
   project_id: string;
   branch?: string;
@@ -10,9 +10,9 @@ export interface IndexWebSocketMessage {
 
 export const INDEX_POLL_INTERVAL_MS = 3000;
 
-export class IndexWebSocketManager {
+export class IndexStatusPoller {
   private projectId: string;
-  private onMessage: (message: IndexWebSocketMessage) => void;
+  private onMessage: (message: IndexStatusEvent) => void;
   private branch?: string;
   private intervalMs: number;
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -21,7 +21,7 @@ export class IndexWebSocketManager {
 
   constructor(
     projectId: string,
-    onMessage: (message: IndexWebSocketMessage) => void,
+    onMessage: (message: IndexStatusEvent) => void,
     _token?: string,
     options: { branch?: string; intervalMs?: number } = {}
   ) {

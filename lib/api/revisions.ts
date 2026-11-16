@@ -73,20 +73,6 @@ export interface BranchCreate {
   from_branch?: string;
 }
 
-export interface TripleChange {
-  subject: string;
-  predicate: string;
-  object: string;
-  change_type: "added" | "removed";
-}
-
-export interface SemanticDiffResponse {
-  added: TripleChange[];
-  removed: TripleChange[];
-  total_added: number;
-  total_removed: number;
-}
-
 export const revisionsApi = {
   getHistory: (projectId: string, token?: string, limit = 50) => {
     const headers: HeadersInit = {};

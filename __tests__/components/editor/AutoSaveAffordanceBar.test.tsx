@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-vi.mock("@/lib/stores/editorModeStore", () => ({
-  useEditorModeStore: (selector: (state: Record<string, unknown>) => unknown) =>
+vi.mock("@/lib/stores/preferencesStore", () => ({
+  usePreferencesStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ hideSaveButton: false }),
 }));
 

@@ -1,3 +1,4 @@
+import { RDF_FILE_EXTENSIONS } from "@/lib/ontology/rdfFormats";
 import { error, ref, type DocMap, type Schema } from "./types";
 
 export const projectSchemas: Record<string, Schema> = {
@@ -230,16 +231,16 @@ export const projectDocs: DocMap = {
     description:
       "Creates a project from an uploaded RDF file. The file is parsed, converted to Turtle, normalized, and stripped of language tags " +
       "(literals are stored as plain strings). The project name and description default to the ontology's title and description, then to the file name. " +
-      "Supported extensions: `.ttl`, `.n3`, `.nt`, `.nq`, `.trig`, `.owl`, `.owx`, `.rdf`, `.xml`, `.jsonld`, `.json`.",
+      `Supported extensions: ${RDF_FILE_EXTENSIONS.map((e) => `\`${e}\``).join(", ")}.`,
     body: {
       required: true,
       contentType: "multipart/form-data",
       schema: {
         type: "object",
-        required: ["file", "is_public"],
+        required: ["file"],
         properties: {
           file: { type: "string", format: "binary", description: "RDF file, at most 50 MB." },
-          is_public: { type: "string", enum: ["true", "false"] },
+          is_public: { type: "string", enum: ["true", "false"], description: "Defaults to false. The UI does not use it." },
           name: { type: "string", description: "Overrides the project name." },
           description: { type: "string", description: "Overrides the project description." },
         },

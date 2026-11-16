@@ -6,10 +6,8 @@ import {
   iriTurtleForms,
   findBlock,
   findBlockSpan,
-  scanToBlockEnd,
   literal,
   isIriValue,
-  escapeRegex,
   esc,
 } from "@/lib/ontology/turtleUtils";
 import {
@@ -183,10 +181,15 @@ describe("iriTurtleForms", () => {
   });
 });
 
-describe("scanToBlockEnd", () => {
+// End line of the statement whose subject is `iri`, found through the same tokenizer that
+// findBlock uses to replace an entity's exact range.
+const EX = "http://example.org/";
+const endLine = (lines: string[], iri = `${EX}Dog`) => findBlock(lines, iri, { ex: EX })?.endLine;
+
+describe("statement end detection", () => {
   it("finds terminating period on same line", () => {
     const lines = ["ex:Dog a owl:Class ."];
-    expect(scanToBlockEnd(lines, 0)).toBe(0);
+    expect(endLine(lines)).toBe(0);
   });
 
   it("finds terminating period on later line", () => {
@@ -194,7 +197,7 @@ describe("scanToBlockEnd", () => {
       "ex:Dog a owl:Class ;",
       '    rdfs:label "Dog"@en .',
     ];
-    expect(scanToBlockEnd(lines, 0)).toBe(1);
+    expect(endLine(lines)).toBe(1);
   });
 
   it("handles nested brackets", () => {
@@ -205,12 +208,12 @@ describe("scanToBlockEnd", () => {
       "        owl:onProperty ex:hasAge",
       "    ] .",
     ];
-    expect(scanToBlockEnd(lines, 0)).toBe(4);
+    expect(endLine(lines)).toBe(4);
   });
 
   it("ignores periods inside string literals", () => {
     const lines = ['ex:Dog rdfs:label "Dr. Dog"@en .'];
-    expect(scanToBlockEnd(lines, 0)).toBe(0);
+    expect(endLine(lines)).toBe(0);
   });
 
   it("ignores periods inside comments", () => {
@@ -218,7 +221,7 @@ describe("scanToBlockEnd", () => {
       "ex:Dog a owl:Class ; # this has a . in comment",
       '    rdfs:label "Dog"@en .',
     ];
-    expect(scanToBlockEnd(lines, 0)).toBe(1);
+    expect(endLine(lines)).toBe(1);
   });
 
   it("handles triple-quoted strings", () => {
@@ -226,17 +229,17 @@ describe("scanToBlockEnd", () => {
       'ex:Doc rdfs:comment """A class with a',
       'multi-line. comment"""@en .',
     ];
-    expect(scanToBlockEnd(lines, 0)).toBe(1);
+    expect(endLine(lines, `${EX}Doc`)).toBe(1);
   });
 
   it("returns last line index when no terminator found", () => {
     const lines = ["ex:Dog a owl:Class ;", '    rdfs:label "Dog"@en'];
-    expect(scanToBlockEnd(lines, 0)).toBe(1);
+    expect(endLine(lines)).toBe(1);
   });
 
   it("handles escaped quotes inside strings", () => {
     const lines = ['ex:Dog rdfs:label "say \\"hello\\"."@en .'];
-    expect(scanToBlockEnd(lines, 0)).toBe(0);
+    expect(endLine(lines)).toBe(0);
   });
 });
 
@@ -342,23 +345,6 @@ describe("findBlock", () => {
   });
 });
 
-describe("escapeRegex", () => {
-  it("escapes special regex characters", () => {
-    expect(escapeRegex("foo.bar")).toBe("foo\\.bar");
-    expect(escapeRegex("a+b*c?d")).toBe("a\\+b\\*c\\?d");
-    expect(escapeRegex("[test]")).toBe("\\[test\\]");
-    expect(escapeRegex("(group)")).toBe("\\(group\\)");
-    expect(escapeRegex("a{1,2}")).toBe("a\\{1,2\\}");
-    expect(escapeRegex("^start$end")).toBe("\\^start\\$end");
-    expect(escapeRegex("a|b")).toBe("a\\|b");
-    expect(escapeRegex("back\\slash")).toBe("back\\\\slash");
-  });
-
-  it("does not modify plain strings", () => {
-    expect(escapeRegex("hello")).toBe("hello");
-  });
-});
-
 describe("esc", () => {
   it("escapes backslashes", () => {
     expect(esc("a\\b")).toBe("a\\\\b");
@@ -437,21 +423,21 @@ describe("block boundary scanning", () => {
       "",
       "<http://example.org/ont#Cat> a owl:Class .",
     ];
-    expect(scanToBlockEnd(lines, 0)).toBe(1);
+    expect(endLine(lines, "http://example.org/ont#Dog")).toBe(1);
   });
 
   it("does not stop at dots inside decimals or prefixed names", () => {
     const lines = ["ex:Dog ex:w 1.5 ;", "    ex:r .5 ;", "    rdfs:seeAlso ex:v1.2 .", "ex:Cat a owl:Class ."];
-    expect(scanToBlockEnd(lines, 0)).toBe(2);
+    expect(endLine(lines)).toBe(2);
   });
 
   it("treats a dot right after a prefixed name at end of line as the terminator", () => {
-    expect(scanToBlockEnd(["ex:Dog a owl:Class.", "ex:Cat a owl:Class ."], 0)).toBe(0);
+    expect(endLine(["ex:Dog a owl:Class.", "ex:Cat a owl:Class ."])).toBe(0);
   });
 
   it("handles long strings that end in a quote or contain escaped quotes", () => {
     const lines = ['ex:Dog rdfs:comment """a \\""" b . "c"""" ;', '    rdfs:label "Dog" .', "ex:Cat a owl:Class ."];
-    expect(scanToBlockEnd(lines, 0)).toBe(1);
+    expect(endLine(lines)).toBe(1);
   });
 
   it("does not select a block that only references the IRI as an object", () => {

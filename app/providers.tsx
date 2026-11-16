@@ -7,7 +7,7 @@ import { ToastContainer } from "@/components/ui/toast-container";
 import { ScreenReaderAnnouncerProvider } from "@/components/ui/ScreenReaderAnnouncer";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
-import "@/lib/stores/editorModeStore";
+import "@/lib/stores/preferencesStore";
 
 interface ProvidersProps {
   children: ReactNode;

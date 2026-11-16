@@ -17,18 +17,6 @@ export function getLocalName(iri: string): string {
   return iri;
 }
 
-export function getNamespace(iri: string): string {
-  const hashIndex = iri.lastIndexOf("#");
-  if (hashIndex !== -1) {
-    return iri.substring(0, hashIndex + 1);
-  }
-  const slashIndex = iri.lastIndexOf("/");
-  if (slashIndex !== -1) {
-    return iri.substring(0, slashIndex + 1);
-  }
-  return "";
-}
-
 export function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString(undefined, {
     year: "numeric",
@@ -49,10 +37,6 @@ export function formatDateTime(dateString: string): string {
 
 export function getPreferredLabel(labels: { value: string }[]): string {
   return labels.find((l) => l.value.trim())?.value ?? "";
-}
-
-export function generateId(): string {
-  return crypto.randomUUID();
 }
 
 export function debounce<T extends (...args: unknown[]) => unknown>(

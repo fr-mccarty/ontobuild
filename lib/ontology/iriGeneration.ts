@@ -114,18 +114,3 @@ export function detectPatternFromIriIndex(
 
   return detectIriPattern(localNames);
 }
-
-export function generateEntityIri(options: GenerateIriOptions): string {
-  const { baseNamespace, pattern, label, nextNumeric } = options;
-
-  switch (pattern) {
-    case "uuid":
-      return baseNamespace + uuidToBase62();
-    case "numeric":
-      return baseNamespace + String(nextNumeric ?? 1);
-    case "named":
-      return baseNamespace + (label ? labelToLocalName(label) : uuidToBase62());
-    default:
-      return baseNamespace + uuidToBase62();
-  }
-}

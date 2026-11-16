@@ -9,9 +9,9 @@ import { OptionCard } from "@/components/settings/OptionCard";
 import { AgentSettingsSection } from "@/components/settings/AgentSettingsSection";
 import { useHashHighlight } from "@/components/settings/useHashHighlight";
 import {
-  useEditorModeStore,
+  usePreferencesStore,
   type ThemePreference,
-} from "@/lib/stores/editorModeStore";
+} from "@/lib/stores/preferencesStore";
 
 export default function UserSettingsPage() {
   const highlightedSetting = useHashHighlight();
@@ -55,10 +55,10 @@ const themeOptions: SegmentedChoiceOption<ThemePreference>[] = [
 ];
 
 function EditorPreferencesSection({ highlightedSetting }: { highlightedSetting: string | null }) {
-  const theme = useEditorModeStore((s) => s.theme);
-  const setTheme = useEditorModeStore((s) => s.setTheme);
-  const hideSaveButton = useEditorModeStore((s) => s.hideSaveButton);
-  const setHideSaveButton = useEditorModeStore((s) => s.setHideSaveButton);
+  const theme = usePreferencesStore((s) => s.theme);
+  const setTheme = usePreferencesStore((s) => s.setTheme);
+  const hideSaveButton = usePreferencesStore((s) => s.hideSaveButton);
+  const setHideSaveButton = usePreferencesStore((s) => s.setHideSaveButton);
 
   return (
     <SettingsSection

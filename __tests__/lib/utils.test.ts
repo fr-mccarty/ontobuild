@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   getLocalName,
-  getNamespace,
   getPreferredLabel,
   formatDate,
   formatDateTime,
   debounce,
-  generateId,
 } from "@/lib/utils";
 
 describe("getLocalName", () => {
@@ -28,24 +26,6 @@ describe("getLocalName", () => {
 
   it("prefers hash over slash", () => {
     expect(getLocalName("http://example.org/ontology#ns/Person")).toBe("ns/Person");
-  });
-});
-
-describe("getNamespace", () => {
-  it("extracts namespace with hash", () => {
-    expect(getNamespace("http://example.org/ontology#Person")).toBe(
-      "http://example.org/ontology#"
-    );
-  });
-
-  it("extracts namespace with slash", () => {
-    expect(getNamespace("http://example.org/ontology/Person")).toBe(
-      "http://example.org/ontology/"
-    );
-  });
-
-  it("returns empty for no delimiter", () => {
-    expect(getNamespace("Person")).toBe("");
   });
 });
 
@@ -76,20 +56,6 @@ describe("formatDateTime", () => {
   it("formats a date string with time", () => {
     const result = formatDateTime("2024-01-15T10:30:00Z");
     expect(result).toContain("2024");
-  });
-});
-
-describe("generateId", () => {
-  it("returns a string", () => {
-    const id = generateId();
-    expect(typeof id).toBe("string");
-    expect(id.length).toBeGreaterThan(0);
-  });
-
-  it("returns unique values", () => {
-    const id1 = generateId();
-    const id2 = generateId();
-    expect(id1).not.toBe(id2);
   });
 });
 

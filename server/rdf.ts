@@ -1,5 +1,8 @@
 import { DataFactory, Parser, Store, type Quad, type Term } from "n3";
 import { Readable } from "node:stream";
+import { RDF_EXTENSION_FORMATS, RDF_FILE_EXTENSIONS, type RdfFormat } from "@/lib/ontology/rdfFormats";
+
+export type { RdfFormat };
 
 export { DataFactory, Store };
 export type { Quad, Term };
@@ -18,8 +21,6 @@ export const NS = {
 
 export const WELL_KNOWN_PREFIXES: Record<string, string> = { ...NS };
 
-export type RdfFormat = "turtle" | "n3" | "ntriples" | "nquads" | "trig" | "rdfxml" | "jsonld";
-
 export const FORMAT_NAMES: Record<RdfFormat, string> = {
   turtle: "Turtle",
   n3: "Notation3",
@@ -30,21 +31,7 @@ export const FORMAT_NAMES: Record<RdfFormat, string> = {
   jsonld: "JSON-LD",
 };
 
-const EXT_FORMATS: Record<string, RdfFormat> = {
-  ".ttl": "turtle",
-  ".n3": "n3",
-  ".nt": "ntriples",
-  ".nq": "nquads",
-  ".trig": "trig",
-  ".owl": "rdfxml",
-  ".owx": "rdfxml",
-  ".rdf": "rdfxml",
-  ".xml": "rdfxml",
-  ".jsonld": "jsonld",
-  ".json": "jsonld",
-};
-
-export const SUPPORTED_EXTENSIONS = Object.keys(EXT_FORMATS);
+export const SUPPORTED_EXTENSIONS = RDF_FILE_EXTENSIONS;
 
 export class RdfParseError extends Error {
   constructor(message: string) {
@@ -59,19 +46,7 @@ export function extensionOf(filename: string): string {
 }
 
 export function formatFromFilename(filename: string): RdfFormat | null {
-  return EXT_FORMATS[extensionOf(filename)] ?? null;
-}
-
-export function mediaType(format: RdfFormat): string {
-  return {
-    turtle: "text/turtle",
-    n3: "text/n3",
-    ntriples: "application/n-triples",
-    nquads: "application/n-quads",
-    trig: "application/trig",
-    rdfxml: "application/rdf+xml",
-    jsonld: "application/ld+json",
-  }[format];
+  return RDF_EXTENSION_FORMATS[extensionOf(filename)] ?? null;
 }
 
 export interface ParsedRdf {

@@ -1,4 +1,4 @@
-import type { Quad, Term } from "n3";
+import type { Term } from "n3";
 import { Store } from "n3";
 import * as git from "./git";
 import { all, bool, fromJson, get } from "./db";
@@ -327,10 +327,6 @@ export function getLabels(store: Store, iri: string): LocalizedString[] {
   return getLiterals(store, iri, RDFS_LABEL);
 }
 
-export function getComments(store: Store, iri: string): LocalizedString[] {
-  return getLiterals(store, iri, RDFS_COMMENT);
-}
-
 export function getTypes(store: Store, iri: string): string[] {
   return getObjectIris(store, iri, RDF_TYPE);
 }
@@ -376,19 +372,6 @@ export function listClasses(store: Store): string[] {
   return listSubjectsOfType(store, [OWL_CLASS, RDFS_CLASS]).filter((c) => c !== OWL_THING);
 }
 
-export function listObjectProperties(store: Store): string[] {
-  return listSubjectsOfType(store, [OWL_OBJECT_PROPERTY]);
-}
-export function listDatatypeProperties(store: Store): string[] {
-  return listSubjectsOfType(store, [OWL_DATATYPE_PROPERTY]);
-}
-export function listAnnotationProperties(store: Store): string[] {
-  return listSubjectsOfType(store, [OWL_ANNOTATION_PROPERTY]);
-}
-export function listProperties(store: Store): string[] {
-  return listSubjectsOfType(store, [OWL_OBJECT_PROPERTY, OWL_DATATYPE_PROPERTY, OWL_ANNOTATION_PROPERTY, RDF_PROPERTY]);
-}
-
 export function propertyKind(store: Store, iri: string): "object" | "data" | "annotation" | null {
   if (hasType(store, iri, OWL_OBJECT_PROPERTY)) return "object";
   if (hasType(store, iri, OWL_DATATYPE_PROPERTY)) return "data";
@@ -419,27 +402,9 @@ export function getSuperClasses(store: Store, iri: string): string[] {
   return getObjectIris(store, iri, RDFS_SUBCLASS_OF).filter((p) => p !== iri);
 }
 
-export function getSubClasses(store: Store, iri: string): string[] {
-  return uniq(
-    store
-      .getSubjects(RDFS_SUBCLASS_OF, iri, null)
-      .filter(isNamed)
-      .map((t) => t.value)
-      .filter((s) => s !== iri),
-  ).sort();
-}
-
 export function getRootClasses(store: Store): string[] {
   const classes = new Set(listClasses(store));
   return [...classes].filter((c) => !getSuperClasses(store, c).some((p) => p !== OWL_THING && classes.has(p)));
-}
-
-export function quadsAbout(store: Store, iri: string): Quad[] {
-  return store.getQuads(subjectTerm(iri), null, null, null);
-}
-
-export function quadsReferencing(store: Store, iri: string): Quad[] {
-  return store.getQuads(null, null, iri, null);
 }
 
 function subjectTerm(iri: string): string {

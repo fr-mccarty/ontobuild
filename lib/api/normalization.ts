@@ -48,10 +48,6 @@ export interface NormalizationHistoryResponse {
   total: number;
 }
 
-export interface NormalizationTriggerRequest {
-  dry_run?: boolean;
-}
-
 export const normalizationApi = {
   getStatus: (projectId: string, token?: string) => {
     const headers: HeadersInit = {};

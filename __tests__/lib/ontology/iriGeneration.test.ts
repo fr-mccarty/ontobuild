@@ -4,7 +4,6 @@ import {
   labelToLocalName,
   detectIriPattern,
   detectPatternFromIriIndex,
-  generateEntityIri,
 } from "@/lib/ontology/iriGeneration";
 import type { IriPosition } from "@/lib/ontology/iriGeneration";
 
@@ -125,49 +124,5 @@ describe("detectPatternFromIriIndex", () => {
     const result = detectPatternFromIriIndex(new Map(), new Set());
     expect(result.pattern).toBe("uuid");
     expect(result.confidence).toBe(0);
-  });
-});
-
-describe("generateEntityIri", () => {
-  it("generates a UUID-based IRI", () => {
-    const iri = generateEntityIri({
-      baseNamespace: "http://example.org/ont#",
-      pattern: "uuid",
-    });
-    expect(iri).toMatch(/^http:\/\/example\.org\/ont#R[0-9A-Za-z]+$/);
-  });
-
-  it("generates a numeric-based IRI", () => {
-    const iri = generateEntityIri({
-      baseNamespace: "http://example.org/ont#",
-      pattern: "numeric",
-      nextNumeric: 42,
-    });
-    expect(iri).toBe("http://example.org/ont#42");
-  });
-
-  it("generates a named IRI from label", () => {
-    const iri = generateEntityIri({
-      baseNamespace: "http://example.org/ont#",
-      pattern: "named",
-      label: "Red Blood Cell",
-    });
-    expect(iri).toBe("http://example.org/ont#RedBloodCell");
-  });
-
-  it("falls back to UUID when named pattern has no label", () => {
-    const iri = generateEntityIri({
-      baseNamespace: "http://example.org/ont#",
-      pattern: "named",
-    });
-    expect(iri).toMatch(/^http:\/\/example\.org\/ont#R[0-9A-Za-z]+$/);
-  });
-
-  it("uses default nextNumeric of 1 when not provided", () => {
-    const iri = generateEntityIri({
-      baseNamespace: "http://example.org/ont#",
-      pattern: "numeric",
-    });
-    expect(iri).toBe("http://example.org/ont#1");
   });
 });
