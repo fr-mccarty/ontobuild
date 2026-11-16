@@ -1,10 +1,27 @@
-node_modules/
-.next/
-out/
-coverage/
-data/
-*.tsbuildinfo
+# Dependencies
+/node_modules/
+
+# Next.js build output and generated types
+/.next/
+/out/
 next-env.d.ts
+*.tsbuildinfo
+
+# Test coverage
+/coverage/
+
+# Runtime data: SQLite database and project git repos (default ONTOKIT_DATA_DIR)
+/data/
+
+# Secrets, including OPENROUTER_API_KEY. Next.js reads all of these.
 .env
-.env.local
+.env*.local
+
+# Logs
+*.log
+
+# Local tool settings
+.claude/settings.local.json
+
+# OS files
 .DS_Store
