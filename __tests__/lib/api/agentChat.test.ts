@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { SSEParser, streamAgentChat, AgentChatError, type AgentStreamEvent } from "@/lib/api/agentChat";
+import {
+  SSEParser,
+  streamAgentChat,
+  toAgentStreamEvent,
+  AgentChatError,
+  type AgentStreamEvent,
+} from "@/lib/api/agentChat";
 
 function streamOf(chunks: string[]): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
@@ -52,6 +58,54 @@ describe("SSEParser", () => {
   });
 });
 
+describe("toAgentStreamEvent", () => {
+  const parse = (event: string, data: unknown) => toAgentStreamEvent({ event, data: JSON.stringify(data) });
+
+  it("parses ontology_changed", () => {
+    expect(
+      parse("ontology_changed", {
+        tool_use_id: "t1",
+        name: "delete_entity",
+        branch: "main",
+        commit_hash: "abc123",
+        deleted_iris: ["http://ex.org#A", 5],
+      }),
+    ).toEqual({
+      type: "ontology_changed",
+      tool_use_id: "t1",
+      name: "delete_entity",
+      branch: "main",
+      commit_hash: "abc123",
+      deleted_iris: ["http://ex.org#A"],
+    });
+    expect(parse("ontology_changed", { tool_use_id: "t1", name: "x", branch: "dev" })).toMatchObject({
+      commit_hash: null,
+      deleted_iris: [],
+    });
+    expect(parse("ontology_changed", { tool_use_id: "t1", name: "x" })).toBeNull();
+  });
+
+  it("parses select_entity UI actions and drops malformed or unknown ones", () => {
+    expect(
+      parse("ui_action", {
+        tool_use_id: "t2",
+        action: "select_entity",
+        iri: "http://ex.org#Pizza",
+        entity_type: "class",
+        label: "Pizza",
+        branch: "main",
+      }),
+    ).toEqual({
+      type: "ui_action",
+      tool_use_id: "t2",
+      action: { action: "select_entity", iri: "http://ex.org#Pizza", entity_type: "class", label: "Pizza", branch: "main" },
+    });
+    expect(parse("ui_action", { action: "select_entity", iri: "x", entity_type: "ontology" })).toBeNull();
+    expect(parse("ui_action", { action: "select_entity", entity_type: "class" })).toBeNull();
+    expect(parse("ui_action", { action: "open_settings" })).toBeNull();
+  });
+});
+
 describe("streamAgentChat", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -64,6 +118,8 @@ describe("streamAgentChat", () => {
           'event: message\ndata: {"message":{"role":"user","content":"hi"}}\n\nevent: te',
           'xt\ndata: {"text":"Hel"}\n\nevent: text\ndata: {"text":"lo"}\n\n',
           'event: tool_result\ndata: {"tool_use_id":"t1","name":"x","is_error":false,"summary":"ok","mutated":true}\n\n',
+          'event: ontology_changed\ndata: {"tool_use_id":"t1","name":"x","branch":"main","commit_hash":"c1","deleted_iris":[]}\n\nevent: ui_',
+          'action\ndata: {"tool_use_id":"t2","action":"select_entity","iri":"http://ex.org#A","entity_type":"property","label":"A","branch":"main"}\n\n',
         ]),
         { status: 200, headers: { "Content-Type": "text/event-stream" } },
       ),
@@ -88,8 +144,10 @@ describe("streamAgentChat", () => {
       page_context: "ctx",
       model: "openai/gpt-x",
     });
-    expect(events.map((e) => e.type)).toEqual(["message", "text", "text", "tool_result"]);
+    expect(events.map((e) => e.type)).toEqual(["message", "text", "text", "tool_result", "ontology_changed", "ui_action"]);
     expect(events[3]).toMatchObject({ tool_use_id: "t1", mutated: true });
+    expect(events[4]).toMatchObject({ branch: "main", commit_hash: "c1" });
+    expect(events[5]).toMatchObject({ action: { action: "select_entity", entity_type: "property", iri: "http://ex.org#A" } });
   });
 
   it("throws the detail from a JSON error response", async () => {

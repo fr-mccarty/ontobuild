@@ -17,7 +17,16 @@ import { executeTool, openAiTools, parseToolArguments, type ToolContext } from "
 
 export const MAX_TURNS = 40;
 
-export type AgentEventName = "message" | "text" | "thinking" | "tool_use" | "tool_result" | "done" | "error";
+export type AgentEventName =
+  | "message"
+  | "text"
+  | "thinking"
+  | "tool_use"
+  | "tool_result"
+  | "ontology_changed"
+  | "ui_action"
+  | "done"
+  | "error";
 export type SendEvent = (event: AgentEventName, data: unknown) => Promise<void>;
 
 export type AgentRequestBody = ChatCompletionCreateParamsStreaming & {
@@ -244,6 +253,8 @@ export async function runAgentChat(opts: RunChatOptions): Promise<void> {
             is_error: true,
             summary: parsed.error,
             mutated: false,
+            ontology_changes: [],
+            ui_action: null,
           };
       await send("tool_result", {
         tool_use_id: call.id,
@@ -252,6 +263,12 @@ export async function runAgentChat(opts: RunChatOptions): Promise<void> {
         summary: outcome.summary,
         mutated: outcome.mutated,
       });
+      for (const change of outcome.ontology_changes) {
+        await send("ontology_changed", { tool_use_id: call.id, name: call.function.name, ...change });
+      }
+      if (outcome.ui_action) {
+        await send("ui_action", { tool_use_id: call.id, ...outcome.ui_action });
+      }
       const toolMessage: ChatCompletionToolMessageParam = {
         role: "tool",
         tool_call_id: call.id,

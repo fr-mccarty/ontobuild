@@ -318,3 +318,31 @@ describe("parseBlockTriples", () => {
     );
   });
 });
+
+describe("parseBlockTriples numbers and dots", () => {
+  const SRC = `@prefix ex: <http://example.org/ont#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:item ex:weight 1.5 ;
+    ex:ratio .25 ;
+    ex:count 3 ;
+    ex:size 1.2e3 ;
+    rdfs:seeAlso ex:v1.2 ;
+    rdfs:comment "after the numbers" .
+
+ex:other rdfs:label "Other" .
+`;
+
+  it("keeps decimals, doubles and dotted names whole and reads past them", () => {
+    const triples = parseBlockTriples(SRC, "http://example.org/ont#item")!;
+    const XSD = "http://www.w3.org/2001/XMLSchema#";
+    const obj = (p: string) => triples.find((t) => t.predicate === p)?.object;
+    expect(obj("http://example.org/ont#weight")).toEqual({ type: "literal", value: "1.5", datatype: `${XSD}decimal` });
+    expect(obj("http://example.org/ont#ratio")).toEqual({ type: "literal", value: ".25", datatype: `${XSD}decimal` });
+    expect(obj("http://example.org/ont#count")).toEqual({ type: "literal", value: "3", datatype: `${XSD}integer` });
+    expect(obj("http://example.org/ont#size")).toEqual({ type: "literal", value: "1.2e3", datatype: `${XSD}double` });
+    expect(obj("http://www.w3.org/2000/01/rdf-schema#seeAlso")).toEqual({ type: "iri", value: "http://example.org/ont#v1.2" });
+    expect(obj("http://www.w3.org/2000/01/rdf-schema#comment")).toEqual({ type: "literal", value: "after the numbers" });
+    expect(triples.some((t) => t.object.type === "literal" && t.object.value === "Other")).toBe(false);
+  });
+});

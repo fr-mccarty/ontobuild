@@ -14,13 +14,17 @@ export type ConsistencyRuleId =
   | "dangling_ref"
   | "multi_root";
 
+/** Entity types used by consistency issues and duplicate detection. */
+export type QualityEntityType = "class" | "property" | "individual";
+
 export interface ConsistencyIssue {
   rule_id: ConsistencyRuleId;
   severity: ConsistencySeverity;
   entity_iri: string;
-  entity_type: string;
+  /** "ontology" is used for ontology-wide issues (multi_root), whose entity_iri is "". */
+  entity_type: QualityEntityType | "unknown" | "ontology";
   message: string;
-  details?: Record<string, unknown>;
+  details: Record<string, unknown> | null;
 }
 
 export interface ConsistencyCheckResult {
@@ -29,6 +33,12 @@ export interface ConsistencyCheckResult {
   issues: ConsistencyIssue[];
   checked_at: string;
   duration_ms: number;
+}
+
+/** GET /quality/issues: checked_at and duration_ms are null when no check has run on the branch. */
+export interface LatestConsistencyResult extends Omit<ConsistencyCheckResult, "checked_at" | "duration_ms"> {
+  checked_at: string | null;
+  duration_ms: number | null;
 }
 
 export type ReferenceContext =
@@ -66,7 +76,7 @@ export interface DuplicateCluster {
   entities: Array<{
     iri: string;
     label: string;
-    entity_type: string;
+    entity_type: QualityEntityType;
   }>;
   similarity: number;
 }
@@ -75,6 +85,12 @@ export interface DuplicateDetectionResult {
   clusters: DuplicateCluster[];
   threshold: number;
   checked_at: string;
+}
+
+/** GET /quality/duplicates/latest: threshold and checked_at are null when no detection has run on the branch. */
+export interface LatestDuplicateResult extends Omit<DuplicateDetectionResult, "threshold" | "checked_at"> {
+  threshold: number | null;
+  checked_at: string | null;
 }
 
 export interface QualityJobPendingResponse {

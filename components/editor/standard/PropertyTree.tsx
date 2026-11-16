@@ -12,6 +12,8 @@ interface PropertyTreeProps {
   branch?: string;
   selectedIri: string | null;
   onSelect: (iri: string) => void;
+  /** Change to reload the list in place, keeping collapsed groups and the selection. */
+  refreshKey?: number;
 }
 
 interface PropertyGroup {
@@ -27,16 +29,35 @@ export function PropertyTree({
   branch,
   selectedIri,
   onSelect,
+  refreshKey = 0,
 }: PropertyTreeProps) {
   const [groups, setGroups] = useState<PropertyGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Open the group that holds the selected property when the selection changes, so a
+  // property selected from elsewhere (a link, the agent) is visible.
+  const [revealedIri, setRevealedIri] = useState<string | null>(null);
+  if (selectedIri !== revealedIri && groups.length > 0) {
+    setRevealedIri(selectedIri);
+    if (selectedIri && groups.some((g) => !g.isExpanded && g.items.some((i) => i.iri === selectedIri))) {
+      setGroups(groups.map((g) => (g.items.some((i) => i.iri === selectedIri) ? { ...g, isExpanded: true } : g)));
+    }
+  }
+
+  // A refresh keeps showing the current list while it reloads; only a new project or
+  // branch shows the spinner.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const scope = `${projectId}\n${branch ?? ""}`;
+  if (loadedFor !== null && loadedFor !== scope) {
+    setLoadedFor(null);
+    setIsLoading(true);
+  }
+
   useEffect(() => {
     let cancelled = false;
 
     const fetchProperties = async () => {
-      setIsLoading(true);
       setError(null);
 
       try {
@@ -85,7 +106,10 @@ export function PropertyTree({
           newGroups.push({ label: "Other Properties", type: "other", items: otherProps, isExpanded: true });
         }
 
-        setGroups(newGroups);
+        setGroups((prev) =>
+          newGroups.map((g) => ({ ...g, isExpanded: prev.find((p) => p.type === g.type)?.isExpanded ?? true })),
+        );
+        setLoadedFor(`${projectId}\n${branch ?? ""}`);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load properties");
@@ -99,7 +123,7 @@ export function PropertyTree({
 
     fetchProperties();
     return () => { cancelled = true; };
-  }, [projectId, accessToken, branch]);
+  }, [projectId, accessToken, branch, refreshKey]);
 
   const entityNodes = useMemo((): EntityTreeNode[] => {
     return groups.map((group) => ({

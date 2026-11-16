@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Parser } from "n3";
 import { updatePropertyInTurtle } from "@/lib/ontology/turtlePropertyUpdater";
 import { TURTLE_FIXTURE } from "./fixtures";
 
@@ -284,3 +285,31 @@ ex:knows a owl:ObjectProperty, owl:SymmetricProperty, ex:SocialTerm .
     expect(result).toContain("ex:knows a owl:ObjectProperty, ex:SocialTerm .");
   });
 });
+
+describe("updatePropertyInTurtle block boundaries", () => {
+  it("keeps the next entity when the property ends with a full IRI containing #", () => {
+    const before = `@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\n`;
+    const after = `\n\n<http://example.org/ont#Next> a owl:Class ;\n    rdfs:label "Next" .\n`;
+    const block = `<http://example.org/ont#hasPart> a owl:ObjectProperty ;\n    rdfs:label "has part" ;\n    rdfs:subPropertyOf <http://example.org/ont#relatedTo> .`;
+    const result = updatePropertyInTurtle(before + block + after, "http://example.org/ont#hasPart", {
+      ...baseDataForBoundaries,
+      labels: [{ value: "has component" }],
+    });
+    expect(result.startsWith(before)).toBe(true);
+    expect(result.endsWith(after)).toBe(true);
+    expect(result).toContain('rdfs:label "has component"');
+    expect(() => new Parser().parse(result)).not.toThrow();
+  });
+});
+
+const baseDataForBoundaries = {
+  propertyType: "object" as const,
+  labels: [],
+  comments: [],
+  definitions: [],
+  domainIris: [],
+  rangeIris: [],
+  parentIris: ["http://example.org/ont#relatedTo"],
+  inverseOf: null,
+  characteristics: [],
+};

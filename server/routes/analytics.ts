@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Store, Term } from "n3";
 import { all, get, insert, newId, nowIso, toJson, fromJson, transaction } from "../db";
-import { queryInt } from "../http";
+import { iriParam, queryInt } from "../http";
 import { LOCAL_USER } from "../user";
 import {
   NS,
@@ -238,20 +238,14 @@ r.get("/projects/:id/analytics/activity", (c) => {
   return c.json({
     daily_counts: daily.map((d) => ({ date: d.day, count: Number(d.cnt) })),
     total_events: total,
-    top_editors: editors.map((e) => ({ user_id: e.user_id, user_name: e.user_name ?? "", edit_count: Number(e.cnt) })),
+    top_editors: editors.map((e) => ({ user_id: e.user_id, user_name: e.user_name, edit_count: Number(e.cnt) })),
   });
 });
 
 r.get("/projects/:id/analytics/entity/:iri{.+}/history", (c) => {
   const id = c.req.param("id");
   requireProject(id);
-  let iri = c.req.param("iri");
-  if (/%[0-9A-Fa-f]{2}/.test(iri)) {
-    try {
-      iri = decodeURIComponent(iri);
-    } catch {
-    }
-  }
+  const iri = iriParam(c);
   const branch = c.req.query("branch") || null;
   const limit = queryInt(c, "limit", 50, { min: 1, max: 200 });
   const where = branch ? "project_id = ? AND entity_iri = ? AND branch = ?" : "project_id = ? AND entity_iri = ?";
@@ -287,6 +281,7 @@ r.get("/projects/:id/analytics/hot-entities", async (c) => {
   const id = c.req.param("id");
   const project = requireProject(id);
   const limit = queryInt(c, "limit", 20, { min: 1, max: 100 });
+  const days = queryInt(c, "days", 30, { min: 1, max: 365 });
   const rows = all<{
     entity_iri: string;
     entity_type: string;
@@ -299,7 +294,7 @@ r.get("/projects/:id/analytics/hot-entities", async (c) => {
      FROM entity_change_events WHERE project_id = ? AND created_at >= ?
      GROUP BY entity_iri, entity_type ORDER BY edit_count DESC, last_edited_at DESC LIMIT ?`,
     id,
-    cutoffIso(30),
+    cutoffIso(days),
     limit,
   );
   let store: Store | null = null;
@@ -350,7 +345,7 @@ r.get("/projects/:id/analytics/contributors", (c) => {
   return c.json(
     rows.map((row) => ({
       user_id: row.user_id,
-      user_name: row.user_name ?? "",
+      user_name: row.user_name,
       create_count: Number(row.create_count),
       update_count: Number(row.update_count),
       delete_count: Number(row.delete_count),

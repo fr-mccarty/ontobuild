@@ -50,6 +50,20 @@ describe("RightSidebar", () => {
     expect(screen.queryByTestId("health-tab-badge")).toBeNull();
   });
 
+  it("floats over the editor below lg and sits beside it from lg up", () => {
+    setup();
+    const classes = screen.getByRole("complementary", { name: "Agent and health panel" }).className.split(/\s+/);
+    expect(classes).toEqual(expect.arrayContaining(["absolute", "right-0", "z-30", "shadow-xl"]));
+    expect(classes).toEqual(expect.arrayContaining(["lg:static", "lg:z-auto", "lg:shadow-none"]));
+    expect(screen.getByTestId("right-sidebar-backdrop").className).toContain("lg:hidden");
+  });
+
+  it("closes when the overlay backdrop is clicked", () => {
+    const { onClose } = setup();
+    fireEvent.click(screen.getByTestId("right-sidebar-backdrop"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("calls onClose from the close button", () => {
     const { onClose } = setup();
     fireEvent.click(screen.getByLabelText("Close panel"));

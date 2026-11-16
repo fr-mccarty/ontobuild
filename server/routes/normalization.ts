@@ -9,7 +9,7 @@ import {
   ontologyFilePath,
   onOntologyEvent,
   requireProject,
-  resolveBranch,
+  requireBranch, resolveBranch,
   type ProjectRow,
 } from "../ontology";
 import { FORMAT_NAMES, formatFromFilename, normalizeToTurtle } from "../rdf";
@@ -80,9 +80,9 @@ async function normalize(content: string, filename: string) {
   return { normalized: n.turtle, report };
 }
 
-async function readSource(project: ProjectRow) {
+async function readSource(project: ProjectRow, branchName?: string | null) {
   if (!git.repoExists(project.id)) return null;
-  const branch = await resolveBranch(project.id, null);
+  const branch = await resolveBranch(project.id, branchName);
   let sha: string;
   try {
     sha = await git.resolveRef(project.id, branch);
@@ -95,8 +95,13 @@ async function readSource(project: ProjectRow) {
   return { branch, sha, filePath, content };
 }
 
-function hasOntology(project: ProjectRow) {
-  return !!project.source_file_path || git.repoExists(project.id);
+const NO_ONTOLOGY_FILE = "Project has no ontology file";
+
+/** Reads the branch's source for a normalization run, or fails with 400 when there is no ontology file. */
+async function requireSource(project: ProjectRow, branch: string) {
+  const src = await readSource(project, branch);
+  if (!src) httpError(400, NO_ONTOLOGY_FILE);
+  return src;
 }
 
 interface CheckRow {
@@ -107,8 +112,8 @@ interface CheckRow {
   checked_at: string;
 }
 
-async function checkStatus(project: ProjectRow): Promise<CheckRow | null> {
-  const src = await readSource(project);
+async function checkStatus(project: ProjectRow, branch?: string | null): Promise<CheckRow | null> {
+  const src = await readSource(project, branch);
   if (!src) return null;
   const cached = get<CheckRow>("SELECT * FROM normalization_checks WHERE project_id = ?", project.id);
   if (cached && cached.commit_hash === src.sha) return cached;
@@ -185,10 +190,10 @@ function runToResponse(r: RunRow, extra: { original_content?: string | null; nor
   };
 }
 
-async function runNormalization(projectId: string, dryRun: boolean, triggerType = "manual") {
+async function runNormalization(projectId: string, dryRun: boolean, branch?: string | null, triggerType = "manual") {
   const project = requireProject(projectId);
-  const src = await readSource(project);
-  if (!src) throw new NormalizationError("Project has no ontology file");
+  const src = await readSource(project, branch);
+  if (!src) throw new NormalizationError(NO_ONTOLOGY_FILE);
   const { normalized, report } = await normalize(src.content, src.filePath);
   const changed = normalized !== src.content;
   let commitHash: string | null = null;
@@ -210,13 +215,12 @@ async function runNormalization(projectId: string, dryRun: boolean, triggerType 
 
 class NormalizationError extends Error {}
 
-function jobToStatus(job: Job | null, jobId: string) {
-  if (!job) return { job_id: jobId, status: "not_found", result: null, error: "Job not found or expired" };
-  const map: Record<string, string> = { pending: "pending", running: "running", completed: "complete", failed: "failed" };
+function jobToStatus(job: Job) {
   const result = job.result && typeof job.result === "object" ? (job.result as Record<string, unknown>) : null;
   return {
     job_id: job.id,
-    status: map[job.status] ?? "not_found",
+    // Same vocabulary as the jobs table, lint runs and the job's own result: pending | running | completed | failed.
+    status: job.status,
     result,
     error: job.error ?? (result && typeof result.error === "string" ? result.error : null),
   };
@@ -238,36 +242,22 @@ onOntologyEvent("normalization:import-run", (e) => {
 
 r.get("/projects/:id/normalization/status", async (c) => {
   const project = requireProject(c.req.param("id"));
+  const branch = await requireBranch(project.id, c.req.query("branch"));
   const last = lastRealRun(project.id);
   const base = {
     last_run: last?.created_at ?? null,
     last_run_id: last?.id ?? null,
-    checking: false,
   };
-  if (!hasOntology(project)) {
-    return c.json({
-      needs_normalization: false,
-      ...base,
-      last_check: null,
-      preview_report: null,
-      error: "Project has no ontology file",
-    });
-  }
+  // When the status can't be determined, needs_normalization is null and error says why.
+  const unknown = (error: string) =>
+    c.json({ needs_normalization: null, ...base, last_check: null, preview_report: null, error });
   let check: CheckRow | null;
   try {
-    check = await checkStatus(project);
+    check = await checkStatus(project, branch);
   } catch (e) {
-    return c.json({
-      needs_normalization: false,
-      ...base,
-      last_check: null,
-      preview_report: null,
-      error: e instanceof Error ? e.message : String(e),
-    });
+    return unknown(e instanceof Error ? e.message : String(e));
   }
-  if (!check) {
-    return c.json({ needs_normalization: null, ...base, last_check: null, preview_report: null, error: null });
-  }
+  if (!check) return unknown(NO_ONTOLOGY_FILE);
   return c.json({
     needs_normalization: bool(check.needs_normalization),
     ...base,
@@ -277,29 +267,31 @@ r.get("/projects/:id/normalization/status", async (c) => {
   });
 });
 
-r.post("/projects/:id/normalization/refresh", (c) => {
+r.post("/projects/:id/normalization/refresh", async (c) => {
   const project = requireProject(c.req.param("id"));
-  const jobId = startJob(CHECK_JOB, { projectId: project.id }, async () => {
+  const branch = await requireBranch(project.id, c.req.query("branch"));
+  const jobId = startJob(CHECK_JOB, { projectId: project.id, branch }, async () => {
     const p = requireProject(project.id);
-    const check = await checkStatus(p);
+    const check = await checkStatus(p, branch);
     const last = lastRealRun(project.id);
     return {
       project_id: project.id,
-      needs_normalization: check ? bool(check.needs_normalization) : false,
+      needs_normalization: check ? bool(check.needs_normalization) : null,
       last_run: last?.created_at ?? null,
-      error: check ? null : "No ontology file",
+      error: check ? null : NO_ONTOLOGY_FILE,
     };
   });
-  return c.json({ message: "Normalization status check queued", job_id: jobId });
+  return c.json({ message: "Normalization status check queued", job_id: jobId }, 202);
 });
 
 r.post("/projects/:id/normalization/queue", async (c) => {
   const project = requireProject(c.req.param("id"));
   const body = await readJson<{ dry_run?: boolean }>(c);
   const dryRun = body.dry_run === true;
-  if (!hasOntology(project)) httpError(400, "Project has no ontology file");
-  const jobId = startJob(NORMALIZE_JOB, { projectId: project.id }, async () => {
-    const res = await runNormalization(project.id, dryRun);
+  const branch = await requireBranch(project.id, c.req.query("branch"));
+  await requireSource(project, branch);
+  const jobId = startJob(NORMALIZE_JOB, { projectId: project.id, branch }, async () => {
+    const res = await runNormalization(project.id, dryRun, branch);
     return {
       project_id: project.id,
       run_id: res.run.id,
@@ -308,15 +300,17 @@ r.post("/projects/:id/normalization/queue", async (c) => {
       status: "completed",
     };
   });
-  return c.json({ message: "Normalization job queued", job_id: jobId, status: "queued" });
+  return c.json({ message: "Normalization job queued", job_id: jobId, status: "queued" }, 202);
 });
 
 r.get("/projects/:id/normalization/jobs/:jobId", (c) => {
   const project = requireProject(c.req.param("id"));
   const jobId = c.req.param("jobId");
   const job = getJob(jobId);
-  const mine = job && job.project_id === project.id && (job.kind === NORMALIZE_JOB || job.kind === CHECK_JOB);
-  return c.json(jobToStatus(mine ? job : null, jobId));
+  if (!job || job.project_id !== project.id || (job.kind !== NORMALIZE_JOB && job.kind !== CHECK_JOB)) {
+    httpError(404, "Job not found or expired");
+  }
+  return c.json(jobToStatus(job));
 });
 
 r.get("/projects/:id/normalization/jobs", (c) => {
@@ -325,15 +319,16 @@ r.get("/projects/:id/normalization/jobs", (c) => {
     ...listJobs({ kind: NORMALIZE_JOB, projectId: project.id, limit: 10 }),
     ...listJobs({ kind: CHECK_JOB, projectId: project.id, limit: 10 }),
   ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-  return c.json(jobs.slice(0, 10).map((j) => jobToStatus(j, j.id)));
+  return c.json(jobs.slice(0, 10).map((j) => jobToStatus(j)));
 });
 
 r.post("/projects/:id/normalization", async (c) => {
   const project = requireProject(c.req.param("id"));
   const body = await readJson<{ dry_run?: boolean }>(c);
-  if (!hasOntology(project)) httpError(400, "Project has no ontology file");
+  const branch = await requireBranch(project.id, c.req.query("branch"));
+  await requireSource(project, branch);
   try {
-    const res = await runNormalization(project.id, body.dry_run === true);
+    const res = await runNormalization(project.id, body.dry_run === true, branch);
     return c.json(runToResponse(res.run, { original_content: res.original, normalized_content: res.normalized }));
   } catch (e) {
     if (e instanceof NormalizationError) httpError(400, e.message);
@@ -352,7 +347,11 @@ r.get("/projects/:id/normalization/history", (c) => {
     limit,
   );
   const items = rows.map((r) => runToResponse(r));
-  return c.json({ items, total: items.length });
+  const total = get<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM normalization_runs WHERE project_id = ? ${includeDry ? "" : "AND is_dry_run = 0"}`,
+    project.id,
+  )!.n;
+  return c.json({ items, total: Number(total) });
 });
 
 r.get("/projects/:id/normalization/runs/:runId", (c) => {

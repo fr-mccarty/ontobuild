@@ -47,6 +47,13 @@ import { pullRequestsApi } from "@/lib/api/pullRequests";
 
 function makePR(overrides: Partial<PullRequest> = {}): PullRequest {
   return {
+    merged_by: null,
+    merged_by_user: null,
+    merged_at: null,
+    merge_commit_hash: null,
+    base_commit_hash: null,
+    head_commit_hash: null,
+    updated_at: null,
     id: "pr-1",
     project_id: "proj-1",
     pr_number: 7,
@@ -56,7 +63,7 @@ function makePR(overrides: Partial<PullRequest> = {}): PullRequest {
     target_branch: "main",
     status: "open",
     author_id: "user-1",
-    author: { id: "user-1", name: "Alice" },
+    author: { id: "user-1", name: "Alice", email: null },
     created_at: "2025-06-01T10:00:00Z",
     review_count: 0,
     approval_count: 0,
@@ -72,7 +79,7 @@ function makeReview(overrides: Partial<Review> = {}): Review {
     id: "rev-1",
     pull_request_id: "pr-1",
     reviewer_id: "user-2",
-    reviewer: { id: "user-2", name: "Bob" },
+    reviewer: { id: "user-2", name: "Bob", email: null },
     status: "approved",
     body: "Looks good!",
     created_at: "2025-06-02T10:00:00Z",
@@ -82,10 +89,12 @@ function makeReview(overrides: Partial<Review> = {}): Review {
 
 function makeComment(overrides: Partial<Comment> = {}): Comment {
   return {
+    parent_id: null,
+    updated_at: null,
     id: "comment-1",
     pull_request_id: "pr-1",
     author_id: "user-1",
-    author: { id: "user-1", name: "Alice" },
+    author: { id: "user-1", name: "Alice", email: null },
     body: "Ready for review.",
     created_at: "2025-06-01T12:00:00Z",
     replies: [],
@@ -333,6 +342,7 @@ describe("PRDetail", () => {
         {
           path: "ontology.ttl",
           change_type: "modified",
+          old_path: null,
           additions: 10,
           deletions: 2,
           patch: "+added line\n-removed line",
@@ -364,8 +374,8 @@ describe("PRDetail", () => {
     setupSuccessfulLoad();
     const diffData: PRDiffResponse = {
       files: [
-        { path: "a.ttl", change_type: "added", additions: 1, deletions: 0 },
-        { path: "b.ttl", change_type: "modified", additions: 2, deletions: 1 },
+        { path: "a.ttl", change_type: "added", old_path: null, additions: 1, deletions: 0, patch: null },
+        { path: "b.ttl", change_type: "modified", old_path: null, additions: 2, deletions: 1, patch: null },
       ],
       total_additions: 3,
       total_deletions: 1,
@@ -408,7 +418,7 @@ describe("PRDetail", () => {
 
   it("renders reviews in conversation tab", async () => {
     const reviews = [
-      makeReview({ status: "approved", body: "Looks good!", reviewer: { id: "u2", name: "Bob" } }),
+      makeReview({ status: "approved", body: "Looks good!", reviewer: { id: "u2", name: "Bob", email: null } }),
     ];
     setupSuccessfulLoad(makePR(), reviews, []);
     render(<PRDetail projectId="proj-1" prNumber={7} />);
@@ -422,7 +432,7 @@ describe("PRDetail", () => {
 
   it("shows 'requested changes' status text for changes_requested reviews", async () => {
     const reviews = [
-      makeReview({ status: "changes_requested", reviewer: { id: "u2", name: "Bob" } }),
+      makeReview({ status: "changes_requested", reviewer: { id: "u2", name: "Bob", email: null } }),
     ];
     setupSuccessfulLoad(makePR(), reviews, []);
     render(<PRDetail projectId="proj-1" prNumber={7} />);
@@ -433,7 +443,7 @@ describe("PRDetail", () => {
 
   it("shows 'commented' status text for commented reviews", async () => {
     const reviews = [
-      makeReview({ status: "commented" as Review["status"], reviewer: { id: "u2", name: "Bob" } }),
+      makeReview({ status: "commented" as Review["status"], reviewer: { id: "u2", name: "Bob", email: null } }),
     ];
     setupSuccessfulLoad(makePR(), reviews, []);
     render(<PRDetail projectId="proj-1" prNumber={7} />);
@@ -506,6 +516,7 @@ describe("PRDetail", () => {
         {
           path: "ontology.ttl",
           change_type: "modified",
+          old_path: null,
           additions: 1,
           deletions: 0,
           patch: "+new line",

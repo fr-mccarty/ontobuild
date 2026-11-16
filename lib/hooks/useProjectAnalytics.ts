@@ -17,11 +17,12 @@ export function useProjectActivity(
 export function useHotEntities(
   projectId: string,
   accessToken?: string,
-  limit = 20
+  limit = 20,
+  days = 30
 ) {
   return useQuery({
-    queryKey: ["hotEntities", projectId, !!accessToken, limit],
-    queryFn: () => analyticsApi.getHotEntities(projectId, accessToken, limit),
+    queryKey: ["hotEntities", projectId, !!accessToken, limit, days],
+    queryFn: () => analyticsApi.getHotEntities(projectId, accessToken, limit, days),
     enabled: !!projectId,
     staleTime: 60_000,
   });

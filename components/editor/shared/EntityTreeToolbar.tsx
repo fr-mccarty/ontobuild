@@ -1,11 +1,28 @@
 "use client";
 
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useRef, useCallback, useState, useSyncExternalStore } from "react";
 import { Search, X, Plus, ChevronDown, ChevronsDown, ChevronRight, ChevronsRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 
 const TIP_DISMISSED_KEY = "ontokit:expand-tip-dismissed";
+
+function readTipDismissed(): boolean {
+  try {
+    return !!localStorage.getItem(TIP_DISMISSED_KEY);
+  } catch {
+    // Storage unavailable: keep the tip hidden, as before.
+    return true;
+  }
+}
+
+function getServerTipDismissed(): boolean {
+  return true;
+}
+
+function subscribeToNothing(): () => void {
+  return () => {};
+}
 
 interface EntityTreeToolbarProps {
   canAdd?: boolean;
@@ -45,18 +62,18 @@ export function EntityTreeToolbar({
   const internalRef = useRef<HTMLInputElement>(null);
   const inputRef = searchInputRef || internalRef;
 
-  const [showTip, setShowTip] = useState(false);
-  useEffect(() => {
-    try {
-      if (!localStorage.getItem(TIP_DISMISSED_KEY)) {
-        setShowTip(true);
-      }
-    } catch {
-    }
-  }, []);
+  // Read the persisted dismissal from localStorage. The server snapshot treats the tip
+  // as dismissed so SSR/hydration render it hidden, exactly as before.
+  const tipDismissedInStorage = useSyncExternalStore(
+    subscribeToNothing,
+    readTipDismissed,
+    getServerTipDismissed,
+  );
+  const [tipDismissedLocally, setTipDismissedLocally] = useState(false);
+  const showTip = !tipDismissedInStorage && !tipDismissedLocally;
 
   const dismissTip = useCallback(() => {
-    setShowTip(false);
+    setTipDismissedLocally(true);
     try {
       localStorage.setItem(TIP_DISMISSED_KEY, "1");
     } catch {

@@ -19,7 +19,6 @@ function makeClassDetail(overrides: Partial<OWLClassDetail> = {}): OWLClassDetai
     disjoint_iris: [],
     child_count: 0,
     instance_count: 0,
-    is_defined: false,
     annotations: [],
     ...overrides,
   };
@@ -33,8 +32,8 @@ describe("getSeeAlsoIris", () => {
           property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
           property_label: "seeAlso",
           values: [
-            { value: "https://example.org/related" },
-            { value: "http://example.org/other" },
+            { value: "https://example.org/related", type: "iri" },
+            { value: "http://example.org/other", type: "iri" },
           ],
         },
       ],
@@ -53,8 +52,8 @@ describe("getSeeAlsoIris", () => {
           property_iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso",
           property_label: "seeAlso",
           values: [
-            { value: "just some text" },
-            { value: "urn:not-http" },
+            { value: "just some text", type: "literal" },
+            { value: "urn:not-http", type: "iri" },
           ],
         },
       ],
@@ -69,7 +68,7 @@ describe("getSeeAlsoIris", () => {
         {
           property_iri: "http://www.w3.org/2000/01/rdf-schema#label",
           property_label: "label",
-          values: [{ value: "Test" }],
+          values: [{ value: "Test", type: "literal" }],
         },
       ],
     });

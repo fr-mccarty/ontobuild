@@ -30,17 +30,23 @@ export default function ApiDocsPage() {
   useSyncScalarDarkMode();
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen overflow-hidden">
       <Header />
-      <div className="scalar-container">
+      <div className="scalar-container min-h-0 flex-1">
         <ApiReferenceReact
           configuration={{
             url: `${API_BASE_URL}/api/v1/openapi.json`,
             servers: [{ url: API_BASE_URL || "/" }],
-            theme: "kepler",
+            theme: "none",
+            withDefaultFonts: false,
             hideModels: false,
             hideDownloadButton: false,
             hideDarkModeToggle: true,
+            showDeveloperTools: "never",
+            agent: { disabled: true },
+            mcp: { disabled: true },
+            hideClientButton: true,
+            hideTestRequestButton: true,
             metaData: {
               title: "OntoKit API Documentation",
             },

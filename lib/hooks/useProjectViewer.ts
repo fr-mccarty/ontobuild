@@ -230,6 +230,7 @@ export function useProjectViewer({
     treeError: tree.error,
     selectedIri: tree.selectedIri,
     loadRootClasses: tree.loadRootClasses,
+    refreshTree: tree.refreshTree,
     expandNode: tree.expandNode,
     collapseNode: tree.collapseNode,
     selectNode: tree.selectNode,

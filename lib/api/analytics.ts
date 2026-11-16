@@ -16,11 +16,11 @@ export interface ChangeEvent {
   entity_type: string;
   event_type: ChangeEventType;
   user_id: string;
-  user_name?: string;
-  commit_hash?: string;
+  user_name: string | null;
+  commit_hash: string | null;
   changed_fields: string[];
-  old_values?: Record<string, unknown>;
-  new_values?: Record<string, unknown>;
+  old_values: Record<string, unknown> | null;
+  new_values: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -34,7 +34,7 @@ export interface ProjectActivity {
   total_events: number;
   top_editors: Array<{
     user_id: string;
-    user_name: string;
+    user_name: string | null;
     edit_count: number;
   }>;
 }
@@ -42,7 +42,7 @@ export interface ProjectActivity {
 export interface HotEntity {
   entity_iri: string;
   entity_type: string;
-  label?: string;
+  label: string | null;
   edit_count: number;
   editor_count: number;
   last_edited_at: string;
@@ -50,7 +50,7 @@ export interface HotEntity {
 
 export interface ContributorStats {
   user_id: string;
-  user_name: string;
+  user_name: string | null;
   create_count: number;
   update_count: number;
   delete_count: number;
@@ -96,13 +96,14 @@ export const analyticsApi = {
   getHotEntities: (
     projectId: string,
     token?: string,
-    limit = 20
+    limit = 20,
+    days = 30
   ) =>
     api.get<HotEntity[]>(
       `/api/v1/projects/${projectId}/analytics/hot-entities`,
       {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        params: { limit },
+        params: { limit, days },
       }
     ),
 

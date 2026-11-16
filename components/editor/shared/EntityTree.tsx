@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EntityTreeNodeRow } from "./EntityTreeNode";
 import type { EntityTreeNode } from "@/lib/ontology/types";
 import type { DragState } from "@/lib/hooks/useTreeDragDrop";
@@ -86,8 +86,21 @@ export function EntityTree({
   const scrollToIri = useCallback((iri: string) => {
     if (!containerRef.current) return;
     const el = containerRef.current.querySelector(`[data-iri="${CSS.escape(iri)}"]`);
-    el?.scrollIntoView({ block: "nearest" });
+    el?.scrollIntoView?.({ block: "nearest" });
   }, []);
+
+  // Bring the selected node into view once it is rendered, including when it was selected
+  // from outside the tree (search, a link, the agent) and its ancestors expand afterwards.
+  const scrolledIriRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selectedIri) {
+      scrolledIriRef.current = null;
+      return;
+    }
+    if (scrolledIriRef.current === selectedIri || !visibleIris.includes(selectedIri)) return;
+    scrolledIriRef.current = selectedIri;
+    scrollToIri(selectedIri);
+  }, [selectedIri, visibleIris, scrollToIri]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
+import * as git from "../git";
 import { get, nowIso, run, toJson, fromJson } from "../db";
 import { httpError } from "../http";
 import { getJob, startJob } from "../jobs";
-import { loadOntology, requireProject, resolveBranch } from "../ontology";
+import { loadOntology, requireProject, requireBranch } from "../ontology";
 import {
   findDuplicates,
   indexedEntities,
@@ -64,15 +65,26 @@ function jobResult(c: Context, kind: string) {
   return c.json(job.result as object);
 }
 
+/**
+ * Validates the project, its repository and the requested branch before a job
+ * is queued, so a bad request fails with 404 here instead of as a failed job.
+ */
+async function requireCheckTarget(c: Context): Promise<{ projectId: string; branch: string }> {
+  const projectId = c.req.param("id")!;
+  requireProject(projectId);
+  if (!git.repoExists(projectId)) httpError(404, "No repository found for this project");
+  const branch = await requireBranch(projectId, c.req.query("branch"));
+  if (!(await git.branchExists(projectId, branch))) httpError(404, `Branch not found: ${branch}`);
+  return { projectId, branch };
+}
+
 function errorDetail(e: unknown): string {
   if (e && typeof e === "object" && "detail" in e) return String((e as { detail: unknown }).detail);
   return e instanceof Error ? e.message : String(e);
 }
 
 r.post("/projects/:id/quality/check", async (c) => {
-  const projectId = c.req.param("id");
-  requireProject(projectId);
-  const branch = await resolveBranch(projectId, c.req.query("branch"));
+  const { projectId, branch } = await requireCheckTarget(c);
   const jobId = startJob(CONSISTENCY_JOB, { projectId, branch }, async () => {
     try {
       const loaded = await loadOntology(projectId, branch);
@@ -83,7 +95,7 @@ r.post("/projects/:id/quality/check", async (c) => {
       throw new Error(errorDetail(e));
     }
   });
-  return c.json({ job_id: jobId });
+  return c.json({ job_id: jobId }, 202);
 });
 
 r.get("/projects/:id/quality/jobs/:jobId", (c) => jobResult(c, CONSISTENCY_JOB));
@@ -91,16 +103,15 @@ r.get("/projects/:id/quality/jobs/:jobId", (c) => jobResult(c, CONSISTENCY_JOB))
 r.get("/projects/:id/quality/issues", async (c) => {
   const projectId = c.req.param("id");
   requireProject(projectId);
-  const branch = await resolveBranch(projectId, c.req.query("branch"));
+  const branch = await requireBranch(projectId, c.req.query("branch"));
   const cached = loadResult<ConsistencyCheckResult>(projectId, branch, "consistency");
   if (cached) return c.json(cached);
-  return c.json({ project_id: projectId, branch, issues: [], checked_at: nowIso(), duration_ms: 0 });
+  // Never checked: checked_at and duration_ms are null so this can't be mistaken for a clean result.
+  return c.json({ project_id: projectId, branch, issues: [], checked_at: null, duration_ms: null });
 });
 
 r.post("/projects/:id/quality/duplicates", async (c) => {
-  const projectId = c.req.param("id");
-  requireProject(projectId);
-  const branch = await resolveBranch(projectId, c.req.query("branch"));
+  const { projectId, branch } = await requireCheckTarget(c);
   const threshold = queryThreshold(c);
   const jobId = startJob(DUPLICATES_JOB, { projectId, branch }, async () => {
     try {
@@ -112,7 +123,7 @@ r.post("/projects/:id/quality/duplicates", async (c) => {
       throw new Error(errorDetail(e));
     }
   });
-  return c.json({ job_id: jobId });
+  return c.json({ job_id: jobId }, 202);
 });
 
 r.get("/projects/:id/quality/duplicates/jobs/:jobId", (c) => jobResult(c, DUPLICATES_JOB));
@@ -120,10 +131,11 @@ r.get("/projects/:id/quality/duplicates/jobs/:jobId", (c) => jobResult(c, DUPLIC
 r.get("/projects/:id/quality/duplicates/latest", async (c) => {
   const projectId = c.req.param("id");
   requireProject(projectId);
-  const branch = await resolveBranch(projectId, c.req.query("branch"));
+  const branch = await requireBranch(projectId, c.req.query("branch"));
   const cached = loadResult<DuplicateDetectionResult>(projectId, branch, "duplicates");
   if (cached) return c.json(cached);
-  return c.json({ clusters: [], threshold: 0.85, checked_at: nowIso() });
+  // Never checked: threshold and checked_at are null so this can't be mistaken for a clean result.
+  return c.json({ clusters: [], threshold: null, checked_at: null });
 });
 
 export default r;

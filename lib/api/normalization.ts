@@ -2,12 +2,12 @@ import { api } from "./client";
 import { NormalizationReport } from "./projects";
 
 export interface NormalizationStatusResponse {
+  /** null when the status can't be determined; `error` then says why. */
   needs_normalization: boolean | null;
   last_run: string | null;
   last_run_id: string | null;
   last_check: string | null;
   preview_report: NormalizationReport | null;
-  checking: boolean;
   error: string | null;
 }
 
@@ -24,7 +24,7 @@ export interface QueuedJobResponse {
 
 export interface JobStatusResponse {
   job_id: string;
-  status: "pending" | "running" | "complete" | "failed" | "not_found";
+  status: "pending" | "running" | "completed" | "failed";
   result: Record<string, unknown> | null;
   error: string | null;
 }
@@ -35,7 +35,8 @@ export interface NormalizationRunResponse {
   created_at: string;
   triggered_by: string | null;
   trigger_type: string;
-  report: NormalizationReport;
+  /** null only if the stored report could not be read. */
+  report: NormalizationReport | null;
   is_dry_run: boolean;
   commit_hash: string | null;
   original_content: string | null;

@@ -21,32 +21,48 @@ export function DeleteImpactAnalysis({
   branch,
   onAcknowledge,
 }: DeleteImpactAnalysisProps) {
-  const [data, setData] = useState<CrossReferencesResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [fetchError, setFetchError] = useState(false);
+  // Identifies the cross-reference lookup the current props call for (null = nothing to check).
+  const requestKey = entityIri && projectId
+    ? JSON.stringify([projectId, entityIri, accessToken ?? null, branch ?? null])
+    : null;
+
+  // Result of the most recent lookup, tagged with the request it answers so that
+  // loading/data/error can be derived during render instead of reset in an effect.
+  const [result, setResult] = useState<
+    { key: string; data: CrossReferencesResponse | null; error: boolean } | null
+  >(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
 
-  useEffect(() => {
-    if (!entityIri || !projectId) {
-      setData(null);
-      setIsExpanded(false);
-      setAcknowledged(false);
-      onAcknowledge(false);
-      setIsLoading(false);
-      setFetchError(false);
-      return;
-    }
-    setIsLoading(true);
+  // Reset per-entity UI state when the request changes (adjust state during render).
+  const [prevRequestKey, setPrevRequestKey] = useState(requestKey);
+  if (requestKey !== prevRequestKey) {
+    setPrevRequestKey(requestKey);
     setAcknowledged(false);
+    if (!requestKey) setIsExpanded(false);
+  }
+
+  const currentResult = requestKey && result?.key === requestKey ? result : null;
+  const isLoading = requestKey !== null && currentResult === null;
+  const fetchError = currentResult?.error ?? false;
+  const data = currentResult?.data ?? null;
+
+  useEffect(() => {
     onAcknowledge(false);
-    setFetchError(false);
+    if (!requestKey || !entityIri) return;
+    let cancelled = false;
     qualityApi
       .getCrossReferences(projectId, entityIri, accessToken, branch)
-      .then(setData)
-      .catch(() => setFetchError(true))
-      .finally(() => setIsLoading(false));
-  }, [entityIri, projectId, accessToken, branch]); // eslint-disable-line react-hooks/exhaustive-deps
+      .then((response) => {
+        if (!cancelled) setResult({ key: requestKey, data: response, error: false });
+      })
+      .catch(() => {
+        if (!cancelled) setResult({ key: requestKey, data: null, error: true });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestKey, entityIri, projectId, accessToken, branch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = data?.total ?? 0;
 

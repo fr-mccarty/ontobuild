@@ -3,7 +3,7 @@ import {
   parseDeclarations,
   reverseMap,
   toTurtle,
-  findBlock,
+  findBlockSpan,
   literal,
   isIriValue,
   esc,
@@ -126,9 +126,7 @@ export function updateIndividualInTurtle(
 ): string {
   const { prefixes, base } = parseDeclarations(source);
   const rev = reverseMap(prefixes);
-  const lines = source.split("\n");
-
-  const block = findBlock(lines, individualIri, prefixes, base);
+  const block = findBlockSpan(source, individualIri, prefixes, base);
   if (!block) {
     throw new Error(
       `Could not find individual "${individualIri}" in ontology source.`,
@@ -136,8 +134,5 @@ export function updateIndividualInTurtle(
   }
 
   const newBlock = genIndividualBlock(individualIri, data, rev);
-  const before = lines.slice(0, block.startLine);
-  const after = lines.slice(block.endLine + 1);
-
-  return [...before, newBlock, ...after].join("\n");
+  return source.slice(0, block.start) + newBlock + source.slice(block.end);
 }

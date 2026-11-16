@@ -140,7 +140,7 @@ describe("useHotEntities", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(mockHotEntities);
-    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", "token", 20);
+    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", "token", 20, 30);
   });
 
   it("returns error on failure", async () => {
@@ -161,7 +161,7 @@ describe("useHotEntities", () => {
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", "token", 5);
+    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", "token", 5, 30);
   });
 
   it("works without accessToken", async () => {
@@ -172,7 +172,7 @@ describe("useHotEntities", () => {
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", undefined, 20);
+    expect(mockedGetHotEntities).toHaveBeenCalledWith("proj-1", undefined, 20, 30);
   });
 });
 

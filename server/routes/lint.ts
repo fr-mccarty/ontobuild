@@ -3,7 +3,7 @@ import * as git from "../git";
 import { all, fromJson, get, getDb, insert, newId, nowIso, run, toJson, transaction, update } from "../db";
 import { httpError, noContent, queryBool, queryInt, readJson } from "../http";
 import { startJob } from "../jobs";
-import { loadOntology, requireProject, resolveBranch } from "../ontology";
+import { loadOntology, requireProject, requireBranch } from "../ontology";
 import {
   ALL_RULE_IDS,
   REMOVED_RULE_IDS,
@@ -62,6 +62,7 @@ function runToResponse(r: LintRunRow) {
     status: r.status,
     id: r.id,
     project_id: r.project_id,
+    branch: r.branch,
     started_at: r.started_at,
     completed_at: r.completed_at,
     issues_found: r.issues_found,
@@ -85,6 +86,7 @@ function issueToResponse(i: LintIssueRow) {
   };
 }
 
+const ISSUE_TYPES = ["error", "warning", "info"];
 const SEVERITY_ORDER = "CASE issue_type WHEN 'error' THEN 0 WHEN 'warning' THEN 1 ELSE 2 END";
 const KNOWN_RULES_SQL = `rule_id IN (${[...ALL_RULE_IDS].map((id) => `'${id.replace(/'/g, "''")}'`).join(",")})`;
 
@@ -210,11 +212,14 @@ r.post("/projects/:id/lint/run", async (c) => {
   );
   if (active) httpError(409, "A lint run is already in progress for this project");
 
-  const branch = await resolveBranch(projectId, null);
+  const branch = await requireBranch(projectId, c.req.query("branch"));
   const runId = newId();
   insert("lint_runs", { id: runId, project_id: projectId, status: "pending", branch, started_at: nowIso() });
   const jobId = startJob("lint", { projectId, branch }, () => executeLintRun(projectId, runId, branch));
-  return c.json({ job_id: jobId, status: "queued", message: "Lint job has been queued" }, 202);
+  return c.json(
+    { job_id: jobId, run_id: runId, branch, status: "queued", message: "Lint job has been queued" },
+    202,
+  );
 });
 
 r.get("/projects/:id/lint/status", (c) => {
@@ -225,13 +230,22 @@ r.get("/projects/:id/lint/status", (c) => {
     "SELECT * FROM lint_runs WHERE project_id = ? ORDER BY started_at DESC LIMIT 1",
     projectId,
   );
+  // Counts come from the latest completed run (the same run /lint/issues lists), so they
+  // keep showing the previous results while a new run is pending, running or has failed.
+  const lastCompleted =
+    last?.status === "completed"
+      ? last
+      : get<LintRunRow>(
+          "SELECT * FROM lint_runs WHERE project_id = ? AND status = 'completed' ORDER BY started_at DESC LIMIT 1",
+          projectId,
+        );
   let error = 0,
     warning = 0,
     info = 0;
-  if (last && last.status === "completed") {
+  if (lastCompleted) {
     for (const row of all<{ issue_type: string; n: number }>(
       `SELECT issue_type, COUNT(*) AS n FROM lint_issues WHERE run_id = ? AND resolved_at IS NULL AND ${KNOWN_RULES_SQL} GROUP BY issue_type`,
-      last.id,
+      lastCompleted.id,
     )) {
       if (row.issue_type === "error") error = Number(row.n);
       else if (row.issue_type === "warning") warning = Number(row.n);
@@ -241,6 +255,7 @@ r.get("/projects/:id/lint/status", (c) => {
   return c.json({
     project_id: projectId,
     last_run: last ? runToResponse(last) : null,
+    counts_run_id: lastCompleted ? lastCompleted.id : null,
     error_count: error,
     warning_count: warning,
     info_count: info,
@@ -274,8 +289,9 @@ r.get("/projects/:id/lint/runs/:runId", (c) => {
     projectId,
   );
   if (!runRow) httpError(404, "Lint run not found");
+  const resolvedSql = queryBool(c, "include_resolved", false) ? "" : " AND resolved_at IS NULL";
   const issues = all<LintIssueRow>(
-    `SELECT * FROM lint_issues WHERE run_id = ? AND ${KNOWN_RULES_SQL} ORDER BY ${SEVERITY_ORDER}, rule_id, subject_iri`,
+    `SELECT * FROM lint_issues WHERE run_id = ? AND ${KNOWN_RULES_SQL}${resolvedSql} ORDER BY ${SEVERITY_ORDER}, rule_id, subject_iri`,
     runRow.id,
   ).map(issueToResponse);
   return c.json({ ...runToResponse(runRow), issues });
@@ -287,6 +303,10 @@ r.get("/projects/:id/lint/issues", (c) => {
   requireProject(projectId);
   const skip = queryInt(c, "skip", 0, { min: 0 });
   const limit = queryInt(c, "limit", 100, { min: 1, max: 500 });
+  const issueType = c.req.query("issue_type");
+  if (issueType && !ISSUE_TYPES.includes(issueType)) {
+    httpError(422, `Query parameter 'issue_type' must be one of: ${ISSUE_TYPES.join(", ")}`);
+  }
   const last = get<{ id: string }>(
     "SELECT id FROM lint_runs WHERE project_id = ? AND status = 'completed' ORDER BY started_at DESC LIMIT 1",
     projectId,
@@ -295,7 +315,6 @@ r.get("/projects/:id/lint/issues", (c) => {
 
   const where = ["run_id = ?", KNOWN_RULES_SQL];
   const params: (string | number)[] = [last.id];
-  const issueType = c.req.query("issue_type");
   const ruleId = c.req.query("rule_id");
   const subjectIri = c.req.query("subject_iri");
   if (issueType) {

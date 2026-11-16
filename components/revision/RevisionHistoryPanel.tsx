@@ -25,6 +25,8 @@ interface RevisionHistoryPanelProps {
   onClose: () => void;
   onSelectRevision?: (commit: RevisionCommit) => void;
   className?: string;
+  /** Change to reload the history while the panel is open. */
+  refreshKey?: number;
 }
 
 const ROW_HEIGHT = DEFAULT_GRAPH_CONFIG.cellHeight;
@@ -36,6 +38,7 @@ export function RevisionHistoryPanel({
   onClose,
   onSelectRevision,
   className,
+  refreshKey = 0,
 }: RevisionHistoryPanelProps) {
   const [commits, setCommits] = useState<RevisionCommit[]>([]);
   const [refs, setRefs] = useState<Record<string, string[]> | undefined>();
@@ -68,7 +71,7 @@ export function RevisionHistoryPanel({
     if (isOpen) {
       loadHistory();
     }
-  }, [isOpen, loadHistory]);
+  }, [isOpen, loadHistory, refreshKey]);
 
   const handleSelectCommit = (commit: RevisionCommit) => {
     setSelectedHash(commit.hash);
@@ -246,14 +249,25 @@ interface HistoryButtonProps {
 
 export function HistoryButton({ onClick, isOpen, className }: HistoryButtonProps) {
   return (
-    <Button
-      variant={isOpen ? "secondary" : "ghost"}
-      size="sm"
-      className={cn("gap-2", className)}
-      onClick={onClick}
+    <Tooltip
+      side="bottom"
+      content={
+        isOpen
+          ? "Hide revision history (shortcut: Esc)"
+          : "Revision history: show the commits made to this ontology and their changes"
+      }
     >
-      <History className="h-4 w-4" />
-      <span className="hidden sm:inline">History</span>
-    </Button>
+      <Button
+        variant={isOpen ? "secondary" : "ghost"}
+        size="sm"
+        className={cn("gap-2", className)}
+        onClick={onClick}
+        aria-label="History"
+        aria-pressed={isOpen}
+      >
+        <History className="h-4 w-4" />
+        <span className="hidden sm:inline">History</span>
+      </Button>
+    </Tooltip>
   );
 }

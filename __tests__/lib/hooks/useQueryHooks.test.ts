@@ -101,7 +101,7 @@ describe("useLintSummary", () => {
 });
 
 describe("useNormalizationStatus", () => {
-  const normStatus = { needs_normalization: false, last_run: null, last_run_id: null, last_check: null, preview_report: null, checking: false, error: null };
+  const normStatus = { needs_normalization: false, last_run: null, last_run_id: null, last_check: null, preview_report: null, error: null };
 
   it("returns normalization status", async () => {
     mockedNormStatus.mockResolvedValue(normStatus);

@@ -139,6 +139,7 @@ describe("POST /projects/:id/agent/chat", () => {
       "message",
       "tool_use",
       "tool_result",
+      "ontology_changed",
       "message",
       "tool_use",
       "tool_result",
@@ -149,7 +150,7 @@ describe("POST /projects/:id/agent/chat", () => {
       "done",
     ]);
 
-    const [userMsg, , , , assistant1, toolUse1, toolResult1, toolMsg1, , toolResult2, toolMsg2, , , assistant2, done] =
+    const [userMsg, , , , assistant1, toolUse1, toolResult1, changed1, toolMsg1, , toolResult2, toolMsg2, , , assistant2, done] =
       events.map((e) => e.data as Record<string, unknown>);
 
     expect(userMsg.message).toEqual({
@@ -176,6 +177,14 @@ describe("POST /projects/:id/agent/chat", () => {
       summary: "Created class Hawaiian",
       mutated: true,
     });
+    expect(changed1).toEqual({
+      tool_use_id: "call_1",
+      name: "create_entity",
+      branch: "main",
+      commit_hash: JSON.parse((toolMsg1.message as { content: string }).content).commit_hash,
+      deleted_iris: [],
+    });
+    expect(changed1.commit_hash).toMatch(/^[0-9a-f]{40}$/);
     expect((toolMsg1.message as { role: string; tool_call_id: string }).tool_call_id).toBe("call_1");
     expect(JSON.parse((toolMsg1.message as { content: string }).content).iri).toBe(`${NS}Hawaiian`);
     expect(toolResult2).toMatchObject({ tool_use_id: "call_2", name: "get_entity", is_error: false, mutated: false });
@@ -210,6 +219,80 @@ describe("POST /projects/:id/agent/chat", () => {
 
     const search = await app.request(`/api/v1/projects/${projectId}/ontology/search?q=Hawaiian&branch=main`);
     expect(((await search.json()) as { total: number }).total).toBe(1);
+  });
+
+  it("sends ui_action for select_entity, and ontology_changed only for calls that commit", async () => {
+    const call = (index: number, id: string, name: string, input: Record<string, unknown>) =>
+      chunk({ tool_calls: [{ index, id, function: { name, arguments: JSON.stringify(input) } }] });
+    const { client } = mockClient([
+      [
+        call(0, "sel", "select_entity", { iri: `${NS}Pizza` }),
+        call(1, "missing", "select_entity", { iri: `${NS}NoSuchThing` }),
+        call(2, "read", "get_class_tree", {}),
+        call(3, "del", "delete_entity", { iri: `${NS}Mozzarella` }),
+        call(4, "branch", "create_branch", { name: "agent-ui-test" }),
+        call(5, "switch", "switch_branch", { name: "agent-ui-test" }),
+        call(6, "elsewhere", "update_class", { iri: `${NS}Food`, comments: [{ value: "Edible" }] }),
+        call(7, "wrong_branch", "select_entity", { iri: `${NS}Food` }),
+        chunk({ finish_reason: "tool_calls" }),
+      ],
+      [chunk({ content: "Shown.", finish_reason: "stop" })],
+    ]);
+    setAgentClientFactory(() => client);
+    const events = parseSse(await (await chat({ messages: [], user_message: "show me pizza" })).text());
+    const after = (id: string) => {
+      const i = events.findIndex((e) => e.event === "tool_result" && (e.data as { tool_use_id: string }).tool_use_id === id);
+      const out: string[] = [];
+      for (const e of events.slice(i + 1)) {
+        if (e.event === "message") break;
+        out.push(e.event);
+      }
+      return { result: events[i].data as Record<string, unknown>, following: out, events: events.slice(i + 1, i + 1 + out.length) };
+    };
+
+    const sel = after("sel");
+    expect(sel.result).toMatchObject({ is_error: false, mutated: false, summary: "Selected class Pizza" });
+    expect(sel.following).toEqual(["ui_action"]);
+    expect(sel.events[0].data).toEqual({
+      tool_use_id: "sel",
+      action: "select_entity",
+      iri: `${NS}Pizza`,
+      entity_type: "class",
+      label: "Pizza",
+      branch: "main",
+    });
+
+    const missing = after("missing");
+    expect(missing.result).toMatchObject({ is_error: true, mutated: false });
+    expect(String(missing.result.summary)).toContain("Entity not found on branch main");
+    expect(missing.following).toEqual([]);
+
+    expect(after("read").following).toEqual([]);
+
+    const del = after("del");
+    expect(del.result).toMatchObject({ is_error: false, mutated: true });
+    expect(del.following).toEqual(["ontology_changed"]);
+    expect(del.events[0].data).toMatchObject({
+      tool_use_id: "del",
+      name: "delete_entity",
+      branch: "main",
+      deleted_iris: [`${NS}Mozzarella`],
+    });
+
+    const branch = after("branch");
+    expect(branch.result).toMatchObject({ mutated: true });
+    expect(branch.following).toEqual([]);
+    expect(after("switch").following).toEqual([]);
+
+    const elsewhere = after("elsewhere");
+    expect(elsewhere.following).toEqual(["ontology_changed"]);
+    expect(elsewhere.events[0].data).toMatchObject({ branch: "agent-ui-test", deleted_iris: [] });
+
+    const wrong = after("wrong_branch");
+    expect(wrong.result).toMatchObject({ is_error: true });
+    expect(String(wrong.result.summary)).toContain('The editor shows branch "main"');
+    expect(wrong.following).toEqual([]);
+    expect(events.filter((e) => e.event === "ui_action")).toHaveLength(1);
   });
 
   it("returns error tool results for invalid JSON and schema failures, and honors the model override", async () => {
@@ -433,14 +516,14 @@ describe("agent settings, status, models and test endpoints", () => {
     const ok = await patch({ effort: "low", custom_instructions: "Use British spelling." });
     expect(ok.status).toBe(200);
     expect(await ok.json()).toEqual({
-      settings: { model: "anthropic/claude-opus-5.5", effort: "low", custom_instructions: "Use British spelling." },
-    });
-    const ok2 = await patch({ model: "openai/gpt-5" });
-    expect(((await ok2.json()) as { settings: { effort: string; model: string } }).settings).toEqual({
-      model: "openai/gpt-5",
+      model: "anthropic/claude-opus-5.5",
       effort: "low",
       custom_instructions: "Use British spelling.",
     });
+    const ok2 = await patch({ model: "openai/gpt-5" });
+    const expected = { model: "openai/gpt-5", effort: "low", custom_instructions: "Use British spelling." };
+    expect(await ok2.json()).toEqual(expected);
+    expect(await (await app.request("/api/v1/agent/settings")).json()).toEqual(expected);
     const all = (await (await app.request("/api/v1/users/me/settings")).json()) as { settings: Record<string, unknown> };
     expect(all.settings.theme).toBe("dark");
 

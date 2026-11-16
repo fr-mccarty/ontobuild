@@ -1,6 +1,7 @@
 import {
   parseDeclarations,
-  findBlock,
+  findBlockSpan,
+  isInternalDot,
   type PrefixMap,
 } from "@/lib/ontology/turtleUtils";
 
@@ -14,6 +15,7 @@ export interface ParsedTriple {
   object: ParsedObject;
 }
 
+const XSD = "http://www.w3.org/2001/XMLSchema#";
 const RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 
 function resolveIri(token: string, prefixes: PrefixMap, base?: string): string {
@@ -104,7 +106,7 @@ function tokenizeBlock(text: string): string[] {
 
     if (c === ";") { tokens.push(";"); i++; continue; }
     if (c === ",") { tokens.push(","); i++; continue; }
-    if (c === ".") {
+    if (c === "." && !/[0-9]/.test(text[i + 1] ?? "")) {
       tokens.push(".");
       i++;
       continue;
@@ -178,7 +180,18 @@ function tokenizeBlock(text: string): string[] {
     }
 
     let end = i;
-    while (end < text.length && !/[\s;,.#"'<[\](]/.test(text[end])) end++;
+    while (end < text.length) {
+      const ch = text[end];
+      if (ch === ".") {
+        if (end === i || isInternalDot(text, end)) {
+          end++;
+          continue;
+        }
+        break;
+      }
+      if (/[\s;,#"'<[\](]/.test(ch)) break;
+      end++;
+    }
     if (end > i) {
       tokens.push(text.slice(i, end));
       i = end;
@@ -195,13 +208,10 @@ export function parseBlockTriples(
   entityIri: string,
 ): ParsedTriple[] | null {
   const { prefixes, base } = parseDeclarations(source);
-  const lines = source.split("\n");
-
-  const block = findBlock(lines, entityIri, prefixes, base);
+  const block = findBlockSpan(source, entityIri, prefixes, base);
   if (!block) return null;
 
-  const blockLines = lines.slice(block.startLine, block.endLine + 1);
-  const blockText = blockLines.join("\n");
+  const blockText = source.slice(block.start, block.end);
 
   const tokens = tokenizeBlock(blockText);
   if (tokens.length === 0) return null;
@@ -247,6 +257,9 @@ export function parseBlockTriples(
         if (obj.type === "literal" && obj.datatype) {
           obj = { ...obj, datatype: resolveIri(obj.datatype, prefixes, base) };
         }
+      } else if (/^[+-]?(\d+\.?\d*|\.\d+)$/.test(tok) || /^[+-]?(\d+\.?\d*|\.\d+)[eE][+-]?\d+$/.test(tok)) {
+        const datatype = /[eE]/.test(tok) ? "double" : tok.includes(".") ? "decimal" : "integer";
+        obj = { type: "literal", value: tok, datatype: `${XSD}${datatype}` };
       } else if (tok.startsWith("<") || tok.includes(":")) {
         obj = { type: "iri", value: resolveIri(tok, prefixes, base) };
       } else {

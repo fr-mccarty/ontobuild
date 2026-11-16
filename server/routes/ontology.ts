@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { Store, type Term } from "n3";
-import { httpError, noContent } from "../http";
+import { ApiError, httpError, iriParam, noContent } from "../http";
 import { nowIso, update } from "../db";
 import { isJobActive, latestJob, startJob } from "../jobs";
 import {
@@ -32,7 +32,7 @@ import {
   loadOntology,
   projectLabelPreferences,
   requireProject,
-  resolveBranch,
+  requireBranch,
   type LoadedOntology,
   type LocalizedString,
 } from "../ontology";
@@ -90,13 +90,13 @@ function sortByLabel(nodes: TreeNode[]): TreeNode[] {
   });
 }
 
-function iriParam(c: Context, name = "iri"): string {
-  const raw = c.req.param(name) ?? "";
-  try {
-    return decodeURIComponent(raw);
-  } catch {
-    return raw;
-  }
+/** 404 unless the IRI appears in the ontology as a subject, predicate or object. */
+function requireMentioned(store: Store, iri: string): void {
+  const mentioned =
+    store.countQuads(iri, null, null, null) > 0 ||
+    store.countQuads(null, iri, null, null) > 0 ||
+    store.countQuads(null, null, iri, null) > 0;
+  if (!mentioned) httpError(404, `Entity not found: ${iri}`);
 }
 
 interface Ctx {
@@ -110,7 +110,7 @@ interface Ctx {
 async function loadCtx(c: Context): Promise<Ctx> {
   const projectId = c.req.param("id")!;
   const project = requireProject(projectId);
-  const branch = await resolveBranch(projectId, c.req.query("branch"));
+  const branch = await requireBranch(projectId, c.req.query("branch"));
   const onto = await loadOntology(projectId, branch);
   return { projectId, branch, prefs: projectLabelPreferences(project), onto, store: onto.store };
 }
@@ -131,6 +131,7 @@ r.get("/projects/:id/ontology/tree", async (c) => {
 r.get("/projects/:id/ontology/tree/:iri{.+}/children", async (c) => {
   const { store, prefs } = await loadCtx(c);
   const iri = iriParam(c);
+  requireMentioned(store, iri);
   const nodes = sortByLabel(childClasses(store, iri).map((i) => treeNode(store, i, prefs)));
   return c.json({ nodes, total_classes: listClasses(store).length });
 });
@@ -138,15 +139,19 @@ r.get("/projects/:id/ontology/tree/:iri{.+}/children", async (c) => {
 r.get("/projects/:id/ontology/tree/:iri{.+}/ancestors", async (c) => {
   const { store, prefs } = await loadCtx(c);
   const iri = iriParam(c);
+  requireMentioned(store, iri);
   const path: string[] = [];
   if (isClass(store, iri)) {
     const visited = new Set<string>();
     let current = iri;
     while (!visited.has(current)) {
       visited.add(current);
+      // Follow the parent that sorts first by label, matching the tree's child order.
       const parents = getSuperClasses(store, current)
         .filter((p) => p !== OWL_THING)
-        .sort();
+        .map((p) => ({ iri: p, label: displayLabel(store, p, prefs).toLowerCase() }))
+        .sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : a.iri < b.iri ? -1 : a.iri > b.iri ? 1 : 0))
+        .map((p) => p.iri);
       if (!parents.length) break;
       const parent = parents.find((p) => !visited.has(p)) ?? parents[0];
       if (visited.has(parent)) break;
@@ -177,16 +182,22 @@ const ANNOTATION_PROPERTIES: [string, string][] = [
   ["rdfs:isDefinedBy", NS.rdfs + "isDefinedBy"],
 ];
 
+interface AnnotationValue extends LocalizedString {
+  /** Whether the object is an IRI reference or a literal string. */
+  type: "iri" | "literal";
+}
+
 function classDetail(store: Store, iri: string, prefs: string[] | null) {
   const parentIris = getObjectIris(store, iri, RDFS_SUBCLASS_OF);
   const parentLabels: Record<string, string> = {};
   for (const p of parentIris) parentLabels[p] = displayLabel(store, p, prefs);
 
-  const annotations: { property_iri: string; property_label: string; values: LocalizedString[] }[] = [];
+  const annotations: { property_iri: string; property_label: string; values: AnnotationValue[] }[] = [];
   for (const [label, prop] of ANNOTATION_PROPERTIES) {
-    const values: LocalizedString[] = [];
+    const values: AnnotationValue[] = [];
     for (const o of store.getObjects(iri, prop, null)) {
-      if (o.termType === "Literal" || o.termType === "NamedNode") values.push({ value: o.value });
+      if (o.termType === "Literal") values.push({ value: o.value, type: "literal" });
+      else if (o.termType === "NamedNode") values.push({ value: o.value, type: "iri" });
     }
     if (values.length) annotations.push({ property_iri: prop, property_label: label, values });
   }
@@ -209,8 +220,6 @@ function classDetail(store: Store, iri: string, prefs: string[] | null) {
     instances: [...instances]
       .map((i) => ({ iri: i, label: displayLabel(store, i, prefs) }))
       .sort((a, b) => a.label.localeCompare(b.label)),
-    is_defined: true,
-    source_ontology: null,
     annotations,
   };
 }
@@ -263,8 +272,26 @@ function removeEntityTriples(source: Store, iri: string): Store {
   return store;
 }
 
+/** commit_message from the query string or, failing that, a JSON body `{ "commit_message": "..." }`. */
+async function deleteCommitMessage(c: Context): Promise<string | undefined> {
+  const fromQuery = c.req.query("commit_message");
+  if (fromQuery) return fromQuery;
+  const text = await c.req.text();
+  if (!text.trim()) return undefined;
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    httpError(422, "Invalid JSON body");
+  }
+  const v = body && typeof body === "object" ? (body as Record<string, unknown>).commit_message : undefined;
+  if (v === undefined || v === null || v === "") return undefined;
+  if (typeof v !== "string") httpError(422, "Field 'commit_message' must be a string");
+  return v;
+}
+
 async function deleteEntityAndCommit(c: Context, ctx: Ctx, iri: string, defaultMessage: string) {
-  const message = c.req.query("commit_message") || defaultMessage;
+  const message = (await deleteCommitMessage(c)) || defaultMessage;
   if (message.length > 500) httpError(422, "commit_message must be at most 500 characters");
   const store = removeEntityTriples(ctx.store, iri);
   const content = await serializeTurtle(store, ctx.onto.prefixes);
@@ -296,7 +323,8 @@ const SEARCH_LABEL_PROPS = [
   NS.dc + "title",
 ];
 
-type EntityKind = "class" | "property" | "individual";
+const ENTITY_KINDS = ["class", "property", "individual"] as const;
+type EntityKind = (typeof ENTITY_KINDS)[number];
 type PropertyKind = "object" | "data" | "annotation" | null;
 
 function allEntities(store: Store): Map<string, { type: EntityKind; kind: PropertyKind }> {
@@ -319,13 +347,19 @@ function allEntities(store: Store): Map<string, { type: EntityKind; kind: Proper
 
 r.get("/projects/:id/ontology/search", async (c) => {
   const q = c.req.query("q");
-  if (!q || q.length < 1) httpError(422, "Query parameter 'q' is required");
+  if (!q) httpError(422, "Query parameter 'q' is required");
   if (q.length > 200) httpError(422, "Query parameter 'q' must be at most 200 characters");
-  const { store, prefs } = await loadCtx(c);
   const typesParam = c.req.query("entity_types");
-  const allowed = new Set(
-    typesParam ? typesParam.split(",").map((t) => t.trim()).filter(Boolean) : ["class", "property", "individual"],
-  );
+  const requested = typesParam ? typesParam.split(",").map((t) => t.trim()).filter(Boolean) : [];
+  const unknownTypes = requested.filter((t) => !(ENTITY_KINDS as readonly string[]).includes(t));
+  if (unknownTypes.length) {
+    httpError(
+      422,
+      `Unknown entity_types: ${unknownTypes.join(", ")} (expected a comma-separated list of ${ENTITY_KINDS.join(", ")})`,
+    );
+  }
+  const allowed = new Set<string>(requested.length ? requested : ENTITY_KINDS);
+  const { store, prefs } = await loadCtx(c);
   const needle = q.toLowerCase();
 
   const results: {
@@ -360,6 +394,7 @@ r.get("/projects/:id/ontology/search", async (c) => {
     const [pb, lb] = key(b);
     return pa - pb || (la < lb ? -1 : la > lb ? 1 : 0);
   });
+  // "*" lists every entity (the property tree and individual list rely on this); text queries return the top 50.
   const page = needle === "*" ? results : results.slice(0, 50);
   return c.json({ results: page, total: results.length });
 });
@@ -387,7 +422,7 @@ function indexEntities(onto: LoadedOntology): IndexMemo {
 r.get("/projects/:id/ontology/index-status", async (c) => {
   const projectId = c.req.param("id");
   requireProject(projectId);
-  const branch = await resolveBranch(projectId, c.req.query("branch"));
+  const branch = await requireBranch(projectId, c.req.query("branch"));
   const base = { project_id: projectId, branch };
   const memo = indexMemo.get(`${projectId}:${branch}`);
 
@@ -406,8 +441,9 @@ r.get("/projects/:id/ontology/index-status", async (c) => {
   try {
     onto = await loadOntology(projectId, branch);
   } catch (e) {
-    const status = (e as { status?: number }).status;
-    if (status === 404) httpError(404, "No index status found for this project and branch");
+    // A source that fails to parse (422) is the index's "failed" state; anything else
+    // (missing repository, branch or file, unexpected errors) is returned as the real error.
+    if (!(e instanceof ApiError) || e.status !== 422) throw e;
     const job = latestJob(INDEX_JOB, projectId, branch);
     return c.json({
       ...base,
@@ -425,7 +461,7 @@ r.get("/projects/:id/ontology/index-status", async (c) => {
 r.post("/projects/:id/ontology/reindex", async (c) => {
   const projectId = c.req.param("id");
   requireProject(projectId);
-  const branch = await resolveBranch(projectId, c.req.query("branch"));
+  const branch = await requireBranch(projectId, c.req.query("branch"));
   if (!isJobActive(INDEX_JOB, projectId, branch)) {
     startJob(INDEX_JOB, { projectId, branch }, async () => {
       invalidateOntologyCache(projectId);
@@ -493,8 +529,9 @@ function bnodeOwners(store: Store, bnode: Term): string[] {
 }
 
 r.get("/projects/:id/entities/:iri{.+}/references", async (c) => {
-  const { store } = await loadCtx(c);
+  const { store, prefs } = await loadCtx(c);
   const target = iriParam(c);
+  requireMentioned(store, target);
   const byContext = new Map<string, Map<string, Record<string, unknown>>>();
 
   for (const q of store.getQuads(null, null, target, null)) {
@@ -514,11 +551,10 @@ r.get("/projects/:id/entities/:iri{.+}/references", async (c) => {
     if (!seen) byContext.set(context, (seen = new Map()));
     for (const s of sources) {
       if (seen.has(s)) continue;
-      const label = store.getObjects(s, RDFS_LABEL, null).find((o) => o.termType === "Literal");
       seen.set(s, {
         source_iri: s,
         source_type: rdfEntityType(store, s),
-        source_label: label ? label.value : null,
+        source_label: getPreferredLabel(store, s, prefs),
         reference_context: context,
       });
     }

@@ -32,9 +32,11 @@ vi.mock("@/components/editor/ClassTree", () => ({
 }));
 
 let _classDetailProps: Record<string, unknown> = {};
+let _classDetailMounts = 0;
 vi.mock("@/components/editor/ClassDetailPanel", () => ({
   ClassDetailPanel: (props: Record<string, unknown>) => {
     _classDetailProps = props;
+    React.useEffect(() => { _classDetailMounts++; }, []);
     return (
       <div data-testid="class-detail-panel">
         {props.headerActions as React.ReactNode}
@@ -255,6 +257,26 @@ describe("StandardEditorLayout", () => {
   it("renders panel divider", () => {
     render(<StandardEditorLayout {...defaultProps()} />);
     expect(screen.getByTestId("panel-divider")).toBeDefined();
+  });
+
+  it("hides the tree panel and its divider when treePanelOpen is false, keeping the tree mounted", () => {
+    const props = defaultProps({ treePanelOpen: false, nodes: sampleNodes });
+    const { rerender } = render(<StandardEditorLayout {...props} />);
+    expect(screen.getByTestId("entity-tree-panel").hidden).toBe(true);
+    expect(screen.queryByTestId("panel-divider")).toBeNull();
+    expect(Object.keys(_classTreeProps).length).toBeGreaterThan(0);
+
+    rerender(<StandardEditorLayout {...props} treePanelOpen />);
+    expect(screen.getByTestId("entity-tree-panel").hidden).toBe(false);
+    expect(screen.getByTestId("panel-divider")).toBeDefined();
+  });
+
+  it("still navigates to an entity while the tree panel is hidden", () => {
+    const ref = { current: null } as React.RefObject<((iri: string, type?: string) => void) | null>;
+    const props = defaultProps({ treePanelOpen: false, entityNavigationRef: ref });
+    render(<StandardEditorLayout {...props} />);
+    act(() => ref.current!("http://example.org/Foo", "class"));
+    expect(props.navigateToNode).toHaveBeenCalledWith("http://example.org/Foo");
   });
 
   it("shows loading spinner when tree is loading and no nodes", () => {
@@ -992,4 +1014,50 @@ describe("StandardEditorLayout", () => {
       expect(useSelectionStore.getState().type).toBe("class");
     });
   });
+
+  describe("refreshing after agent changes", () => {
+    it("remounts the open detail panel when detailEpoch changes, not on other re-renders", () => {
+      _classDetailMounts = 0;
+      const props = defaultProps({ selectedIri: "http://example.org/ClassA", nodes: sampleNodes, detailEpoch: 0 });
+      const { rerender } = render(<StandardEditorLayout {...props} />);
+      expect(_classDetailMounts).toBe(1);
+      rerender(<StandardEditorLayout {...props} detailRefreshKey={5} />);
+      expect(_classDetailMounts).toBe(1);
+      rerender(<StandardEditorLayout {...props} detailEpoch={1} />);
+      expect(_classDetailMounts).toBe(2);
+    });
+
+    it("marks the detail area so focus inside it can be detected", () => {
+      const { container } = render(<StandardEditorLayout {...defaultProps()} />);
+      const area = container.querySelector("[data-entity-detail-panel]");
+      expect(area?.contains(screen.getByTestId("class-detail-panel"))).toBe(true);
+    });
+
+    it("forwards entityListRefreshKey to the property and individual lists", () => {
+      const ref = { current: null } as React.RefObject<((iri: string, type?: string) => void) | null>;
+      render(<StandardEditorLayout {...defaultProps({ entityNavigationRef: ref, entityListRefreshKey: 3 })} />);
+      act(() => ref.current!("http://example.org/hasFoo", "property"));
+      expect(_propertyTreeProps.refreshKey).toBe(3);
+      act(() => ref.current!("http://example.org/foo1", "individual"));
+      expect(_individualListProps.refreshKey).toBe(3);
+    });
+
+    it("clears a deleted property or individual selection through entityRemovalRef", () => {
+      const nav = { current: null } as React.RefObject<((iri: string, type?: string) => void) | null>;
+      const removal = { current: null } as React.RefObject<((iris: string[]) => void) | null>;
+      const { unmount } = render(
+        <StandardEditorLayout {...defaultProps({ entityNavigationRef: nav, entityRemovalRef: removal })} />,
+      );
+      act(() => nav.current!("http://example.org/hasFoo", "property"));
+      expect(_propertyTreeProps.selectedIri).toBe("http://example.org/hasFoo");
+      act(() => removal.current!(["http://example.org/other"]));
+      expect(_propertyTreeProps.selectedIri).toBe("http://example.org/hasFoo");
+      act(() => removal.current!(["http://example.org/hasFoo"]));
+      expect(_propertyTreeProps.selectedIri).toBeNull();
+      expect(useSelectionStore.getState().iri).toBeNull();
+      unmount();
+      expect(removal.current).toBeNull();
+    });
+  });
 });
+

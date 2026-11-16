@@ -5,6 +5,7 @@ import {
   toTurtle,
   iriTurtleForms,
   findBlock,
+  findBlockSpan,
   scanToBlockEnd,
   literal,
   isIriValue,
@@ -89,6 +90,17 @@ describe("toTurtle", () => {
     expect(toTurtle("http://other.org/Foo", rev)).toBe(
       "<http://other.org/Foo>",
     );
+  });
+
+  it("uses the empty prefix as a bare colon", () => {
+    const withDefault = reverseMap({ "": "http://example.org/ont#" });
+    expect(toTurtle("http://example.org/ont#Dog", withDefault)).toBe(":Dog");
+  });
+
+  it("prefers the longest matching namespace", () => {
+    const nested = reverseMap({ ex: "http://example.org/", exo: "http://example.org/ont/" });
+    expect(toTurtle("http://example.org/ont/Dog", nested)).toBe("exo:Dog");
+    expect(toTurtle("http://example.org/Cat", nested)).toBe("ex:Cat");
   });
 
   it("falls back to full IRI when local name is not valid QName", () => {
@@ -414,5 +426,69 @@ describe("isIriValue", () => {
 
   it("returns false for empty string", () => {
     expect(isIriValue("")).toBe(false);
+  });
+});
+
+describe("block boundary scanning", () => {
+  it("does not treat # inside an IRI as a comment", () => {
+    const lines = [
+      "<http://example.org/ont#Dog> a owl:Class ;",
+      "    a <http://example.org/ont#Animal> .",
+      "",
+      "<http://example.org/ont#Cat> a owl:Class .",
+    ];
+    expect(scanToBlockEnd(lines, 0)).toBe(1);
+  });
+
+  it("does not stop at dots inside decimals or prefixed names", () => {
+    const lines = ["ex:Dog ex:w 1.5 ;", "    ex:r .5 ;", "    rdfs:seeAlso ex:v1.2 .", "ex:Cat a owl:Class ."];
+    expect(scanToBlockEnd(lines, 0)).toBe(2);
+  });
+
+  it("treats a dot right after a prefixed name at end of line as the terminator", () => {
+    expect(scanToBlockEnd(["ex:Dog a owl:Class.", "ex:Cat a owl:Class ."], 0)).toBe(0);
+  });
+
+  it("handles long strings that end in a quote or contain escaped quotes", () => {
+    const lines = ['ex:Dog rdfs:comment """a \\""" b . "c"""" ;', '    rdfs:label "Dog" .', "ex:Cat a owl:Class ."];
+    expect(scanToBlockEnd(lines, 0)).toBe(1);
+  });
+
+  it("does not select a block that only references the IRI as an object", () => {
+    const source = [
+      "@prefix ex: <http://example.org/ont#> .",
+      "ex:A rdfs:seeAlso <http://example.org/ont#Ghost> .",
+    ].join("\n");
+    const { prefixes } = parseDeclarations(source);
+    expect(findBlock(source.split("\n"), "http://example.org/ont#Ghost", prefixes)).toBeNull();
+  });
+
+  it("does not match a same-named entity under a different declared prefix", () => {
+    const source = [
+      "@prefix ex: <http://example.org/ont#> .",
+      "@prefix other: <http://other.org/> .",
+      "other:Dog a owl:Class .",
+    ].join("\n");
+    const { prefixes } = parseDeclarations(source);
+    expect(findBlock(source.split("\n"), "http://example.org/ont#Dog", prefixes)).toBeNull();
+  });
+
+  it("does not match a subject-looking line inside a long string", () => {
+    const source = [
+      "@prefix ex: <http://example.org/ont#> .",
+      'ex:A rdfs:comment """',
+      "ex:Dog a owl:Class .",
+      '""" .',
+      "ex:Dog rdfs:label \"Dog\" .",
+    ].join("\n");
+    const { prefixes } = parseDeclarations(source);
+    expect(findBlock(source.split("\n"), "http://example.org/ont#Dog", prefixes)).toEqual({ startLine: 4, endLine: 4 });
+  });
+
+  it("returns exact spans and skips SPARQL-style directives", () => {
+    const source = 'PREFIX ex: <http://example.org/ont#>\nex:A a ex:B . ex:Dog rdfs:label "D. og" . # tail';
+    const { prefixes } = parseDeclarations(source);
+    const span = findBlockSpan(source, "http://example.org/ont#Dog", prefixes)!;
+    expect(source.slice(span.start, span.end)).toBe('ex:Dog rdfs:label "D. og" .');
   });
 });

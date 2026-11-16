@@ -104,3 +104,81 @@ describe("ShareButton", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 });
+
+describe("ShareButton tooltip", () => {
+  beforeEach(() => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  });
+
+  it("explains the menu, mentioning the selected class and open PRs", async () => {
+    render(<ShareButton projectId="p" selectedIri="http://e.org/X" openPRCount={3} />);
+    fireEvent.focus(screen.getByLabelText("Share options"));
+    expect((await screen.findByRole("tooltip")).textContent).toBe(
+      "Share: copy a link to this project or the selected class, or open pull requests (3 open)",
+    );
+  });
+
+  it("does not show over the open menu", async () => {
+    render(<ShareButton projectId="p" />);
+    const trigger = screen.getByLabelText("Share options");
+    fireEvent.focus(trigger);
+    expect((await screen.findByRole("tooltip")).textContent).toBe(
+      "Share: copy a link to this project, or open pull requests",
+    );
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    fireEvent.pointerUp(document);
+    expect(screen.getByRole("menu")).toBeDefined();
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.blur(trigger);
+    fireEvent.focus(trigger);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  describe("overflow items", () => {
+    const moreItems = (closeMenu: () => void) => (
+      <button type="button" role="menuitem" className="lg:hidden" onClick={closeMenu}>
+        Keyboard shortcuts
+      </button>
+    );
+
+    it("renders the overflow items above the share items in a section that hides responsively", () => {
+      render(<ShareButton projectId="p" moreItems={moreItems} moreHiddenClass="lg:hidden" />);
+      fireEvent.click(screen.getByRole("button", { name: /^Share options/ }));
+      const items = screen.getAllByRole("menuitem").map((el) => el.textContent?.trim());
+      expect(items[0]).toBe("Keyboard shortcuts");
+      expect(items).toContain("Copy project link");
+      const section = screen.getByRole("menuitem", { name: "Keyboard shortcuts" }).parentElement!;
+      expect(section.className).toBe("lg:hidden");
+    });
+
+    it("passes a function that closes the menu", () => {
+      render(<ShareButton projectId="p" moreItems={moreItems} moreHiddenClass="lg:hidden" />);
+      fireEvent.click(screen.getByRole("button", { name: /^Share options/ }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Keyboard shortcuts" }));
+      expect(screen.queryByRole("menu")).toBeNull();
+    });
+
+    it("names the trigger 'and more' only at widths where overflow items exist", () => {
+      render(<ShareButton projectId="p" moreItems={moreItems} moreHiddenClass="xl:hidden" />);
+      const trigger = screen.getByRole("button", { name: /^Share options\s*and more$/ });
+      expect(trigger.getAttribute("aria-label")).toBeNull();
+      const more = Array.from(trigger.querySelectorAll("span.sr-only")).find((el) => el.textContent === " and more")!;
+      expect(more.className).toContain("xl:hidden");
+    });
+
+    it("mentions the overflow in the tooltip, hidden from the same breakpoint", async () => {
+      render(<ShareButton projectId="p" moreItems={moreItems} moreHiddenClass="lg:hidden" />);
+      fireEvent.focus(screen.getByRole("button", { name: /^Share options/ }));
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip.textContent).toContain("Also holds the editor controls that don't fit in the bar at this width");
+      expect(tooltip.querySelector("span.lg\\:hidden")).not.toBeNull();
+    });
+
+    it("keeps the plain 'Share options' label without overflow items", () => {
+      render(<ShareButton projectId="p" />);
+      expect(screen.getByRole("button", { name: "Share options" }).getAttribute("aria-label")).toBe("Share options");
+    });
+  });
+});

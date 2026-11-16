@@ -45,14 +45,55 @@ export interface SSEEvent {
   data: string;
 }
 
+export type AgentSelectableEntityType = "class" | "property" | "individual";
+
+export interface AgentSelectEntityAction {
+  action: "select_entity";
+  iri: string;
+  entity_type: AgentSelectableEntityType;
+  label: string;
+  branch: string;
+}
+
+/** Instructions from the agent for the editor UI. */
+export type AgentUiAction = AgentSelectEntityAction;
+
+/** A tool call committed to the ontology file on `branch`; `commit_hash` is the branch's new head. */
+export interface AgentOntologyChange {
+  tool_use_id: string;
+  name: string;
+  branch: string;
+  commit_hash: string | null;
+  deleted_iris: string[];
+}
+
 export type AgentStreamEvent =
   | { type: "message"; message: AgentMessage }
   | { type: "text"; text: string }
   | { type: "thinking"; text: string }
   | { type: "tool_use"; id: string; name: string; input: unknown }
   | { type: "tool_result"; tool_use_id: string; name: string; is_error: boolean; summary: string; mutated: boolean }
+  | ({ type: "ontology_changed" } & AgentOntologyChange)
+  | { type: "ui_action"; tool_use_id: string; action: AgentUiAction }
   | { type: "done"; stop_reason: string | null }
   | { type: "error"; detail: string };
+
+const SELECTABLE_TYPES: readonly string[] = ["class", "property", "individual"];
+
+function toUiAction(data: Record<string, unknown>): AgentUiAction | null {
+  if (data.action === "select_entity") {
+    if (typeof data.iri !== "string" || !data.iri) return null;
+    if (typeof data.entity_type !== "string" || !SELECTABLE_TYPES.includes(data.entity_type)) return null;
+    return {
+      action: "select_entity",
+      iri: data.iri,
+      entity_type: data.entity_type as AgentSelectableEntityType,
+      label: typeof data.label === "string" ? data.label : "",
+      branch: typeof data.branch === "string" ? data.branch : "",
+    };
+  }
+  return null;
+}
 
 export class AgentChatError extends Error {
   constructor(
@@ -157,6 +198,22 @@ export function toAgentStreamEvent(raw: SSEEvent): AgentStreamEvent | null {
         summary: String(data.summary ?? ""),
         mutated: Boolean(data.mutated),
       };
+    case "ontology_changed":
+      if (typeof data.branch !== "string" || !data.branch) return null;
+      return {
+        type: "ontology_changed",
+        tool_use_id: String(data.tool_use_id ?? ""),
+        name: String(data.name ?? ""),
+        branch: data.branch,
+        commit_hash: typeof data.commit_hash === "string" ? data.commit_hash : null,
+        deleted_iris: Array.isArray(data.deleted_iris)
+          ? data.deleted_iris.filter((i): i is string => typeof i === "string")
+          : [],
+      };
+    case "ui_action": {
+      const action = toUiAction(data);
+      return action ? { type: "ui_action", tool_use_id: String(data.tool_use_id ?? ""), action } : null;
+    }
     case "done":
       return { type: "done", stop_reason: (data.stop_reason as string | null) ?? null };
     case "error":

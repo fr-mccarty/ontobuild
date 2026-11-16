@@ -399,4 +399,26 @@ describe("EntityTree", () => {
     );
     expect(screen.getByLabelText("Unsaved draft")).not.toBeNull();
   });
+
+  it("scrolls the selected node into view once it is rendered, including after its parent expands", () => {
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => {});
+    const child = makeNode({ iri: "http://ex.org/Child", label: "Child" });
+    const collapsed = [makeNode({ iri: "http://ex.org/Parent", label: "Parent", hasChildren: true, children: [child] })];
+    const { rerender } = render(<EntityTree {...defaultProps} nodes={collapsed} selectedIri="http://ex.org/Child" />);
+    // Not rendered yet: nothing to scroll to.
+    expect(scroll).not.toHaveBeenCalled();
+
+    const expanded = [{ ...collapsed[0], isExpanded: true }];
+    rerender(<EntityTree {...defaultProps} nodes={expanded} selectedIri="http://ex.org/Child" />);
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect((scroll.mock.contexts[0] as Element).getAttribute("data-iri")).toBe("http://ex.org/Child");
+
+    // Re-rendering with the same selection does not scroll again.
+    rerender(<EntityTree {...defaultProps} nodes={[...expanded]} selectedIri="http://ex.org/Child" />);
+    expect(scroll).toHaveBeenCalledTimes(1);
+
+    rerender(<EntityTree {...defaultProps} nodes={expanded} selectedIri="http://ex.org/Parent" />);
+    expect(scroll).toHaveBeenCalledTimes(2);
+    scroll.mockRestore();
+  });
 });

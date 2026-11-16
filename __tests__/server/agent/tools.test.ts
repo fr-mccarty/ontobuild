@@ -102,9 +102,37 @@ describe("agent tools against a real project", () => {
     const basil = await run("get_entity", { iri: `${NS}Basil` });
     expect(basil.data.entity_type).toBe("individual");
 
+    const written = (await run("get_source")).data.content as string;
+    expect(written).toContain(":MargheritaPizza a owl:Class ;");
+    expect(written).toContain("rdfs:subClassOf :Pizza ;");
+    expect(written).toContain(":Basil a owl:NamedIndividual ;");
+    expect(written).toContain("a :Topping .");
+    expect(written.slice(written.indexOf(":MargheritaPizza a"))).not.toContain(`<${NS}`);
+
     const dup = await run("create_entity", { entity_type: "class", label: "Again", iri: `${NS}Pizza` });
     expect(dup.is_error).toBe(true);
     expect(dup.mutated).toBe(false);
+  });
+
+  it("accepts prefixed names wherever an IRI is expected", async () => {
+    const created = await run("create_entity", { entity_type: "class", label: "Short Named", parent_iri: ":Pizza" });
+    expect(created.is_error, created.summary).toBe(false);
+    expect(created.data.iri).toBe(`${NS}ShortNamed`);
+
+    const read = await run("get_entity", { iri: ":ShortNamed" });
+    expect(read.is_error, read.summary).toBe(false);
+    expect(read.data.iri).toBe(`${NS}ShortNamed`);
+    expect(read.data.detail.parent_iris).toEqual([`${NS}Pizza`]);
+
+    const updated = await run("update_class", { iri: ":ShortNamed", parent_iris: [":Pizza", "owl:Thing"] });
+    expect(updated.is_error, updated.summary).toBe(false);
+    expect((await run("get_entity", { iri: `${NS}ShortNamed` })).data.detail.parent_iris).toEqual(
+      expect.arrayContaining([`${NS}Pizza`, "http://www.w3.org/2002/07/owl#Thing"]),
+    );
+
+    const typo = await run("get_entity", { iri: "piza:Pizza" });
+    expect(typo.is_error).toBe(true);
+    expect(typo.summary).toContain('unknown prefix "piza:"');
   });
 
   it("update_class merges only the provided fields", async () => {
@@ -279,5 +307,151 @@ describe("agent tools against a real project", () => {
     const renamed = await run("update_project", { name: "Pizza Deluxe" });
     expect(renamed.is_error).toBe(false);
     expect(renamed.mutated).toBe(true);
+  }, 30_000);
+});
+
+let propertyIri = "";
+let individualIri = "";
+
+describe("select_entity", () => {
+  it("validates the IRI on the branch and returns a select_entity UI action", async () => {
+    const created = await run("create_entity", { entity_type: "class", label: "Selectable", parent_iri: `${NS}Pizza` });
+    const classIri = created.data.iri as string;
+    const cls = await run("select_entity", { iri: classIri });
+    expect(cls.is_error).toBe(false);
+    expect(cls.mutated).toBe(false);
+    expect(cls.ontology_changes).toEqual([]);
+    expect(cls.ui_action).toEqual({ action: "select_entity", iri: classIri, entity_type: "class", label: "Selectable", branch: "main" });
+    expect(cls.data).toEqual({ iri: classIri, entity_type: "class", label: "Selectable", selected: true });
+    expect(cls.summary).toBe("Selected class Selectable");
+
+    propertyIri = (await run("create_entity", { entity_type: "object_property", label: "has base" })).data.iri;
+    individualIri = (await run("create_entity", { entity_type: "individual", label: "Thin Crust", parent_iri: `${NS}Pizza` })).data.iri;
+    const prop = await run("select_entity", { iri: propertyIri });
+    expect(prop.ui_action).toMatchObject({ entity_type: "property", label: "has base" });
+    const ind = await run("select_entity", { iri: individualIri });
+    expect(ind.ui_action).toMatchObject({ entity_type: "individual", label: "Thin Crust" });
+  });
+
+  it("returns an error and no UI action for an unknown IRI or the ontology header", async () => {
+    const missing = await run("select_entity", { iri: `${NS}Nope` });
+    expect(missing.is_error).toBe(true);
+    expect(missing.summary).toBe(`Entity not found on branch main: ${NS}Nope`);
+    expect(missing.ui_action).toBeNull();
+
+    const header = await run("select_entity", { iri: "http://example.org/pizza" });
+    expect(header.is_error).toBe(true);
+    expect(header.ui_action).toBeNull();
+
+    const empty = await run("select_entity", {});
+    expect(empty.is_error).toBe(true);
+  });
+
+  it("refuses to select when the agent works on a branch the editor does not show", async () => {
+    await run("create_branch", { name: "select-elsewhere" });
+    const out = await executeTool("select_entity", { iri: `${NS}Pizza` }, { ...ctx, branch: "select-elsewhere", editorBranch: "main" });
+    expect(out.is_error).toBe(true);
+    expect(out.summary).toContain('The editor shows branch "main"');
+    expect(out.ui_action).toBeNull();
+  });
+});
+
+describe("ontology change reporting", () => {
+  const head = async (branch = "main") => {
+    const res = await app.request(`/api/v1/projects/${ctx.projectId}/source?branch=${branch}`);
+    return ((await res.json()) as { commit_hash: string }).commit_hash;
+  };
+
+  it("reports a commit for every tool call that changes the ontology", async () => {
+    const expectChange = async (name: string, input: Record<string, unknown>) => {
+      const out = await run(name, input);
+      expect(out.is_error, `${name}: ${out.summary}`).toBe(false);
+      expect(out.mutated, name).toBe(true);
+      expect(out.ontology_changes, name).toEqual([{ branch: "main", commit_hash: await head(), deleted_iris: [] }]);
+      return out;
+    };
+    await expectChange("update_individual", { iri: individualIri, comments: [{ value: "crispy" }] });
+    await expectChange("update_property", { iri: propertyIri, comments: [{ value: "the base" }] });
+    const created = await expectChange("create_entity", { entity_type: "class", label: "Report Probe", parent_iri: `${NS}Pizza` });
+    const probeIri = created.data.iri as string;
+    await expectChange("update_class", { iri: probeIri, comments: [{ value: "probe" }] });
+    await expectChange("edit_source", { old_text: "crispy", new_text: "crunchy", commit_message: "Tweak" });
+
+    const deleted = await run("delete_entity", { iri: probeIri });
+    expect(deleted.ontology_changes).toEqual([{ branch: "main", commit_hash: await head(), deleted_iris: [probeIri] }]);
+
+    const source = await run("get_source");
+    const replaced = await run("replace_source", { content: `${source.data.content}\n`, commit_message: "Rewrite" });
+    expect(replaced.ontology_changes.map((c) => c.branch)).toEqual(["main"]);
+  }, 30_000);
+
+  it("update_individual keeps the entity written after the individual", async () => {
+    // Regression: an individual block ends `; a <type> .` and the update used to swallow the next block.
+    // create_entity now writes `:X ... a :Pizza .`; the full-IRI form that triggered the original bug
+    // (`#` read as a comment) is covered in turtleIndividualUpdater.test.ts.
+    const ind = await run("create_entity", { entity_type: "individual", label: "Deep Dish", parent_iri: `${NS}Pizza` });
+    const next = await run("create_entity", { entity_type: "class", label: "After Deep Dish" });
+    const before = (await run("get_source")).data.content as string;
+    const nextBlock = before.slice(before.indexOf(`:${next.data.iri.slice(NS.length)} a owl:Class`));
+    expect(nextBlock).toContain('"After Deep Dish"');
+
+    const out = await run("update_individual", { iri: ind.data.iri, comments: [{ value: "tall" }] });
+    expect(out.is_error, out.summary).toBe(false);
+
+    const after = (await run("get_source")).data.content as string;
+    expect(after.endsWith(nextBlock)).toBe(true);
+    const cls = await run("get_entity", { iri: next.data.iri });
+    expect(cls.is_error).toBe(false);
+    const updated = await run("get_entity", { iri: ind.data.iri });
+    expect(JSON.stringify(updated.data)).toContain("tall");
+    expect(JSON.stringify(updated.data)).toContain(`${NS}Pizza`);
+  });
+
+  it("reports nothing for read-only tools and for calls that change no ontology", async () => {
+    const before = await head();
+    const reads: [string, Record<string, unknown>][] = [
+      ["get_project", {}],
+      ["search_entities", { query: "*" }],
+      ["get_class_tree", {}],
+      ["get_entity", { iri: `${NS}Pizza` }],
+      ["get_entity_references", { iri: `${NS}Pizza` }],
+      ["get_source", {}],
+      ["list_revisions", {}],
+      ["list_branches", {}],
+      ["get_lint_config", {}],
+      ["list_lint_rules", {}],
+      ["get_normalization_status", {}],
+      ["normalize", { dry_run: true }],
+      ["list_pull_requests", {}],
+      ["select_entity", { iri: `${NS}Pizza` }],
+    ];
+    for (const [name, input] of reads) {
+      const out = await run(name, input);
+      expect(out.is_error, `${name}: ${out.summary}`).toBe(false);
+      expect(out.mutated, name).toBe(false);
+      expect(out.ontology_changes, name).toEqual([]);
+    }
+
+    // Project-level changes that do not commit to the ontology are mutations without an ontology change.
+    const branch = await run("create_branch", { name: "report-probe-branch" });
+    expect(branch.mutated).toBe(true);
+    expect(branch.ontology_changes).toEqual([]);
+
+    const failed = await run("update_class", { iri: `${NS}DoesNotExist`, comments: [] });
+    expect(failed.is_error).toBe(true);
+    expect(failed.ontology_changes).toEqual([]);
+    expect(await head()).toBe(before);
+  });
+
+  it("reports the target branch when a merge commits there", async () => {
+    await run("create_branch", { name: "merge-probe" });
+    const featureCtx = { ...ctx, branch: "merge-probe" };
+    const created = await executeTool("create_entity", { entity_type: "class", label: "Merge Probe" }, featureCtx);
+    expect(created.ontology_changes.map((c) => c.branch)).toEqual(["merge-probe"]);
+    const pr = await run("create_pull_request", { title: "Merge probe", source_branch: "merge-probe" });
+    const merged = await run("merge_pull_request", { number: pr.data.number });
+    expect(merged.is_error).toBe(false);
+    expect(merged.ontology_changes.map((c) => c.branch)).toContain("main");
+    expect(merged.ontology_changes.find((c) => c.branch === "main")?.commit_hash).toBe(await head());
   }, 30_000);
 });

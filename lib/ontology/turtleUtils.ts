@@ -38,17 +38,22 @@ export function reverseMap(prefixes: PrefixMap): Map<string, string> {
   return rev;
 }
 
+/**
+ * Writes an IRI as a prefixed name when a declared prefix covers it and the rest is a
+ * safe Turtle local name; otherwise as a full `<...>` IRI. The longest matching
+ * namespace wins, so `ex:` and a more specific `exs:` resolve predictably.
+ */
 export function toTurtle(iri: string, rev: Map<string, string>): string {
+  let best: { ns: string; alias: string } | undefined;
   for (const [ns, alias] of rev) {
-    if (iri.startsWith(ns)) {
-      const local = iri.slice(ns.length);
-      if (local && /^[A-Za-z_][\w-]*$/.test(local)) {
-        return alias === "" ? `:${local}` : `${alias}:${local}`;
-      }
-    }
+    if (!ns || !iri.startsWith(ns) || (best && best.ns.length >= ns.length)) continue;
+    if (SAFE_LOCAL_NAME.test(iri.slice(ns.length))) best = { ns, alias };
   }
-  return `<${iri}>`;
+  return best ? `${best.alias}:${iri.slice(best.ns.length)}` : `<${iri}>`;
 }
+
+/** A conservative subset of Turtle's PN_LOCAL: no escapes, dots or colons needed. */
+const SAFE_LOCAL_NAME = /^[A-Za-z_][\w-]*$/;
 
 export function iriTurtleForms(
   iri: string,
@@ -76,159 +81,239 @@ export function iriTurtleForms(
   return forms;
 }
 
-export function scanToBlockEnd(lines: string[], start: number): number {
-  let depth = 0;
-  let inStr = false;
-  let longStr = false;
-  let strCh = "";
+export type TurtleTokenKind = "iri" | "string" | "name" | "punct";
 
-  for (let j = start; j < lines.length; j++) {
-    const line = lines[j];
+export interface TurtleToken {
+  kind: TurtleTokenKind;
+  text: string;
+  start: number;
+  end: number;
+}
 
-    for (let k = 0; k < line.length; k++) {
-      const c = line[k];
+export interface BlockSpan {
+  /** Offset of the statement's subject. */
+  start: number;
+  /** Offset just past the statement-terminating `.` (or end of text when unterminated). */
+  end: number;
+}
 
-      if (longStr) {
-        if (line.slice(k, k + 3) === strCh.repeat(3)) {
-          longStr = false;
-          k += 2;
+const NAME_CHAR = /[A-Za-z0-9_\-:%\\\u00B7\u00C0-\uFFFF]/;
+const DELIMITERS = new Set(["<", '"', "'", "#", ";", ",", "(", ")", "[", "]", "{", "}"]);
+
+/**
+ * True when the `.` at `i` sits inside a prefixed name or a number (e.g. `ex:a.b`, `1.5`)
+ * rather than terminating a statement: Turtle only allows such a dot when more name or
+ * digit characters follow it.
+ */
+export function isInternalDot(text: string, i: number): boolean {
+  let k = i;
+  while (text[k] === ".") k++;
+  return k < text.length && NAME_CHAR.test(text[k]);
+}
+
+/**
+ * Splits Turtle text into tokens, skipping whitespace and comments. IRIs (`<...>`), string
+ * literals (short and long, with escapes), names (prefixed names, keywords, numbers, language
+ * tags, `^^`) and punctuation are kept apart so that a `#`, `.` or `;` inside an IRI or a
+ * string is never mistaken for syntax.
+ */
+export function* lexTurtle(text: string, from = 0): Generator<TurtleToken> {
+  const n = text.length;
+  let i = from;
+
+  while (i < n) {
+    const c = text[i];
+
+    if (/\s/.test(c)) {
+      i++;
+      continue;
+    }
+
+    if (c === "#") {
+      while (i < n && text[i] !== "\n") i++;
+      continue;
+    }
+
+    if (c === "<") {
+      let end = i + 1;
+      while (end < n && text[end] !== ">" && text[end] !== "\n") end++;
+      end = Math.min(end + 1, n);
+      yield { kind: "iri", text: text.slice(i, end), start: i, end };
+      i = end;
+      continue;
+    }
+
+    if (c === '"' || c === "'") {
+      let end: number;
+      if (text[i + 1] === c && text[i + 2] === c) {
+        end = i + 3;
+        while (end < n) {
+          if (text[end] === "\\") {
+            end += 2;
+            continue;
+          }
+          if (text[end] === c) {
+            let run = end;
+            while (run < n && text[run] === c) run++;
+            if (run - end >= 3) {
+              end = run;
+              break;
+            }
+            end = run;
+            continue;
+          }
+          end++;
         }
+      } else {
+        end = i + 1;
+        while (end < n && text[end] !== "\n") {
+          if (text[end] === "\\") {
+            end += 2;
+            continue;
+          }
+          if (text[end] === c) {
+            end++;
+            break;
+          }
+          end++;
+        }
+      }
+      end = Math.min(end, n);
+      yield { kind: "string", text: text.slice(i, end), start: i, end };
+      i = end;
+      continue;
+    }
+
+    if (c === "." && !/[0-9]/.test(text[i + 1] ?? "")) {
+      yield { kind: "punct", text: ".", start: i, end: i + 1 };
+      i++;
+      continue;
+    }
+
+    if (DELIMITERS.has(c)) {
+      yield { kind: "punct", text: c, start: i, end: i + 1 };
+      i++;
+      continue;
+    }
+
+    let end = i;
+    while (end < n) {
+      const ch = text[end];
+      if (ch === "\\") {
+        end += 2;
         continue;
       }
-
-      if (inStr) {
-        if (c === "\\") {
-          k++;
+      if (ch === ".") {
+        if (end === i || isInternalDot(text, end)) {
+          end++;
           continue;
         }
-        if (c === strCh) inStr = false;
+        break;
+      }
+      if (/\s/.test(ch) || DELIMITERS.has(ch)) break;
+      end++;
+    }
+    end = Math.min(end, n);
+    yield { kind: "name", text: text.slice(i, end), start: i, end };
+    i = end;
+  }
+}
+
+interface TurtleStatement extends BlockSpan {
+  subject: TurtleToken;
+  terminated: boolean;
+}
+
+/**
+ * Lists the top-level statements of a Turtle document with their exact character spans.
+ * A statement ends at a `.` outside any blank-node `[...]` or collection `(...)`. SPARQL-style
+ * `PREFIX`/`BASE` directives, which have no terminating `.`, are skipped.
+ */
+function* turtleStatements(text: string): Generator<TurtleStatement> {
+  let current: TurtleToken | null = null;
+  let depth = 0;
+  let sparqlDirective = false;
+
+  for (const tok of lexTurtle(text)) {
+    if (sparqlDirective) {
+      if (tok.kind === "iri") sparqlDirective = false;
+      continue;
+    }
+    if (!current) {
+      if (tok.kind === "name" && /^(PREFIX|BASE)$/i.test(tok.text)) {
+        sparqlDirective = true;
         continue;
       }
-
-      if (c === "#") break;
-
-      if (
-        line.slice(k, k + 3) === '"""' ||
-        line.slice(k, k + 3) === "'''"
-      ) {
-        strCh = c;
-        longStr = true;
-        k += 2;
-        continue;
-      }
-
-      if (c === '"' || c === "'") {
-        strCh = c;
-        inStr = true;
-        continue;
-      }
-
-      if (c === "[" || c === "(") depth++;
-      if (c === "]" || c === ")") depth--;
-
-      if (c === "." && depth === 0) {
-        const next = k + 1 < line.length ? line[k + 1] : "";
-        if (!next || /\s/.test(next)) {
-          return j;
-        }
-      }
+      current = tok;
+      depth = 0;
+    }
+    if (tok.kind !== "punct") continue;
+    if (tok.text === "[" || tok.text === "(") depth++;
+    else if (tok.text === "]" || tok.text === ")") depth--;
+    else if (tok.text === "." && depth <= 0) {
+      yield { start: current.start, end: tok.end, subject: current, terminated: true };
+      current = null;
     }
   }
 
-  return lines.length - 1;
+  if (current) yield { start: current.start, end: text.length, subject: current, terminated: false };
 }
 
+function lineOf(text: string, offset: number): number {
+  let line = 0;
+  for (let k = 0; k < offset && k < text.length; k++) {
+    if (text[k] === "\n") line++;
+  }
+  return line;
+}
+
+/** Index of the line holding the `.` that ends the statement starting on line `start`. */
+export function scanToBlockEnd(lines: string[], start: number): number {
+  const text = lines.slice(start).join("\n");
+  const stmt = turtleStatements(text).next().value;
+  if (!stmt?.terminated) return lines.length - 1;
+  return start + lineOf(text, stmt.end - 1);
+}
+
+/**
+ * Finds the statement whose subject is `iri` and returns its exact character span in
+ * `source`. Only subjects are matched, so an IRI used as an object elsewhere never selects
+ * another entity's block. A subject written with a prefix that is not declared is matched by
+ * its local name as a last resort.
+ */
+export function findBlockSpan(
+  source: string,
+  iri: string,
+  prefixes: PrefixMap,
+  base?: string,
+): BlockSpan | null {
+  const forms = new Set(iriTurtleForms(iri, prefixes, base));
+  const localName = iri.includes("#") ? iri.split("#").pop() : iri.split("/").pop();
+  let fallback: BlockSpan | null = null;
+
+  for (const stmt of turtleStatements(source)) {
+    if (forms.has(stmt.subject.text)) return { start: stmt.start, end: stmt.end };
+    if (fallback || !localName || stmt.subject.kind !== "name") continue;
+    const m = stmt.subject.text.match(/^(?:(\w*):)?(.*)$/);
+    if (m && m[2] === localName && (m[1] === undefined || prefixes[m[1]] === undefined)) {
+      fallback = { start: stmt.start, end: stmt.end };
+    }
+  }
+
+  return fallback;
+}
+
+/** Line-based view of {@link findBlockSpan}. */
 export function findBlock(
   lines: string[],
   iri: string,
   prefixes: PrefixMap,
   base?: string,
 ): BlockRange | null {
-  const forms = iriTurtleForms(iri, prefixes, base);
-
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-
-    if (
-      !trimmed ||
-      trimmed.startsWith("#") ||
-      trimmed.startsWith("@") ||
-      /^(PREFIX|BASE)\s/i.test(trimmed)
-    ) {
-      continue;
-    }
-
-    const isSubject = forms.some((f) => {
-      if (!trimmed.startsWith(f)) return false;
-      const after = trimmed[f.length];
-      return !after || after === " " || after === "\t";
-    });
-
-    if (isSubject) {
-      const prevLine = i > 0 ? lines[i - 1].trim() : "";
-      const isContinuation =
-        prevLine.endsWith(";") || prevLine.endsWith(",");
-
-      if (!isContinuation) {
-        return { startLine: i, endLine: scanToBlockEnd(lines, i) };
-      }
-    }
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    if (
-      !trimmed ||
-      trimmed.startsWith("#") ||
-      trimmed.startsWith("@") ||
-      /^(PREFIX|BASE)\s/i.test(trimmed)
-    ) {
-      continue;
-    }
-
-    if (trimmed.includes(iri)) {
-      const prevLine = i > 0 ? lines[i - 1].trim() : "";
-      const isContinuation =
-        prevLine.endsWith(";") || prevLine.endsWith(",");
-
-      if (!isContinuation) {
-        return { startLine: i, endLine: scanToBlockEnd(lines, i) };
-      }
-    }
-  }
-
-  const localName = iri.includes("#")
-    ? iri.split("#").pop()
-    : iri.split("/").pop();
-
-  if (localName) {
-    for (let i = 0; i < lines.length; i++) {
-      const trimmed = lines[i].trim();
-      if (
-        !trimmed ||
-        trimmed.startsWith("#") ||
-        trimmed.startsWith("@") ||
-        /^(PREFIX|BASE)\s/i.test(trimmed)
-      ) {
-        continue;
-      }
-
-      const localNamePattern = new RegExp(
-        `^(\\w*:)?${escapeRegex(localName)}(\\s|$)`,
-      );
-      if (localNamePattern.test(trimmed)) {
-        const prevLine = i > 0 ? lines[i - 1].trim() : "";
-        const isContinuation =
-          prevLine.endsWith(";") || prevLine.endsWith(",");
-
-        if (!isContinuation) {
-          return { startLine: i, endLine: scanToBlockEnd(lines, i) };
-        }
-      }
-    }
-  }
-
-  return null;
+  const text = lines.join("\n");
+  const span = findBlockSpan(text, iri, prefixes, base);
+  if (!span) return null;
+  return { startLine: lineOf(text, span.start), endLine: lineOf(text, Math.max(span.start, span.end - 1)) };
 }
 
 export function escapeRegex(s: string): string {

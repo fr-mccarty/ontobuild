@@ -33,6 +33,8 @@ export interface RevisionDiffResponse {
   from_version: string;
   to_version: string;
   files_changed: number;
+  total_additions: number;
+  total_deletions: number;
   changes: RevisionDiffChange[];
 }
 
@@ -155,15 +157,6 @@ export const branchesApi = {
     api.post<BranchInfo>(`/api/v1/projects/${projectId}/branches`, data, {
       headers: { Authorization: `Bearer ${token}` },
     }),
-
-  switch: (projectId: string, branchName: string, token: string) =>
-    api.post<BranchInfo>(
-      `/api/v1/projects/${projectId}/branches/${encodeURIComponent(branchName)}/checkout`,
-      undefined,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    ),
 
   delete: (projectId: string, branchName: string, token: string, force = false) =>
     api.delete(

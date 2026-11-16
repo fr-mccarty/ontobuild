@@ -313,6 +313,7 @@ const runSummary = (status: "pending" | "running" | "completed" | "failed" | nul
     ? {
         id: "r1",
         project_id: "p1",
+        branch: "main",
         status,
         started_at: "2025-01-01T00:00:00Z",
         completed_at: null,
@@ -320,6 +321,7 @@ const runSummary = (status: "pending" | "running" | "completed" | "failed" | nul
         error_message: null,
       }
     : null,
+  counts_run_id: null,
   error_count: 0,
   warning_count: 0,
   info_count: 0,

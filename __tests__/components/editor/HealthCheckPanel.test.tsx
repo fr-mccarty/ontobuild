@@ -52,12 +52,14 @@ const baseSummary = {
   last_run: {
     id: "run1",
     project_id: "p1",
+    branch: "main",
     status: "completed" as const,
     started_at: "2025-01-01T00:00:00Z",
     completed_at: "2025-01-01T00:01:00Z",
     issues_found: 3,
     error_message: null,
   },
+  counts_run_id: "run1" as string | null,
   error_count: 1,
   warning_count: 1,
   info_count: 1,
@@ -133,14 +135,14 @@ describe("HealthCheckPanel", () => {
       project_id: "p1",
       branch: "main",
       issues: [],
-      checked_at: "",
-      duration_ms: 0,
+      checked_at: null,
+      duration_ms: null,
     });
     mockWaitForLintRun.mockImplementation(() => new Promise(() => {}));
     mockQualityApi.getLatestDuplicates.mockResolvedValue({
       clusters: [],
-      threshold: 0.85,
-      checked_at: "",
+      threshold: null,
+      checked_at: null,
     });
   });
 
@@ -554,11 +556,48 @@ describe("HealthCheckPanel", () => {
     });
     await userEvent.click(screen.getByText("Consistency"));
     await waitFor(() => {
+      expect(screen.getByText("Not checked yet")).toBeDefined();
+    });
+    expect(screen.queryByText("No consistency issues")).toBeNull();
+  });
+
+  it("shows 'No consistency issues' only when a check has run", async () => {
+    mockQualityApi.getConsistencyIssues.mockResolvedValue({
+      project_id: "p1",
+      branch: "main",
+      issues: [],
+      checked_at: "2025-01-01T00:00:00Z",
+      duration_ms: 3,
+    });
+    setup();
+    await waitFor(() => {
+      expect(screen.getByText("Consistency")).toBeDefined();
+    });
+    await userEvent.click(screen.getByText("Consistency"));
+    await waitFor(() => {
       expect(screen.getByText("No consistency issues")).toBeDefined();
     });
+    expect(screen.queryByText("Not checked yet")).toBeNull();
   });
 
   it("switches to duplicates tab", async () => {
+    setup();
+    await waitFor(() => {
+      expect(screen.getByText("Duplicates")).toBeDefined();
+    });
+    await userEvent.click(screen.getByText("Duplicates"));
+    await waitFor(() => {
+      expect(screen.getByText("Not checked yet")).toBeDefined();
+    });
+    expect(screen.queryByText("No duplicates detected")).toBeNull();
+  });
+
+  it("shows 'No duplicates detected' only when detection has run", async () => {
+    mockQualityApi.getLatestDuplicates.mockResolvedValue({
+      clusters: [],
+      threshold: 0.85,
+      checked_at: "2025-01-01T00:00:00Z",
+    });
     setup();
     await waitFor(() => {
       expect(screen.getByText("Duplicates")).toBeDefined();
@@ -605,6 +644,7 @@ describe("HealthCheckPanel", () => {
             entity_iri: "http://example.org/Bar",
             entity_type: "class",
             message: "Orphan class detected",
+          details: null,
           },
         ],
         checked_at: "",
@@ -736,6 +776,7 @@ describe("HealthCheckPanel", () => {
               entity_iri: "http://example.org/PendEntity",
               entity_type: "class",
               message: "Pending then complete",
+            details: null,
             },
           ],
           checked_at: "",
@@ -778,6 +819,7 @@ describe("HealthCheckPanel", () => {
           entity_iri: "http://example.org/CachedCons",
           entity_type: "class",
           message: "Cached consistency issue",
+        details: null,
         },
       ],
       checked_at: "",
@@ -798,8 +840,8 @@ describe("HealthCheckPanel", () => {
       clusters: [
         {
           entities: [
-            { iri: "http://example.org/CachedA", label: "CachedA", entity_type: "class" },
-            { iri: "http://example.org/CachedB", label: "CachedB", entity_type: "class" },
+            { iri: "http://example.org/CachedA", label: "CachedA", entity_type: "class" as const },
+            { iri: "http://example.org/CachedB", label: "CachedB", entity_type: "class" as const },
           ],
           similarity: 0.87,
         },
@@ -859,8 +901,8 @@ describe("HealthCheckPanel", () => {
         clusters: [
           {
             entities: [
-              { iri: "http://example.org/A", label: "EntityA", entity_type: "class" },
-              { iri: "http://example.org/B", label: "EntityB", entity_type: "class" },
+              { iri: "http://example.org/A", label: "EntityA", entity_type: "class" as const },
+              { iri: "http://example.org/B", label: "EntityB", entity_type: "class" as const },
             ],
             similarity: 0.92,
           },
@@ -972,8 +1014,8 @@ describe("HealthCheckPanel", () => {
       clusters: [
         {
           entities: [
-            { iri: "http://example.org/X", label: "CachedX", entity_type: "class" },
-            { iri: "http://example.org/Y", label: "CachedY", entity_type: "class" },
+            { iri: "http://example.org/X", label: "CachedX", entity_type: "class" as const },
+            { iri: "http://example.org/Y", label: "CachedY", entity_type: "class" as const },
           ],
           similarity: 0.88,
         },
@@ -1000,8 +1042,8 @@ describe("HealthCheckPanel", () => {
       clusters: [
         {
           entities: [
-            { iri: "http://example.org/DupA", label: "DupA", entity_type: "class" },
-            { iri: "http://example.org/DupB", label: "DupB", entity_type: "property" },
+            { iri: "http://example.org/DupA", label: "DupA", entity_type: "class" as const },
+            { iri: "http://example.org/DupB", label: "DupB", entity_type: "property" as const },
           ],
           similarity: 0.95,
         },
@@ -1034,6 +1076,7 @@ describe("HealthCheckPanel", () => {
           entity_iri: "http://example.org/ConsEntity",
           entity_type: "class",
           message: "Orphan detected",
+        details: null,
         },
       ],
       checked_at: "",
@@ -1183,7 +1226,7 @@ describe("HealthCheckPanel", () => {
     pendingCallbacks.forEach((cb) => cb(0));
 
     await waitFor(() => {
-      expect(screen.getByText("No duplicates detected")).toBeDefined();
+      expect(screen.getByText("Not checked yet")).toBeDefined();
     });
 
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => { cb(0); return 0; });

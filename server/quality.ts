@@ -20,7 +20,9 @@ const OWL_IMPORTS = NS.owl + "imports";
 
 const CLASS_TYPES = [OWL_CLASS, RDFS_CLASS];
 const PROPERTY_TYPES = [OWL_OBJECT_PROPERTY, OWL_DATATYPE_PROPERTY, OWL_ANNOTATION_PROPERTY, RDF_PROPERTY];
-const TYPE_CHECKS: [string, string][] = [
+export type QualityEntityType = "class" | "property" | "individual";
+
+const TYPE_CHECKS: [string, QualityEntityType][] = [
   [OWL_CLASS, "class"],
   [RDFS_CLASS, "class"],
   [OWL_OBJECT_PROPERTY, "property"],
@@ -48,7 +50,8 @@ export interface ConsistencyIssue {
   rule_id: ConsistencyRuleId;
   severity: "error" | "warning" | "info";
   entity_iri: string;
-  entity_type: string;
+  /** "ontology" is used for ontology-wide issues (multi_root), whose entity_iri is "". */
+  entity_type: QualityEntityType | "unknown" | "ontology";
   message: string;
   details: Record<string, unknown> | null;
 }
@@ -64,7 +67,7 @@ export interface ConsistencyCheckResult {
 export interface DuplicateEntity {
   iri: string;
   label: string;
-  entity_type: string;
+  entity_type: QualityEntityType;
 }
 export interface DuplicateCluster {
   entities: DuplicateEntity[];
@@ -83,7 +86,7 @@ function has(store: Store, s: string, p: string, o: string): boolean {
   return store.countQuads(s, p, o, null) > 0;
 }
 
-export function qualityEntityType(store: Store, iri: string): string {
+export function qualityEntityType(store: Store, iri: string): QualityEntityType | "unknown" {
   for (const [t, label] of TYPE_CHECKS) if (has(store, iri, RDF_TYPE, t)) return label;
   return "unknown";
 }
@@ -110,7 +113,7 @@ const ci = (
   rule_id: ConsistencyRuleId,
   severity: ConsistencyIssue["severity"],
   entity_iri: string,
-  entity_type: string,
+  entity_type: ConsistencyIssue["entity_type"],
   message: string,
   details: Record<string, unknown> | null = null,
 ): ConsistencyIssue => ({ rule_id, severity, entity_iri, entity_type, message, details });
@@ -227,7 +230,7 @@ const CHECKS: ((store: Store) => ConsistencyIssue[])[] = [
   },
 
   (store) => {
-    const map = new Map<string, { etype: string; value: string; iris: string[] }>();
+    const map = new Map<string, { etype: QualityEntityType; value: string; iris: string[] }>();
     for (const u of declaredUris(store)) {
       if (u === OWL_THING) continue;
       const etype = qualityEntityType(store, u);
@@ -372,10 +375,10 @@ class DisjointSet {
 
 export function findDuplicates(
   store: Store,
-  entities: { iri: string; entity_type: string }[],
+  entities: { iri: string; entity_type: QualityEntityType }[],
   threshold = 0.85,
 ): DuplicateDetectionResult {
-  const labelled: { iri: string; label: string; type: string; tri: Set<string> }[] = [];
+  const labelled: { iri: string; label: string; type: QualityEntityType; tri: Set<string> }[] = [];
   for (const e of entities) {
     const labels = store.getObjects(e.iri, RDFS_LABEL, null).filter(isLiteral);
     if (!labels.length) continue;
@@ -436,19 +439,14 @@ export function findDuplicates(
   return { clusters, threshold, checked_at: new Date().toISOString() };
 }
 
-const INDEX_TYPE_MAP: [string, string][] = [
-  [OWL_CLASS, "class"],
-  [RDFS_CLASS, "class"],
-  [OWL_OBJECT_PROPERTY, "object_property"],
-  [OWL_DATATYPE_PROPERTY, "datatype_property"],
-  [OWL_ANNOTATION_PROPERTY, "annotation_property"],
-  [RDF_PROPERTY, "object_property"],
-  [OWL_NAMED_INDIVIDUAL, "individual"],
-];
-
-export function indexedEntities(store: Store): { iri: string; entity_type: string }[] {
-  const out = new Map<string, string>();
-  for (const [t, type] of INDEX_TYPE_MAP)
+/**
+ * Entities considered for duplicate detection, typed with the same vocabulary
+ * as consistency issues (class / property / individual). Labels are only
+ * compared between entities of the same type.
+ */
+export function indexedEntities(store: Store): { iri: string; entity_type: QualityEntityType }[] {
+  const out = new Map<string, QualityEntityType>();
+  for (const [t, type] of TYPE_CHECKS)
     for (const s of namedSubjects(store, RDF_TYPE, t)) if (s !== OWL_THING && !out.has(s)) out.set(s, type);
   return [...out].map(([iri, entity_type]) => ({ iri, entity_type }));
 }

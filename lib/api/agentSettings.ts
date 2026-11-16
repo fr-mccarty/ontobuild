@@ -49,6 +49,7 @@ export const agentSettingsApi = {
   getStatus: () => api.get<AgentStatus>("/api/v1/agent/status"),
   testConnection: () => api.post<AgentTestResult>("/api/v1/agent/test"),
   listModels: () => api.get<{ models: AgentModel[] }>("/api/v1/agent/models"),
+  getSettings: () => api.get<AgentSettings>("/api/v1/agent/settings"),
   saveSettings: (settings: Partial<AgentSettings>) =>
-    api.patch<{ settings: AgentSettings }>("/api/v1/agent/settings", settings),
+    api.patch<AgentSettings>("/api/v1/agent/settings", settings),
 };

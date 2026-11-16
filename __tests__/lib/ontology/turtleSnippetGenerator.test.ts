@@ -171,4 +171,56 @@ describe("generateTurtleSnippet", () => {
     });
     expect(snippet.trimEnd()).toMatch(/\.$/);
   });
+
+  it("escapes newlines and tabs in labels so the snippet stays valid Turtle", () => {
+    const snippet = generateTurtleSnippet({
+      iri: "http://example.org/ont#Foo",
+      label: "line one\nline\ttwo",
+      entityType: "class",
+    });
+    expect(snippet).toContain('rdfs:label "line one\\nline\\ttwo"');
+  });
+
+  describe("with the file's declared prefixes", () => {
+    const prefixes = {
+      "": "http://example.org/pizza#",
+      foaf: "http://xmlns.com/foaf/0.1/",
+      owl: "http://www.w3.org/2002/07/owl#",
+    };
+
+    it("writes the subject and parent with the empty prefix", () => {
+      const out = generateTurtleSnippet({
+        iri: "http://example.org/pizza#Margherita",
+        label: "Margherita",
+        entityType: "individual",
+        parentIri: "http://example.org/pizza#Pizza",
+        prefixes,
+      });
+      expect(out).toBe('\n:Margherita a owl:NamedIndividual ;\n    rdfs:label "Margherita" ;\n    a :Pizza .\n');
+    });
+
+    it("uses any declared prefix for the parent, not only the ontology's", () => {
+      const out = generateTurtleSnippet({
+        iri: "http://example.org/pizza#Chef",
+        label: "Chef",
+        entityType: "class",
+        parentIri: "http://xmlns.com/foaf/0.1/Person",
+        prefixes,
+      });
+      expect(out).toContain(":Chef a owl:Class ;");
+      expect(out).toContain("rdfs:subClassOf foaf:Person .");
+    });
+
+    it("keeps full IRIs that no declared prefix covers or that aren't safe local names", () => {
+      const out = generateTurtleSnippet({
+        iri: "http://example.org/pizza#123",
+        label: "Odd",
+        entityType: "class",
+        parentIri: "http://other.org/Thing",
+        prefixes,
+      });
+      expect(out).toContain("<http://example.org/pizza#123> a owl:Class ;");
+      expect(out).toContain("rdfs:subClassOf <http://other.org/Thing> .");
+    });
+  });
 });

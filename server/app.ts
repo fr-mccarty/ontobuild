@@ -13,6 +13,7 @@ import lint from "./routes/lint";
 import quality from "./routes/quality";
 import normalization from "./routes/normalization";
 import { createAgentRoutes } from "./routes/agent";
+import { buildOpenApiSpec } from "./openapi";
 
 const app = new Hono().basePath("/api/v1");
 
@@ -48,29 +49,6 @@ app.route("/", userSettings);
 app.route("/", ontology);
 app.route("/", createAgentRoutes(() => app));
 
-app.get("/openapi.json", (c) => {
-  const paths: Record<string, Record<string, unknown>> = {};
-  for (const r of app.routes) {
-    if (r.method === "ALL" || r.path.endsWith("/openapi.json")) continue;
-    const params: string[] = [];
-    const p = r.path.replace(/:([A-Za-z_]+)(\{[^}]*\})?/g, (_m, name: string) => {
-      params.push(name);
-      return `{${name}}`;
-    });
-    const tag = p.split("/")[3] || "general";
-    const tagName = tag.startsWith("{") ? "general" : tag;
-    (paths[p] ??= {})[r.method.toLowerCase()] = {
-      tags: [tagName.charAt(0).toUpperCase() + tagName.slice(1)],
-      summary: `${r.method} ${p}`,
-      parameters: params.map((name) => ({ name, in: "path", required: true, schema: { type: "string" } })),
-      responses: { "200": { description: "Successful response" } },
-    };
-  }
-  return c.json({
-    openapi: "3.1.0",
-    info: { title: "OntoKit API", version: "1.0.0", description: "Local OntoKit API (no authentication)." },
-    paths,
-  });
-});
+app.get("/openapi.json", (c) => c.json(buildOpenApiSpec(app.routes)));
 
 export default app;

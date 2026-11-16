@@ -3,7 +3,7 @@ import {
   parseDeclarations,
   reverseMap,
   toTurtle,
-  findBlock,
+  findBlockSpan,
   literal,
   isIriValue,
 } from "@/lib/ontology/turtleUtils";
@@ -90,9 +90,7 @@ export function updateClassInTurtle(
 ): string {
   const { prefixes, base } = parseDeclarations(source);
   const rev = reverseMap(prefixes);
-  const lines = source.split("\n");
-
-  const block = findBlock(lines, classIri, prefixes, base);
+  const block = findBlockSpan(source, classIri, prefixes, base);
   if (!block) {
     throw new Error(
       `Could not find class "${classIri}" in ontology source. ` +
@@ -101,8 +99,5 @@ export function updateClassInTurtle(
   }
 
   const newBlock = genBlock(classIri, data, rev);
-  const before = lines.slice(0, block.startLine);
-  const after = lines.slice(block.endLine + 1);
-
-  return [...before, newBlock, ...after].join("\n");
+  return source.slice(0, block.start) + newBlock + source.slice(block.end);
 }

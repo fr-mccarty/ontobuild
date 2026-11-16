@@ -12,6 +12,8 @@ interface IndividualListProps {
   branch?: string;
   selectedIri: string | null;
   onSelect: (iri: string) => void;
+  /** Change to reload the list in place, keeping the selection. */
+  refreshKey?: number;
 }
 
 export function IndividualList({
@@ -20,16 +22,25 @@ export function IndividualList({
   branch,
   selectedIri,
   onSelect,
+  refreshKey = 0,
 }: IndividualListProps) {
   const [individuals, setIndividuals] = useState<EntitySearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // A refresh keeps showing the current list while it reloads; only a new project or
+  // branch shows the spinner.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const scope = `${projectId}\n${branch ?? ""}`;
+  if (loadedFor !== null && loadedFor !== scope) {
+    setLoadedFor(null);
+    setIsLoading(true);
+  }
+
   useEffect(() => {
     let cancelled = false;
 
     const fetchIndividuals = async () => {
-      setIsLoading(true);
       setError(null);
 
       try {
@@ -43,6 +54,7 @@ export function IndividualList({
 
         if (cancelled) return;
         setIndividuals(response.results);
+        setLoadedFor(`${projectId}\n${branch ?? ""}`);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to load individuals");
@@ -56,7 +68,7 @@ export function IndividualList({
 
     fetchIndividuals();
     return () => { cancelled = true; };
-  }, [projectId, accessToken, branch]);
+  }, [projectId, accessToken, branch, refreshKey]);
 
   const entityNodes = useMemo((): EntityTreeNode[] => {
     return individuals.map((ind) => ({

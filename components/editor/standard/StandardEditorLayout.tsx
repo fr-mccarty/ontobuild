@@ -79,8 +79,22 @@ export interface StandardEditorLayoutProps {
   rollbackReparent?: (snapshot: { previousNodes: ClassTreeNode[] }) => void;
 
   entityNavigationRef?: React.RefObject<((iri: string, type?: string) => void) | null>;
+  /** Filled with a function that clears the property or individual selection if it is one of the given IRIs. */
+  entityRemovalRef?: React.RefObject<((iris: string[]) => void) | null>;
+
+  /** Change to reload the property and individual lists in place. */
+  entityListRefreshKey?: number;
+  /** Change to remount the open detail panel so it re-reads the entity from scratch. */
+  detailEpoch?: number;
 
   onActiveTabChange?: (tab: EntityTab) => void;
+
+  /**
+   * Whether the entity tree panel shows (default true). When hidden it stays mounted, so
+   * its tab, search and expanded nodes survive, and selecting an entity (from the detail
+   * panel or the agent) still updates it for when it opens again.
+   */
+  treePanelOpen?: boolean;
 }
 
 export function StandardEditorLayout(props: StandardEditorLayoutProps) {
@@ -200,7 +214,23 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
   const [selectedPropertyIri, setSelectedPropertyIri] = useState<string | null>(null);
   const [selectedIndividualIri, setSelectedIndividualIri] = useState<string | null>(null);
 
-  const { entityNavigationRef, navigateToNode: navToNode, onActiveTabChange } = props;
+  const { entityNavigationRef, entityRemovalRef, navigateToNode: navToNode, onActiveTabChange } = props;
+  const treePanelOpen = props.treePanelOpen ?? true;
+  const entityListRefreshKey = props.entityListRefreshKey ?? 0;
+  const detailEpoch = props.detailEpoch ?? 0;
+
+  useEffect(() => {
+    if (!entityRemovalRef) return;
+    const handler = (iris: string[]) => {
+      const removed = new Set(iris);
+      setSelectedPropertyIri((prev) => (prev && removed.has(prev) ? null : prev));
+      setSelectedIndividualIri((prev) => (prev && removed.has(prev) ? null : prev));
+    };
+    entityRemovalRef.current = handler;
+    return () => {
+      if (entityRemovalRef.current === handler) entityRemovalRef.current = null;
+    };
+  }, [entityRemovalRef]);
 
   useEffect(() => {
     onActiveTabChange?.(activeTab);
@@ -272,7 +302,12 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
 
   return (
     <div className="flex h-full min-w-0 flex-1">
-      <div className="flex-shrink-0 bg-white dark:bg-slate-800" style={{ width: treePanelWidth }}>
+      <div
+        data-testid="entity-tree-panel"
+        hidden={!treePanelOpen}
+        className="flex-shrink-0 bg-white dark:bg-slate-800"
+        style={{ width: treePanelWidth }}
+      >
         <EntityTabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
         <EntityTreeToolbar
@@ -355,6 +390,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
               branch={activeBranch}
               selectedIri={selectedPropertyIri}
               onSelect={setSelectedPropertyIri}
+              refreshKey={entityListRefreshKey}
             />
           )}
 
@@ -365,19 +401,22 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
               branch={activeBranch}
               selectedIri={selectedIndividualIri}
               onSelect={setSelectedIndividualIri}
+              refreshKey={entityListRefreshKey}
             />
           )}
         </div>
       </div>
 
-      <ResizablePanelDivider
-        width={treePanelWidth}
-        onWidthChange={setTreePanelWidth}
-        minWidth={200}
-        maxWidth={600}
-      />
+      {treePanelOpen && (
+        <ResizablePanelDivider
+          width={treePanelWidth}
+          onWidthChange={setTreePanelWidth}
+          minWidth={200}
+          maxWidth={600}
+        />
+      )}
 
-      <div className="min-w-0 flex-1 bg-white dark:bg-slate-800">
+      <div className="min-w-0 flex-1 bg-white dark:bg-slate-800" data-entity-detail-panel>
         {showGraph ? (
           <div className="flex h-full flex-col">
             <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-1.5 dark:border-slate-700">
@@ -406,7 +445,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
           </div>
         ) : activeTab === "classes" ? (
           <ClassDetailPanel
-            key={selectedIri ?? "no-class"}
+            key={`${selectedIri ?? "no-class"}:${detailEpoch}`}
             projectId={projectId}
             classIri={selectedIri}
             accessToken={accessToken}
@@ -432,7 +471,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
           />
         ) : activeTab === "properties" ? (
           <PropertyDetailPanel
-            key={selectedPropertyIri ?? "no-property"}
+            key={`${selectedPropertyIri ?? "no-property"}:${detailEpoch}`}
             projectId={projectId}
             propertyIri={selectedPropertyIri}
             sourceContent={sourceContent || ""}
@@ -447,7 +486,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
           />
         ) : (
           <IndividualDetailPanel
-            key={selectedIndividualIri ?? "no-individual"}
+            key={`${selectedIndividualIri ?? "no-individual"}:${detailEpoch}`}
             projectId={projectId}
             individualIri={selectedIndividualIri}
             sourceContent={sourceContent || ""}

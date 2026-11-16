@@ -14,6 +14,11 @@ interface ReparentSnapshot {
   previousNodes: ClassTreeNode[];
 }
 
+export interface RefreshTreeOptions {
+  /** Classes known to be deleted; the selection clears if it is one of them. */
+  removedIris?: string[];
+}
+
 interface UseOntologyTreeReturn {
   nodes: ClassTreeNode[];
   totalClasses: number;
@@ -21,6 +26,7 @@ interface UseOntologyTreeReturn {
   error: string | null;
   selectedIri: string | null;
   loadRootClasses: () => Promise<void>;
+  refreshTree: (options?: RefreshTreeOptions) => Promise<void>;
   expandNode: (iri: string) => Promise<void>;
   collapseNode: (iri: string) => void;
   selectNode: (iri: string) => void;
@@ -48,6 +54,25 @@ function apiNodeToTreeNode(apiNode: ApiTreeNode): ClassTreeNode {
     isLoading: false,
     hasChildren: apiNode.child_count > 0,
   };
+}
+
+function collectExpanded(nodes: ClassTreeNode[], out = new Set<string>()): Set<string> {
+  for (const node of nodes) {
+    if (node.isExpanded) {
+      out.add(node.iri);
+      collectExpanded(node.children, out);
+    }
+  }
+  return out;
+}
+
+/** True when the node is rendered: it is a root, or every ancestor on its path is expanded. */
+function isVisibleInTree(nodes: ClassTreeNode[], iri: string): boolean {
+  for (const node of nodes) {
+    if (node.iri === iri) return true;
+    if (node.isExpanded && isVisibleInTree(node.children, iri)) return true;
+  }
+  return false;
 }
 
 function updateNodeInTree(
@@ -81,6 +106,9 @@ export function useOntologyTree({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIri, setSelectedIri] = useState<string | null>(null);
+  const selectedIriRef = useRef<string | null>(null);
+  selectedIriRef.current = selectedIri;
+  const refreshGenRef = useRef(0);
 
   useEffect(() => {
     setNodes([]);
@@ -139,6 +167,71 @@ export function useOntologyTree({
       }
     },
     [projectId, accessToken, branchKey]
+  );
+
+  // Reload the tree from the server in place: roots, every expanded subtree, labels and the
+  // class count, keeping which nodes are expanded and which class is selected. Used after
+  // something outside the tree (the agent) changes the ontology.
+  const refreshTree = useCallback(
+    async (options: RefreshTreeOptions = {}) => {
+      if (!projectId) return;
+      const gen = ++refreshGenRef.current;
+      const before = nodesRef.current;
+      const expanded = collectExpanded(before);
+      const removed = new Set(options.removedIris ?? []);
+
+      const fill = async (items: ClassTreeNode[], path: Set<string>): Promise<ClassTreeNode[]> =>
+        Promise.all(
+          items.map(async (node) => {
+            if (!expanded.has(node.iri) || !node.hasChildren || path.has(node.iri)) return node;
+            try {
+              const response = await projectOntologyApi.getClassChildren(projectId, node.iri, accessToken, branchKey);
+              const childPath = new Set(path).add(node.iri);
+              const children = await fill(response.nodes.map(apiNodeToTreeNode), childPath);
+              return { ...node, children, isExpanded: true };
+            } catch (err) {
+              console.error("Failed to refresh node:", err);
+              return node;
+            }
+          }),
+        );
+
+      let roots: ClassTreeNode[];
+      let total: number;
+      try {
+        const response = await projectOntologyApi.getRootClasses(projectId, accessToken, branchKey);
+        roots = await fill(response.nodes.map(apiNodeToTreeNode), new Set());
+        total = response.total_classes;
+      } catch (err) {
+        console.error("Failed to refresh ontology tree:", err);
+        return;
+      }
+      if (gen !== refreshGenRef.current) return;
+
+      setNodes(roots);
+      setTotalClasses(total);
+      setError(null);
+
+      const selected = selectedIriRef.current;
+      if (!selected) return;
+      if (removed.has(selected)) {
+        setSelectedIri(null);
+        return;
+      }
+      // The selected class was on screen but is not any more: it moved under a collapsed
+      // parent, or it is gone. Reveal it at its new place, or clear the selection.
+      if (!isVisibleInTree(before, selected) || isVisibleInTree(roots, selected)) return;
+      try {
+        const response = await projectOntologyApi.getClassAncestors(projectId, selected, accessToken, branchKey);
+        if (gen !== refreshGenRef.current) return;
+        for (const ancestor of response.nodes) {
+          await expandNode(ancestor.iri);
+        }
+      } catch {
+        if (gen === refreshGenRef.current && selectedIriRef.current === selected) setSelectedIri(null);
+      }
+    },
+    [projectId, accessToken, branchKey, expandNode],
   );
 
   const collapseNode = useCallback((iri: string) => {
@@ -396,6 +489,7 @@ export function useOntologyTree({
     error,
     selectedIri,
     loadRootClasses,
+    refreshTree,
     expandNode,
     collapseNode,
     selectNode,

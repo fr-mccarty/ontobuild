@@ -31,6 +31,8 @@ const baseDiff: RevisionDiffResponse = {
   from_version: "abc12345abcdef",
   to_version: "HEAD",
   files_changed: 2,
+  total_additions: 15,
+  total_deletions: 2,
   changes: [
     {
       path: "ontology.ttl",

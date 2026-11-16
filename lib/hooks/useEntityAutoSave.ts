@@ -48,24 +48,27 @@ export function useEntityAutoSave({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [restoredDraft, setRestoredDraft] = useState<AnyDraftEntry | null>(null);
+  // The draft for the current entity is read from the store during render (not in an
+  // effect), so it is already available on the first render. Panels that have their
+  // entity at mount decide on that render whether to seed the form from the draft or
+  // from the loaded entity; a draft that only arrived after an effect would be missed.
+  const entityKey = entityIri && branch ? draftKey(projectId, branch, entityIri) : null;
+  const [restoredDraft, setRestoredDraft] = useState<AnyDraftEntry | null>(
+    () => (entityKey ? getDraft(entityKey) ?? null : null),
+  );
+  const [prevEntityKey, setPrevEntityKey] = useState(entityKey);
+  if (entityKey !== prevEntityKey) {
+    setPrevEntityKey(entityKey);
+    if (entityKey) {
+      setRestoredDraft(getDraft(entityKey) ?? null);
+      setSaveStatus("idle");
+      setSaveError(null);
+      setValidationError(null);
+    }
+  }
 
   const flushingRef = useRef(false);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!entityIri || !branch) return;
-    const key = draftKey(projectId, branch, entityIri);
-    const draft = getDraft(key);
-    if (draft) {
-      setRestoredDraft(draft);
-    } else {
-      setRestoredDraft(null);
-    }
-    setSaveStatus("idle");
-    setSaveError(null);
-    setValidationError(null);
-  }, [entityIri, branch, projectId, getDraft]);
 
   const clearRestoredDraft = useCallback(() => {
     setRestoredDraft(null);

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { httpError, readJson } from "../http";
-import { requireProject, resolveBranch } from "../ontology";
+import { requireProject, requireBranch } from "../ontology";
 import {
   API_KEY_ENV,
   OPENROUTER_BASE_URL,
@@ -117,10 +117,12 @@ export function createAgentRoutes(getApp: () => AppLike) {
 
   r.get("/agent/models", async (c) => c.json({ models: await fetchModels() }));
 
+  r.get("/agent/settings", (c) => c.json(readAgentSettings()));
+
   r.patch("/agent/settings", async (c) => {
     const result = validateAgentSettingsPatch(await readJson<unknown>(c));
     if ("error" in result) httpError(422, result.error);
-    return c.json({ settings: saveAgentSettings(result.patch) });
+    return c.json(saveAgentSettings(result.patch));
   });
 
   r.post("/agent/test", async (c) => {
@@ -163,7 +165,7 @@ export function createAgentRoutes(getApp: () => AppLike) {
       httpError(422, "model must be a non-empty string of at most 200 characters");
     const apiKey = getApiKey();
     if (!apiKey) httpError(400, notConfiguredDetail());
-    const branch = await resolveBranch(projectId, c.req.query("branch"));
+    const branch = await requireBranch(projectId, c.req.query("branch"));
     const settings = readAgentSettings();
     const model = typeof body.model === "string" ? body.model.trim() : settings.model;
     const userMessage = body.user_message;
@@ -198,6 +200,7 @@ export function createAgentRoutes(getApp: () => AppLike) {
           toolContext: {
             projectId,
             branch,
+            editorBranch: branch,
             signal: controller.signal,
             request: (path, init) => Promise.resolve(getApp().request(path, init)),
           },

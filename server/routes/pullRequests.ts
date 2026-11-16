@@ -62,6 +62,20 @@ function prNumberParam(c: Context): number {
   return n;
 }
 
+/**
+ * Resolves the project and pull request named in the path, in that order: an unknown
+ * project is 404 before a malformed PR number is 422.
+ */
+function loadPr(c: Context) {
+  const id = c.req.param("id")!;
+  const project = requireProject(id);
+  const n = prNumberParam(c);
+  const pr = requirePr(id, n);
+  return { id, project, n, pr };
+}
+
+const PR_STATUSES = ["open", "closed", "merged"];
+
 function requirePr(projectId: string, prNumber: number): PRRow {
   const pr = get<PRRow>("SELECT * FROM pull_requests WHERE project_id = ? AND pr_number = ?", projectId, prNumber);
   if (!pr) httpError(404, "Pull request not found");
@@ -91,6 +105,7 @@ async function toPrResponse(pr: PRRow, approvalRequired: number) {
     pr.id,
   )!.n;
   const approvalCount = Number(counts.approval_count);
+  const ahead = await commitsAhead(pr.project_id, pr);
   return {
     id: pr.id,
     project_id: pr.project_id,
@@ -113,8 +128,8 @@ async function toPrResponse(pr: PRRow, approvalRequired: number) {
     review_count: Number(counts.review_count),
     approval_count: approvalCount,
     comment_count: Number(commentCount),
-    commits_ahead: await commitsAhead(pr.project_id, pr),
-    can_merge: pr.status === "open" && approvalCount >= approvalRequired,
+    commits_ahead: ahead,
+    can_merge: pr.status === "open" && ahead > 0 && approvalCount >= approvalRequired,
   };
 }
 
@@ -183,6 +198,12 @@ function optionalString(body: Record<string, unknown>, field: string, opts: { mi
   return v;
 }
 
+/** Like optionalString, but distinguishes an explicit null (returned as null, meaning "clear") from absent (undefined). */
+function nullableString(body: Record<string, unknown>, field: string) {
+  if (body[field] === null) return null;
+  return optionalString(body, field);
+}
+
 function prRefs(pr: PRRow): [string, string] {
   if (pr.status === "merged" && pr.base_commit_hash && pr.head_commit_hash)
     return [pr.base_commit_hash, pr.head_commit_hash];
@@ -207,6 +228,8 @@ r.get("/projects/:id/pull-requests", async (c) => {
   const id = c.req.param("id");
   const project = requireProject(id);
   const status = c.req.query("status");
+  if (status && !PR_STATUSES.includes(status))
+    httpError(422, `Query parameter 'status' must be one of: ${PR_STATUSES.join(", ")}`);
   const authorId = c.req.query("author_id");
   const skip = queryInt(c, "skip", 0, { min: 0 });
   const limit = queryInt(c, "limit", 20, { min: 1, max: 100 });
@@ -242,7 +265,7 @@ r.post("/projects/:id/pull-requests", async (c) => {
   const body = await readJson<Record<string, unknown>>(c);
   const title = optionalString(body, "title", { min: 1, max: 500 });
   if (title === undefined) httpError(422, "Field 'title' is required");
-  const description = optionalString(body, "description") ?? null;
+  const description = nullableString(body, "description") ?? null;
   const source = optionalString(body, "source_branch", { min: 1, max: 255 });
   if (source === undefined) httpError(422, "Field 'source_branch' is required");
   const target = optionalString(body, "target_branch", { min: 1, max: 255 }) ?? "main";
@@ -277,19 +300,17 @@ r.post("/projects/:id/pull-requests", async (c) => {
 });
 
 r.get("/projects/:id/pull-requests/:prNumber", async (c) => {
-  return c.json(await prResponse(c.req.param("id"), prNumberParam(c)));
+  const { project, pr } = loadPr(c);
+  return c.json(await toPrResponse(pr, Number(project.pr_approval_required) || 0));
 });
 
 r.patch("/projects/:id/pull-requests/:prNumber", async (c) => {
-  const id = c.req.param("id");
-  const n = prNumberParam(c);
-  requireProject(id);
-  const pr = requirePr(id, n);
+  const { id, n, pr } = loadPr(c);
   const body = await readJson<Record<string, unknown>>(c);
   const title = optionalString(body, "title", { min: 1, max: 500 });
-  const description = optionalString(body, "description");
-  if (pr.status !== "open") httpError(400, "Cannot update a closed or merged pull request");
-  const set: Record<string, string> = { updated_at: nowIso() };
+  const description = nullableString(body, "description");
+  if (pr.status !== "open") httpError(409, "Cannot update a closed or merged pull request");
+  const set: Record<string, string | null> = { updated_at: nowIso() };
   if (title !== undefined) set.title = title;
   if (description !== undefined) set.description = description;
   update("pull_requests", set, { id: pr.id });
@@ -297,35 +318,27 @@ r.patch("/projects/:id/pull-requests/:prNumber", async (c) => {
 });
 
 r.post("/projects/:id/pull-requests/:prNumber/close", async (c) => {
-  const id = c.req.param("id");
-  const n = prNumberParam(c);
-  requireProject(id);
-  const pr = requirePr(id, n);
-  if (pr.status !== "open") httpError(400, "Pull request is already closed or merged");
+  const { id, n, pr } = loadPr(c);
+  if (pr.status !== "open") httpError(409, "Pull request is already closed or merged");
   update("pull_requests", { status: "closed", updated_at: nowIso() }, { id: pr.id });
   return c.json(await prResponse(id, n));
 });
 
 r.post("/projects/:id/pull-requests/:prNumber/reopen", async (c) => {
-  const id = c.req.param("id");
-  const n = prNumberParam(c);
-  requireProject(id);
-  const pr = requirePr(id, n);
-  if (pr.status !== "closed") httpError(400, "Only closed pull requests can be reopened");
+  const { id, n, pr } = loadPr(c);
+  if (pr.status !== "closed") httpError(409, "Only closed pull requests can be reopened");
   update("pull_requests", { status: "open", updated_at: nowIso() }, { id: pr.id });
   return c.json(await prResponse(id, n));
 });
 
 r.post("/projects/:id/pull-requests/:prNumber/merge", async (c) => {
-  const id = c.req.param("id");
-  const n = prNumberParam(c);
-  const project = requireProject(id);
-  const pr = requirePr(id, n);
+  const { id, n, project, pr } = loadPr(c);
   const body = await readJson<Record<string, unknown>>(c);
   const mergeMessage = optionalString(body, "merge_message") || `Merge pull request #${n}: ${pr.title}`;
   const deleteSource = body.delete_source_branch === true;
 
-  if (pr.status !== "open") httpError(400, "Pull request is not open");
+  if (!git.repoExists(id)) httpError(404, "No repository found for this project");
+  if (pr.status !== "open") httpError(409, "Pull request is not open");
   const required = Number(project.pr_approval_required) || 0;
   const approvals = Number(
     get<{ n: number }>(
@@ -335,13 +348,17 @@ r.post("/projects/:id/pull-requests/:prNumber/merge", async (c) => {
   );
   if (approvals < required)
     httpError(400, `Pull request requires ${required} approvals, but has ${approvals}`);
-  if (!git.repoExists(id)) httpError(404, "No repository found for this project");
 
   const branches = new Map((await git.listBranches(id)).map((b) => [b.name, b]));
   const base = branches.get(pr.target_branch);
   const head = branches.get(pr.source_branch);
   if (!base) httpError(400, `Target branch '${pr.target_branch}' does not exist`);
   if (!head) httpError(400, `Source branch '${pr.source_branch}' does not exist`);
+  // Refuse rather than mark the PR merged with no merge commit: the PR stays open
+  // (and can be closed) when the target already contains every source commit.
+  if ((await commitsAhead(id, pr)) === 0) {
+    httpError(409, `Nothing to merge: '${pr.target_branch}' already contains all commits from '${pr.source_branch}'`);
+  }
 
   const result = await git.mergeBranch(id, pr.source_branch, pr.target_branch, {
     message: mergeMessage,
@@ -405,9 +422,7 @@ r.post("/projects/:id/pull-requests/:prNumber/merge", async (c) => {
 });
 
 r.get("/projects/:id/pull-requests/:prNumber/reviews", (c) => {
-  const id = c.req.param("id");
-  requireProject(id);
-  const pr = requirePr(id, prNumberParam(c));
+  const { pr } = loadPr(c);
   const items = all<ReviewRow>(
     "SELECT * FROM pull_request_reviews WHERE pull_request_id = ? ORDER BY created_at ASC",
     pr.id,
@@ -416,15 +431,13 @@ r.get("/projects/:id/pull-requests/:prNumber/reviews", (c) => {
 });
 
 r.post("/projects/:id/pull-requests/:prNumber/reviews", async (c) => {
-  const id = c.req.param("id");
-  requireProject(id);
-  const pr = requirePr(id, prNumberParam(c));
+  const { pr } = loadPr(c);
   const body = await readJson<Record<string, unknown>>(c);
   const status = body.status;
   if (typeof status !== "string" || !(REVIEW_STATUSES as readonly string[]).includes(status))
     httpError(422, `Field 'status' must be one of: ${REVIEW_STATUSES.join(", ")}`);
   const text = optionalString(body, "body") ?? null;
-  if (pr.status !== "open") httpError(400, "Cannot review a closed or merged pull request");
+  if (pr.status !== "open") httpError(409, "Cannot review a closed or merged pull request");
   const reviewId = newId();
   insert("pull_request_reviews", {
     id: reviewId,
@@ -441,9 +454,7 @@ r.post("/projects/:id/pull-requests/:prNumber/reviews", async (c) => {
 });
 
 r.get("/projects/:id/pull-requests/:prNumber/comments", (c) => {
-  const id = c.req.param("id");
-  requireProject(id);
-  const pr = requirePr(id, prNumberParam(c));
+  const { pr } = loadPr(c);
   const rows = all<CommentRow>(
     "SELECT * FROM pull_request_comments WHERE pull_request_id = ? ORDER BY created_at ASC",
     pr.id,
@@ -456,13 +467,13 @@ r.get("/projects/:id/pull-requests/:prNumber/comments", (c) => {
     byParent.set(row.parent_id, list);
   }
   const items = rows.filter((row) => !row.parent_id).map((row) => toCommentResponse(row, byParent));
-  return c.json({ items, total: items.length });
+  // total counts replies too, matching the PR's comment_count; items holds only top-level threads.
+  return c.json({ items, total: rows.length });
 });
 
+// Comments are a discussion and stay open on closed and merged PRs (unlike reviews, which need an open PR).
 r.post("/projects/:id/pull-requests/:prNumber/comments", async (c) => {
-  const id = c.req.param("id");
-  requireProject(id);
-  const pr = requirePr(id, prNumberParam(c));
+  const { pr } = loadPr(c);
   const body = await readJson<Record<string, unknown>>(c);
   const text = optionalString(body, "body", { min: 1 });
   if (text === undefined) httpError(422, "Field 'body' is required");
@@ -488,9 +499,7 @@ function requireCommentOr404Parent(prId: string, parentId: string) {
 }
 
 r.patch("/projects/:id/pull-requests/:prNumber/comments/:commentId", async (c) => {
-  const id = c.req.param("id");
-  requireProject(id);
-  const pr = requirePr(id, prNumberParam(c));
+  const { pr } = loadPr(c);
   const comment = requireComment(pr.id, c.req.param("commentId"));
   const body = await readJson<Record<string, unknown>>(c);
   const text = optionalString(body, "body", { min: 1 });
@@ -500,18 +509,14 @@ r.patch("/projects/:id/pull-requests/:prNumber/comments/:commentId", async (c) =
 });
 
 r.delete("/projects/:id/pull-requests/:prNumber/comments/:commentId", (c) => {
-  const id = c.req.param("id");
-  requireProject(id);
-  const pr = requirePr(id, prNumberParam(c));
+  const { pr } = loadPr(c);
   const comment = requireComment(pr.id, c.req.param("commentId"));
   run("DELETE FROM pull_request_comments WHERE id = ?", comment.id);
   return noContent(c);
 });
 
 r.get("/projects/:id/pull-requests/:prNumber/commits", async (c) => {
-  const id = c.req.param("id");
-  requireProject(id);
-  const pr = requirePr(id, prNumberParam(c));
+  const { id, pr } = loadPr(c);
   const [from, to] = prRefs(pr);
   const commits = git.repoExists(id) ? await git.getCommitsBetween(id, from, to) : [];
   const items = commits.map((cm) => ({
@@ -526,9 +531,7 @@ r.get("/projects/:id/pull-requests/:prNumber/commits", async (c) => {
 });
 
 r.get("/projects/:id/pull-requests/:prNumber/diff", async (c) => {
-  const id = c.req.param("id");
-  requireProject(id);
-  const pr = requirePr(id, prNumberParam(c));
+  const { id, pr } = loadPr(c);
   const [from, to] = prRefs(pr);
   let info: git.DiffInfo;
   try {

@@ -1,4 +1,5 @@
 import type { EntityType } from "./iriGeneration";
+import { esc, reverseMap, toTurtle, type PrefixMap } from "./turtleUtils";
 
 export interface TurtleSnippetOptions {
   iri: string;
@@ -7,6 +8,13 @@ export interface TurtleSnippetOptions {
   parentIri?: string;
   ontologyPrefix?: string;
   ontologyNamespace?: string;
+  /**
+   * Prefixes declared in the file the snippet will be appended to. When given, every
+   * IRI that one of them covers is written as a short name (`:Pizza`, `ex:Pizza`),
+   * and anything else stays a full `<...>` IRI, so the snippet never relies on a
+   * prefix the file doesn't declare.
+   */
+  prefixes?: PrefixMap;
 }
 
 const OWL_TYPE: Record<EntityType, string> = {
@@ -24,10 +32,6 @@ const PARENT_PREDICATE: Record<EntityType, string> = {
   annotationProperty: "rdfs:subPropertyOf",
   individual: "a",
 };
-
-function escapeTurtleString(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
 
 function toPrefixedOrFull(
   iri: string,
@@ -49,11 +53,16 @@ export function generateTurtleSnippet(options: TurtleSnippetOptions): string {
     parentIri,
     ontologyPrefix,
     ontologyNamespace,
+    prefixes,
   } = options;
 
-  const subject = toPrefixedOrFull(iri, ontologyPrefix, ontologyNamespace);
+  const rev = prefixes ? reverseMap(prefixes) : undefined;
+  const ref = (term: string) =>
+    rev ? toTurtle(term, rev) : toPrefixedOrFull(term, ontologyPrefix, ontologyNamespace);
+
+  const subject = ref(iri);
   const owlType = OWL_TYPE[entityType];
-  const escapedLabel = escapeTurtleString(label);
+  const escapedLabel = esc(label);
 
   const lines: string[] = [];
 
@@ -67,7 +76,7 @@ export function generateTurtleSnippet(options: TurtleSnippetOptions): string {
 
   if (parentIri) {
     const predicate = PARENT_PREDICATE[entityType];
-    const parentRef = toPrefixedOrFull(parentIri, ontologyPrefix, ontologyNamespace);
+    const parentRef = ref(parentIri);
     lines.push(`    ${predicate} ${parentRef} .`);
   }
 

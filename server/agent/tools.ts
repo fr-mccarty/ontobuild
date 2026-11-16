@@ -6,9 +6,12 @@ import {
   RDFS_CLASS,
   entityType,
   findOntologyIri,
+  getPreferredLabel,
   hasType,
   loadOntology,
+  onOntologyEvent,
   propertyKind,
+  type OntologyEvent,
 } from "../ontology";
 import { validateJson, type JsonSchema } from "./validate";
 import { generateTurtleSnippet } from "@/lib/ontology/turtleSnippetGenerator";
@@ -24,21 +27,46 @@ import {
 import { findBlock, literal, parseDeclarations } from "@/lib/ontology/turtleUtils";
 import { labelToLocalName, uuidToBase62, type EntityType } from "@/lib/ontology/iriGeneration";
 import { commonPrefixes } from "@/lib/editor/languages/turtle";
+import { expandPrefixedIris, hasPrefixedIris } from "./prefixedNames";
 import type { AnnotationUpdate, LocalizedString } from "@/lib/api/client";
 
 export interface ToolContext {
   projectId: string;
   branch: string;
+  /** The branch open in the user's editor. UI actions only apply there. Defaults to the starting branch. */
+  editorBranch?: string;
   request: (path: string, init?: RequestInit) => Promise<Response>;
   signal?: AbortSignal;
   pollIntervalMs?: number;
   pollTimeoutMs?: number;
 }
 
+export type SelectableEntityKind = "class" | "property" | "individual";
+
+/** An instruction for the browser, sent to the client as a `ui_action` event. */
+export interface UiAction {
+  action: "select_entity";
+  iri: string;
+  entity_type: SelectableEntityKind;
+  label: string;
+  branch: string;
+}
+
+/** One branch whose ontology source a tool call committed to, sent as an `ontology_changed` event. */
+export interface OntologyChange {
+  branch: string;
+  commit_hash: string;
+  deleted_iris: string[];
+}
+
 export interface ToolRunResult {
   result: unknown;
   summary: string;
+  /** True when the tool changes project state (ontology, branches, pull requests, settings). */
   mutated: boolean;
+  /** Entities the tool deleted, so the client can clear a selection that no longer exists. */
+  deleted_iris?: string[];
+  ui_action?: UiAction;
 }
 
 export interface ToolDef {
@@ -54,6 +82,9 @@ export interface ToolExecution {
   is_error: boolean;
   summary: string;
   mutated: boolean;
+  /** Commits the call made to the ontology source, one entry per branch (latest commit). */
+  ontology_changes: OntologyChange[];
+  ui_action: UiAction | null;
 }
 
 export class ToolError extends Error {}
@@ -246,7 +277,7 @@ const ANNOTATIONS: JsonSchema = {
   items: {
     type: "object",
     properties: {
-      property_iri: str("Full IRI of the annotation property"),
+      property_iri: str("IRI (full or prefixed name) of the annotation property"),
       values: localizedArray("Annotation values"),
     },
     required: ["property_iri", "values"],
@@ -301,6 +332,8 @@ interface ClassDetailResponse {
   disjoint_iris: string[];
   annotations: { property_iri: string; values: LocalizedString[] }[];
 }
+
+const OWL_ONTOLOGY = "http://www.w3.org/2002/07/owl#Ontology";
 
 const s = (input: Record<string, unknown>, key: string) => input[key] as string;
 const opt = <T>(input: Record<string, unknown>, key: string): T | undefined => input[key] as T | undefined;
@@ -371,7 +404,7 @@ export const AGENT_TOOLS: ToolDef[] = [
     name: "get_entity",
     description:
       "Read one entity (class, property or individual) by IRI. Returns its type, structured detail (labels, comments, parents, domains, ranges, types, annotations...) and its raw Turtle block. Always call this before updating an entity.",
-    parameters: { type: "object", properties: { iri: str("Full IRI of the entity") }, required: ["iri"] },
+    parameters: { type: "object", properties: { iri: str("IRI (full or prefixed name) of the entity") }, required: ["iri"] },
     async run(input, ctx) {
       const iri = s(input, "iri");
       const onto = await loadBranch(ctx);
@@ -402,11 +435,36 @@ export const AGENT_TOOLS: ToolDef[] = [
     name: "get_entity_references",
     description:
       "Find everything that references an entity (as parent, domain, range, type, restriction filler, annotation value...). Use before deleting or renaming.",
-    parameters: { type: "object", properties: { iri: str("Full IRI of the entity") }, required: ["iri"] },
+    parameters: { type: "object", properties: { iri: str("IRI (full or prefixed name) of the entity") }, required: ["iri"] },
     async run(input, ctx) {
       const iri = s(input, "iri");
       const { data } = await call<{ total: number }>(ctx, "GET", projectPath(ctx, `/entities/${enc(iri)}/references`));
       return { result: data, summary: `Found ${data.total} references to ${localName(iri)}`, mutated: false };
+    },
+  },
+  {
+    name: "select_entity",
+    description:
+      "Show an entity to the user in the editor, exactly as if they clicked it: switches to the Classes, Properties or Individuals tab, expands the tree down to the entity, selects it and opens its detail panel. Changes nothing in the ontology. Only works for the branch open in the editor.",
+    parameters: { type: "object", properties: { iri: str("IRI (full or prefixed name) of the class, property or individual") }, required: ["iri"] },
+    async run(input, ctx) {
+      const iri = s(input, "iri").trim();
+      const editorBranch = ctx.editorBranch ?? ctx.branch;
+      if (ctx.branch !== editorBranch) {
+        throw new ToolError(
+          `The editor shows branch "${editorBranch}" but you are working on "${ctx.branch}", so the entity cannot be shown. Call switch_branch with "${editorBranch}" first, or tell the user to open "${ctx.branch}".`,
+        );
+      }
+      const onto = await loadBranch(ctx);
+      const kind = hasType(onto.store, iri, OWL_ONTOLOGY) ? null : entityType(onto.store, iri);
+      if (!kind) throw new ToolError(`Entity not found on branch ${ctx.branch}: ${iri}`);
+      const label = getPreferredLabel(onto.store, iri, null, true) ?? localName(iri);
+      return {
+        result: { iri, entity_type: kind, label, selected: true },
+        summary: `Selected ${kind} ${label}`,
+        mutated: false,
+        ui_action: { action: "select_entity", iri, entity_type: kind, label, branch: ctx.branch },
+      };
     },
   },
   {
@@ -489,7 +547,7 @@ export const AGENT_TOOLS: ToolDef[] = [
           description: "Kind of entity to create",
         },
         label: str("rdfs:label (English)", { minLength: 1 }),
-        iri: str("Explicit full IRI. Omit to generate one."),
+        iri: str("Explicit IRI (full or prefixed name). Omit to generate one."),
         parent_iri: str("Parent class/property IRI, or the type class for an individual"),
         comment: str("Optional rdfs:comment (English)"),
         commit_message: COMMIT_MESSAGE,
@@ -516,6 +574,7 @@ export const AGENT_TOOLS: ToolDef[] = [
         parentIri: opt<string>(input, "parent_iri") || undefined,
         ontologyPrefix: prefix,
         ontologyNamespace: namespace,
+        prefixes: parseDeclarations(onto.content).prefixes,
       });
       const comment = opt<string>(input, "comment");
       if (comment?.trim()) snippet = snippet.replace(/ \.\n$/, ` ;\n    rdfs:comment ${literal(comment)} .\n`);
@@ -536,7 +595,7 @@ export const AGENT_TOOLS: ToolDef[] = [
     parameters: {
       type: "object",
       properties: {
-        iri: str("Full IRI of the class"),
+        iri: str("IRI (full or prefixed name) of the class"),
         labels: localizedArray("rdfs:label values"),
         comments: localizedArray("rdfs:comment values"),
         parent_iris: strArray("rdfs:subClassOf parent class IRIs"),
@@ -581,7 +640,7 @@ export const AGENT_TOOLS: ToolDef[] = [
     parameters: {
       type: "object",
       properties: {
-        iri: str("Full IRI of the property"),
+        iri: str("IRI (full or prefixed name) of the property"),
         property_type: { type: "string", enum: ["object", "data", "annotation"], description: "Change the property kind" },
         labels: localizedArray("rdfs:label values"),
         comments: localizedArray("rdfs:comment values"),
@@ -643,7 +702,7 @@ export const AGENT_TOOLS: ToolDef[] = [
     parameters: {
       type: "object",
       properties: {
-        iri: str("Full IRI of the individual"),
+        iri: str("IRI (full or prefixed name) of the individual"),
         labels: localizedArray("rdfs:label values"),
         comments: localizedArray("rdfs:comment values"),
         definitions: localizedArray("skos:definition values"),
@@ -722,7 +781,7 @@ export const AGENT_TOOLS: ToolDef[] = [
       "Delete a class, property or individual: removes every triple about it, every triple pointing at it, and anonymous expressions that mention it. Check get_entity_references first.",
     parameters: {
       type: "object",
-      properties: { iri: str("Full IRI of the entity"), commit_message: COMMIT_MESSAGE },
+      properties: { iri: str("IRI (full or prefixed name) of the entity"), commit_message: COMMIT_MESSAGE },
       required: ["iri"],
     },
     async run(input, ctx) {
@@ -730,7 +789,12 @@ export const AGENT_TOOLS: ToolDef[] = [
       await call(ctx, "DELETE", projectPath(ctx, `/ontology/entities/${enc(iri)}`), {
         query: { commit_message: opt<string>(input, "commit_message") },
       });
-      return { result: { iri, deleted: true }, summary: `Deleted ${localName(iri)}`, mutated: true };
+      return {
+        result: { iri, deleted: true },
+        summary: `Deleted ${localName(iri)}`,
+        mutated: true,
+        deleted_iris: [iri],
+      };
     },
   },
   {
@@ -1259,8 +1323,47 @@ function errorMessage(e: unknown): string {
   return String(e);
 }
 
-function failure(input: Record<string, unknown> | null, message: string): ToolExecution {
-  return { input, content: JSON.stringify({ error: message }), is_error: true, summary: oneLine(message), mutated: false };
+function failure(
+  input: Record<string, unknown> | null,
+  message: string,
+  ontologyChanges: OntologyChange[] = [],
+): ToolExecution {
+  return {
+    input,
+    content: JSON.stringify({ error: message }),
+    is_error: true,
+    summary: oneLine(message),
+    mutated: ontologyChanges.length > 0,
+    ontology_changes: ontologyChanges,
+    ui_action: null,
+  };
+}
+
+// Every commit to an ontology file goes through emitOntologyEvent (source saves, entity
+// deletes, normalization, project renames, pull request merges). While a tool runs, a
+// collector records the commits made to its project, so the client learns about every
+// change, including ones made on another branch, without each tool reporting it.
+type CommitCollector = (e: OntologyEvent) => void;
+const collectorsG = globalThis as typeof globalThis & { __ontokitAgentCommitCollectors?: Set<CommitCollector> };
+const commitCollectors: Set<CommitCollector> = (collectorsG.__ontokitAgentCommitCollectors ??= new Set());
+onOntologyEvent("agent:commit-collector", (e) => {
+  for (const collect of commitCollectors) collect(e);
+});
+
+function collectCommits(projectId: string) {
+  const latest = new Map<string, string>();
+  const collect: CommitCollector = (e) => {
+    if (e.type !== "commit" || e.projectId !== projectId) return;
+    latest.delete(e.branch);
+    latest.set(e.branch, e.commitHash);
+  };
+  commitCollectors.add(collect);
+  return {
+    stop(deletedIris: string[] = []): OntologyChange[] {
+      commitCollectors.delete(collect);
+      return [...latest].map(([branch, commit_hash]) => ({ branch, commit_hash, deleted_iris: deletedIris }));
+    },
+  };
 }
 
 export function parseToolArguments(raw: string): { ok: true; input: Record<string, unknown> } | { ok: false; error: string } {
@@ -1284,16 +1387,30 @@ export async function executeTool(
   if (!tool) return failure(input, `Unknown tool: ${name}`);
   const errors = validateJson(tool.parameters, input);
   if (errors.length) return failure(input, `Invalid input for ${name}: ${errors.join("; ")}`);
+  let args = input;
+  if (hasPrefixedIris(input)) {
+    const declared = await loadBranch(ctx).then(
+      (onto) => parseDeclarations(onto.content).prefixes,
+      () => ({}),
+    );
+    const expanded = expandPrefixedIris(input, declared, PREFIX_NS);
+    if (expanded.errors.length) return failure(input, `Invalid input for ${name}: ${expanded.errors.join("; ")}`);
+    args = expanded.input;
+  }
+  const commits = collectCommits(ctx.projectId);
   try {
-    const out = await tool.run(input, ctx);
+    const out = await tool.run(args, ctx);
+    const ontologyChanges = commits.stop(out.deleted_iris);
     return {
       input,
       content: JSON.stringify(out.result ?? null),
       is_error: false,
       summary: oneLine(out.summary),
-      mutated: out.mutated,
+      mutated: out.mutated || ontologyChanges.length > 0,
+      ontology_changes: ontologyChanges,
+      ui_action: out.ui_action ?? null,
     };
   } catch (e) {
-    return failure(input, errorMessage(e));
+    return failure(input, errorMessage(e), commits.stop());
   }
 }

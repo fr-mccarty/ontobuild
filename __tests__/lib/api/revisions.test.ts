@@ -181,18 +181,6 @@ describe("branchesApi", () => {
     });
   });
 
-  describe("switch", () => {
-    it("calls POST with URL-encoded branch name", async () => {
-      mockOk({ name: "feat/my-branch" });
-
-      await branchesApi.switch("p1", "feat/my-branch", "tok");
-
-      const [url, options] = mockFetch.mock.calls[0];
-      expect(url).toContain("/api/v1/projects/p1/branches/feat%2Fmy-branch/checkout");
-      expect(options.method).toBe("POST");
-    });
-  });
-
   describe("delete", () => {
     it("calls DELETE with URL-encoded branch name and force param", async () => {
       mockEmpty();

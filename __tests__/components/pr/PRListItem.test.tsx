@@ -13,6 +13,14 @@ import { PRListItem } from "@/components/pr/PRListItem";
 
 function makePR(overrides: Partial<PullRequest> = {}): PullRequest {
   return {
+    description: null,
+    merged_by: null,
+    merged_by_user: null,
+    merged_at: null,
+    merge_commit_hash: null,
+    base_commit_hash: null,
+    head_commit_hash: null,
+    updated_at: null,
     id: "pr-1",
     project_id: "proj-1",
     pr_number: 42,
@@ -21,7 +29,7 @@ function makePR(overrides: Partial<PullRequest> = {}): PullRequest {
     target_branch: "main",
     status: "open",
     author_id: "user-1",
-    author: { id: "user-1", name: "Alice" },
+    author: { id: "user-1", name: "Alice", email: null },
     created_at: new Date().toISOString(),
     review_count: 0,
     approval_count: 0,

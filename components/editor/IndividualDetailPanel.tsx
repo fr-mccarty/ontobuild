@@ -111,8 +111,6 @@ export function IndividualDetailPanel({
   const [editAnnotations, setEditAnnotations] = useState<AnnotationUpdate[]>([]);
   const [editRelationships, setEditRelationships] = useState<RelationshipGroup[]>([]);
 
-
-  const editInitializedRef = useRef(false);
   const toast = useToast();
 
   const buildDraftEntry = useCallback((): IndividualDraftEntry | null => {
@@ -238,19 +236,6 @@ export function IndividualDetailPanel({
     };
   }, []);
 
-  useEffect(() => {
-    editInitializedRef.current = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on selection change; matches ClassDetailPanel/PropertyDetailPanel patterns
-    setIsEditing(false);
-  }, [individualIri]);
-
-  const enterEditMode = useCallback(() => {
-    if (!detail) return;
-    initEditState(detail);
-    editInitializedRef.current = true;
-    setIsEditing(true);
-  }, [detail, initEditState]);
-
   const cancelEditMode = useCallback(() => {
     discardDraft();
     if (detail) initEditState(detail);
@@ -261,13 +246,22 @@ export function IndividualDetailPanel({
     await flushToGit();
   }, [triggerSave, flushToGit]);
 
-  useEffect(() => {
-    if (isEditing || editInitializedRef.current) return;
-    if (!canEdit || !onUpdateIndividual || !detail) return;
+  // Selecting a different individual without a remount drops back out of edit mode so
+  // the form is re-seeded below on the next render (when useEntityAutoSave has also
+  // switched to the new individual's draft). State is adjusted during render.
+  const [prevIndividualIri, setPrevIndividualIri] = useState(individualIri);
+  const individualChanged = individualIri !== prevIndividualIri;
+  if (individualChanged) {
+    setPrevIndividualIri(individualIri);
+    setIsEditing(false);
+  }
 
+  // Enter edit mode as soon as the individual can be edited, seeding the form from a
+  // restored draft if there is one, otherwise from the parsed detail.
+  if (!individualChanged && !isEditing && canEdit && onUpdateIndividual && detail) {
+    setIsEditing(true);
     if (restoredDraft && restoredDraft.entityType === "individual" && individualIri) {
       const d = restoredDraft as IndividualDraftEntry;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring draft state from store; matches PropertyDetailPanel auto-enter pattern
       setEditLabels(d.labels);
       setEditComments(ensureTrailingEmpty(d.comments));
       setEditDefinitions(ensureTrailingEmpty(d.definitions));
@@ -278,14 +272,11 @@ export function IndividualDetailPanel({
       setEditDataAssertions(d.dataPropertyAssertions);
       setEditAnnotations(d.annotations);
       setEditRelationships(d.relationships);
-      editInitializedRef.current = true;
-      setIsEditing(true);
       clearRestoredDraft();
-      return;
+    } else {
+      initEditState(detail);
     }
-
-    enterEditMode();
-  }, [detail, canEdit, restoredDraft, individualIri, clearRestoredDraft, onUpdateIndividual, isEditing, enterEditMode]);
+  }
 
   const updateLabel = useCallback((index: number, val: string) => {
     setEditLabels((prev) => ensureTrailingEmpty(prev.map((l, i) => (i === index ? { ...l, value: val } : l))));

@@ -6,6 +6,7 @@ import { AlertCircle, KeyRound, Loader2, RotateCcw, SquarePen, Sparkles } from "
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { DEFAULT_AGENT_API_KEY_ENV } from "@/lib/api/agentSettings";
+import type { AgentOntologyChange, AgentUiAction } from "@/lib/api/agentChat";
 import { buildPageContextFromDocument, type AgentPageInfo } from "@/lib/agent/pageContext";
 import {
   retryAgentMessage,
@@ -29,10 +30,21 @@ export const AGENT_EXAMPLE_PROMPTS = [
 
 export interface AgentPanelProps {
   pageInfo: AgentPageInfo;
+  /** A tool call changed project state (branches, pull requests, settings or the ontology). */
   onProjectChanged?: () => void;
+  /** A tool call committed to the ontology on `change.branch`. */
+  onOntologyChanged?: (change: AgentOntologyChange) => void;
+  /** The agent asked the editor to act, for example to select an entity. */
+  onUiAction?: (action: AgentUiAction) => void;
 }
 
-export function AgentPanel({ pageInfo, onProjectChanged }: AgentPanelProps) {
+interface AgentPanelCallbacks {
+  onProjectChanged?: () => void;
+  onOntologyChanged?: (change: AgentOntologyChange) => void;
+  onUiAction?: (action: AgentUiAction) => void;
+}
+
+export function AgentPanel({ pageInfo, onProjectChanged, onOntologyChanged, onUiAction }: AgentPanelProps) {
   const { projectId } = pageInfo;
   const conversation = useAgentConversation(projectId);
   const dismissError = useAgentChatStore((s) => s.dismissError);
@@ -44,10 +56,10 @@ export function AgentPanel({ pageInfo, onProjectChanged }: AgentPanelProps) {
   const [draft, setDraft] = useState("");
 
   const pageInfoRef = useRef(pageInfo);
-  const onChangedRef = useRef(onProjectChanged);
+  const callbacksRef = useRef<AgentPanelCallbacks>({ onProjectChanged, onOntologyChanged, onUiAction });
   useEffect(() => {
     pageInfoRef.current = pageInfo;
-    onChangedRef.current = onProjectChanged;
+    callbacksRef.current = { onProjectChanged, onOntologyChanged, onUiAction };
   });
 
   useEffect(() => {
@@ -61,7 +73,9 @@ export function AgentPanel({ pageInfo, onProjectChanged }: AgentPanelProps) {
       projectId,
       branch: pageInfoRef.current.branch,
       buildContext: (last: string | null) => buildPageContextFromDocument(pageInfoRef.current, last),
-      onProjectChanged: () => onChangedRef.current?.(),
+      onProjectChanged: () => callbacksRef.current.onProjectChanged?.(),
+      onOntologyChanged: (change: AgentOntologyChange) => callbacksRef.current.onOntologyChanged?.(change),
+      onUiAction: (action: AgentUiAction) => callbacksRef.current.onUiAction?.(action),
     }),
     [projectId],
   );

@@ -544,3 +544,166 @@ describe("useOntologyTree", () => {
     expect(result.current.nodes[0].iri).toBe("urn:X");
   });
 });
+
+describe("useOntologyTree refreshTree", () => {
+  // A small fake server: class IRI -> label and child IRIs, plus the root list.
+  let classes: Record<string, { label: string; children: string[] }>;
+  let roots: string[];
+
+  const node = (iri: string) => makeApiNode(iri, classes[iri].label, classes[iri].children.length);
+  const parentOf = (iri: string) => Object.keys(classes).find((p) => classes[p].children.includes(iri));
+
+  function serve() {
+    mockedGetRootClasses.mockImplementation(async () => ({
+      nodes: roots.map(node),
+      total_classes: Object.keys(classes).length,
+    }));
+    mockedGetClassChildren.mockImplementation(async (_p: string, iri: string) => ({
+      nodes: (classes[iri]?.children ?? []).map(node),
+      total_classes: Object.keys(classes).length,
+    }));
+    mockedGetClassAncestors.mockImplementation(async (_p: string, iri: string) => {
+      if (!classes[iri]) throw new Error("Entity not found (404)");
+      const path: string[] = [];
+      for (let p = parentOf(iri); p; p = parentOf(p)) path.unshift(p);
+      return { nodes: path.map(node), total_classes: Object.keys(classes).length };
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    classes = {
+      "urn:Food": { label: "Food", children: ["urn:Pizza", "urn:Pasta"] },
+      "urn:Pizza": { label: "Pizza", children: ["urn:Margherita"] },
+      "urn:Margherita": { label: "Margherita", children: [] },
+      "urn:Pasta": { label: "Pasta", children: [] },
+      "urn:Topping": { label: "Topping", children: ["urn:Cheese"] },
+      "urn:Cheese": { label: "Cheese", children: [] },
+    };
+    roots = ["urn:Food", "urn:Topping"];
+    serve();
+  });
+
+  async function renderExpanded() {
+    const hook = renderHook(() => useOntologyTree({ projectId: "p1", accessToken: "tok", branchKey: "main" }));
+    await waitFor(() => expect(hook.result.current.nodes).toHaveLength(2));
+    await act(async () => {
+      await hook.result.current.expandNode("urn:Food");
+      await hook.result.current.expandNode("urn:Pizza");
+    });
+    return hook;
+  }
+
+  const find = (nodes: ClassTreeNodeLike[], iri: string): ClassTreeNodeLike | undefined => {
+    for (const n of nodes) {
+      if (n.iri === iri) return n;
+      const hit = find(n.children, iri);
+      if (hit) return hit;
+    }
+    return undefined;
+  };
+  type ClassTreeNodeLike = { iri: string; label: string; isExpanded: boolean; children: ClassTreeNodeLike[] };
+
+  it("adds a new class under its expanded parent without collapsing the tree or showing a spinner", async () => {
+    const { result } = await renderExpanded();
+    act(() => result.current.selectNode("urn:Margherita"));
+    classes["urn:Hawaiian"] = { label: "Hawaiian", children: [] };
+    classes["urn:Pizza"].children.push("urn:Hawaiian");
+
+    const loadingStates: boolean[] = [];
+    await act(async () => {
+      const done = result.current.refreshTree();
+      loadingStates.push(result.current.isLoading);
+      await done;
+    });
+
+    expect(loadingStates).toEqual([false]);
+    const pizza = find(result.current.nodes, "urn:Pizza")!;
+    expect(pizza.isExpanded).toBe(true);
+    expect(pizza.children.map((c) => c.iri)).toEqual(["urn:Margherita", "urn:Hawaiian"]);
+    expect(find(result.current.nodes, "urn:Food")!.isExpanded).toBe(true);
+    expect(find(result.current.nodes, "urn:Topping")!.isExpanded).toBe(false);
+    expect(result.current.selectedIri).toBe("urn:Margherita");
+    expect(result.current.totalClasses).toBe(7);
+    // Collapsed subtrees are not fetched.
+    expect(mockedGetClassChildren.mock.calls.map((c) => c[1])).not.toContain("urn:Topping");
+  });
+
+  it("updates a renamed label inside an expanded subtree", async () => {
+    const { result } = await renderExpanded();
+    classes["urn:Margherita"].label = "Margherita Pizza";
+    await act(() => result.current.refreshTree());
+    expect(find(result.current.nodes, "urn:Margherita")!.label).toBe("Margherita Pizza");
+  });
+
+  it("moves a re-parented class, and reveals it at its new place when it was selected", async () => {
+    const { result } = await renderExpanded();
+    act(() => result.current.selectNode("urn:Margherita"));
+    classes["urn:Pizza"].children = [];
+    classes["urn:Cheese"].children.push("urn:Margherita");
+
+    await act(() => result.current.refreshTree());
+
+    await waitFor(() => expect(find(result.current.nodes, "urn:Cheese")?.isExpanded).toBe(true));
+    expect(find(result.current.nodes, "urn:Pizza")!.children).toEqual([]);
+    expect(find(result.current.nodes, "urn:Topping")!.isExpanded).toBe(true);
+    expect(find(result.current.nodes, "urn:Cheese")!.children.map((c) => c.iri)).toEqual(["urn:Margherita"]);
+    expect(result.current.selectedIri).toBe("urn:Margherita");
+  });
+
+  it("removes a deleted class and clears the selection when it was selected", async () => {
+    const { result } = await renderExpanded();
+    act(() => result.current.selectNode("urn:Margherita"));
+    delete classes["urn:Margherita"];
+    classes["urn:Pizza"].children = [];
+
+    await act(() => result.current.refreshTree({ removedIris: ["urn:Margherita"] }));
+
+    expect(find(result.current.nodes, "urn:Margherita")).toBeUndefined();
+    expect(result.current.selectedIri).toBeNull();
+    expect(result.current.totalClasses).toBe(5);
+  });
+
+  it("clears the selection when the selected class vanished without being reported", async () => {
+    const { result } = await renderExpanded();
+    act(() => result.current.selectNode("urn:Pasta"));
+    delete classes["urn:Pasta"];
+    classes["urn:Food"].children = ["urn:Pizza"];
+
+    await act(() => result.current.refreshTree());
+
+    await waitFor(() => expect(result.current.selectedIri).toBeNull());
+    expect(find(result.current.nodes, "urn:Pasta")).toBeUndefined();
+  });
+
+  it("keeps the selection when it was not on screen", async () => {
+    const { result } = await renderExpanded();
+    act(() => {
+      result.current.collapseNode("urn:Food");
+      result.current.selectNode("urn:Pasta");
+    });
+    await act(() => result.current.refreshTree());
+    expect(result.current.selectedIri).toBe("urn:Pasta");
+    expect(find(result.current.nodes, "urn:Food")!.isExpanded).toBe(false);
+    expect(mockedGetClassAncestors).not.toHaveBeenCalled();
+  });
+
+  it("ignores the results of a refresh that a newer one overtook", async () => {
+    const { result } = await renderExpanded();
+    let releaseFirst: () => void = () => {};
+    mockedGetRootClasses.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseFirst = () => resolve({ nodes: [makeApiNode("urn:Stale", "Stale")], total_classes: 1 });
+        }),
+    );
+    await act(async () => {
+      const first = result.current.refreshTree();
+      await result.current.refreshTree();
+      releaseFirst();
+      await first;
+    });
+    expect(find(result.current.nodes, "urn:Stale")).toBeUndefined();
+    expect(result.current.nodes.map((n) => n.iri)).toEqual(["urn:Food", "urn:Topping"]);
+  });
+});

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { DataFactory, Store } from "n3";
 import * as git from "../git";
 import { all, get, insert, newId, nowIso, run, toJson, transaction, update } from "../db";
-import { httpError, noContent, queryBool, queryInt, readJson } from "../http";
+import { ApiError, httpError, noContent, queryBool, queryInt, readJson } from "../http";
 import { LOCAL_USER } from "../user";
 import {
   DEFAULT_ONTOLOGY_FILE,
@@ -14,7 +14,7 @@ import {
   openPullRequestBranches,
   projectToResponse,
   requireProject,
-  resolveBranch,
+  requireBranch,
   type ProjectRow,
 } from "../ontology";
 import {
@@ -34,6 +34,8 @@ import {
 const r = new Hono();
 
 const MAX_IMPORT_FILE_SIZE = 50 * 1024 * 1024;
+/** Allowance for the multipart envelope and the small text fields around the file. */
+const MAX_IMPORT_BODY_OVERHEAD = 1024 * 1024;
 const AUTHOR = { name: LOCAL_USER.name, email: LOCAL_USER.email };
 
 function validIri(iri: string | null): string | null {
@@ -255,6 +257,12 @@ r.post("/projects", async (c) => {
 });
 
 r.post("/projects/import", async (c) => {
+  // Reject an oversized upload from its Content-Length before reading the body. The
+  // per-file check below still applies when the header is absent (chunked uploads).
+  const declared = Number(c.req.header("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_IMPORT_FILE_SIZE + MAX_IMPORT_BODY_OVERHEAD) {
+    httpError(413, `File too large. Maximum size is ${MAX_IMPORT_FILE_SIZE / (1024 * 1024)} MB`);
+  }
   let form: Record<string, string | File | (string | File)[]>;
   try {
     form = await c.req.parseBody();
@@ -349,15 +357,25 @@ r.patch("/projects/:id", async (c) => {
     is_public?: boolean | null;
     label_preferences?: string[] | null;
   }>(c);
-  if (body.name !== undefined && body.name !== null && (body.name.length < 1 || body.name.length > 255))
-    httpError(422, "name must be between 1 and 255 characters");
+  // name: omitted/null leaves it unchanged; otherwise it is trimmed like on create.
+  let name: string | undefined;
+  if (body.name !== undefined && body.name !== null) {
+    if (typeof body.name !== "string") httpError(422, "name must be a string");
+    name = body.name.trim();
+    if (name.length < 1 || name.length > 255) httpError(422, "name must be between 1 and 255 characters");
+  }
+  // description: omitted leaves it unchanged; null (or "") clears it.
+  if (body.description !== undefined && body.description !== null && typeof body.description !== "string")
+    httpError(422, "description must be a string or null");
   if (typeof body.description === "string" && body.description.length > 5000) httpError(422, "description too long");
+  const description = body.description === undefined ? undefined : body.description || null;
 
-  const nameChanged = body.name != null && body.name !== project.name;
-  const descChanged = body.description != null && body.description !== project.description;
+  const nameChanged = name !== undefined && name !== project.name;
+  // Only a new non-empty description is synced into the RDF; clearing it only affects the project record.
+  const descChanged = typeof description === "string" && description !== project.description;
   const set: Record<string, string | boolean | null> = {};
-  if (body.name != null) set.name = body.name;
-  if (body.description != null) set.description = body.description;
+  if (name !== undefined) set.name = name;
+  if (description !== undefined) set.description = description;
   if (body.is_public != null) set.is_public = !!body.is_public;
   if (body.label_preferences != null) set.label_preferences = toJson(normalizeLabelPreferences(Array.isArray(body.label_preferences) ? body.label_preferences : []));
   set.updated_at = nowIso();
@@ -369,8 +387,8 @@ r.patch("/projects/:id", async (c) => {
       const content = await git.readFile(id, branch, ontologyFilePath(project));
       const updated = await updateMetadataTurtle(
         content,
-        nameChanged ? body.name! : null,
-        descChanged ? body.description! : null,
+        nameChanged ? name! : null,
+        descChanged ? (description as string) : null,
       );
       if (updated) {
         const lines = updated.changes.map((ch) => `- ${ch}`).join("\n");
@@ -404,7 +422,7 @@ r.get("/projects/:id/source", async (c) => {
   const id = c.req.param("id");
   const project = requireProject(id);
   requireRepo(id);
-  const branch = await resolveBranch(id, c.req.query("branch"));
+  const branch = await requireBranch(id, c.req.query("branch"));
   let sha: string;
   try {
     sha = await git.resolveRef(id, branch);
@@ -435,7 +453,7 @@ r.put("/projects/:id/source", async (c) => {
     httpError(422, `Invalid Turtle syntax: ${(e as Error).message}`);
   }
   requireRepo(id);
-  const branch = await resolveBranch(id, c.req.query("branch"));
+  const branch = await requireBranch(id, c.req.query("branch"));
   let commit;
   try {
     commit = await commitOntology({
@@ -447,6 +465,7 @@ r.put("/projects/:id/source", async (c) => {
       validate: false,
     });
   } catch (e) {
+    if (e instanceof ApiError || e instanceof git.GitError) throw e;
     httpError(500, `Failed to commit changes: ${(e as Error).message}`);
   }
   update("projects", { updated_at: nowIso() }, { id });
@@ -457,6 +476,9 @@ r.get("/projects/:id/revisions", async (c) => {
   const id = c.req.param("id");
   requireProject(id);
   const limit = queryInt(c, "limit", 50, { min: 1, max: 200 });
+  // A project without a repository simply has no history yet: list endpoints return an
+  // empty collection (the history panel and branch selector render that as "nothing yet"),
+  // while endpoints that address one revision (file, diff) return 404.
   if (!git.repoExists(id)) return c.json({ project_id: id, commits: [], total: 0, refs: {} });
   const commits = await git.getHistory(id, { limit, allBranches: true });
   const unresolved = commits.filter((cm) => cm.is_merge && !cm.merged_branch);
@@ -514,6 +536,8 @@ r.get("/projects/:id/revisions/diff", async (c) => {
     from_version: d.from_version,
     to_version: d.to_version,
     files_changed: d.files_changed,
+    total_additions: d.total_additions,
+    total_deletions: d.total_deletions,
     changes: d.changes,
   });
 });
@@ -525,8 +549,8 @@ r.get("/projects/:id/branches", async (c) => {
   if (!git.repoExists(id)) {
     return c.json({
       items: [],
-      current_branch: "main",
-      default_branch: "main",
+      current_branch: git.DEFAULT_BRANCH,
+      default_branch: git.DEFAULT_BRANCH,
       preferred_branch: preferred,
     });
   }
@@ -557,11 +581,12 @@ r.get("/projects/:id/branches", async (c) => {
   });
 });
 
-r.put("/projects/:id/branch-preference", (c) => {
+r.put("/projects/:id/branch-preference", async (c) => {
   const id = c.req.param("id");
   requireProject(id);
   const branch = c.req.query("branch");
   if (!branch) httpError(422, "Query parameter 'branch' is required");
+  await requireBranch(id, branch);
   update("projects", { preferred_branch: branch }, { id });
   return noContent(c);
 });
@@ -602,22 +627,13 @@ r.post("/projects/:id/branches", async (c) => {
   );
 });
 
-r.post("/projects/:id/branches/:name{.+}/checkout", async (c) => {
-  const id = c.req.param("id");
-  const name = c.req.param("name");
-  requireProject(id);
-  requireRepo(id);
-  const b = await git.getBranch(id, name);
-  if (!b) httpError(404, `Branch not found: ${name}`);
-  return c.json(branchInfoResponse(b));
-});
-
 r.delete("/projects/:id/branches/:name{.+}", async (c) => {
   const id = c.req.param("id");
   const name = c.req.param("name");
   requireProject(id);
   requireRepo(id);
   const force = queryBool(c, "force", false);
+  if (!(await git.branchExists(id, name))) httpError(404, `Branch not found: ${name}`);
   if (openPullRequestBranches(id).has(name)) httpError(409, "Cannot delete branch: it has an open pull request");
   try {
     await git.deleteBranch(id, name, force);

@@ -3,7 +3,7 @@ import {
   parseDeclarations,
   reverseMap,
   toTurtle,
-  findBlock,
+  findBlockSpan,
   literal,
   isIriValue,
 } from "@/lib/ontology/turtleUtils";
@@ -153,9 +153,7 @@ export function updatePropertyInTurtle(
 ): string {
   const { prefixes, base } = parseDeclarations(source);
   const rev = reverseMap(prefixes);
-  const lines = source.split("\n");
-
-  const block = findBlock(lines, propertyIri, prefixes, base);
+  const block = findBlockSpan(source, propertyIri, prefixes, base);
   if (!block) {
     throw new Error(
       `Could not find property "${propertyIri}" in ontology source.`,
@@ -165,8 +163,5 @@ export function updatePropertyInTurtle(
   const existingTypeIris = (parseBlockTriples(source, propertyIri) ?? [])
     .flatMap((tr) => (tr.predicate === `${RDF}type` && tr.object.type === "iri" ? [tr.object.value] : []));
   const newBlock = genPropertyBlock(propertyIri, data, rev, existingTypeIris);
-  const before = lines.slice(0, block.startLine);
-  const after = lines.slice(block.endLine + 1);
-
-  return [...before, newBlock, ...after].join("\n");
+  return source.slice(0, block.start) + newBlock + source.slice(block.end);
 }

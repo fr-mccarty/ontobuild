@@ -19,7 +19,7 @@ import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { ProjectForm } from "@/components/projects/project-form";
 import { LabelPreferences, normalizeLabelPreferences } from "@/components/projects/label-preferences";
-import { projectOntologyApi, type IndexStatusResponse, type IndexStatus } from "@/lib/api/client";
+import { ApiError, projectOntologyApi, type IndexStatusResponse, type IndexStatus } from "@/lib/api/client";
 import { IndexWebSocketManager, type IndexWebSocketMessage } from "@/lib/api/indexStatus";
 import {
   projectApi,
@@ -229,7 +229,9 @@ export default function ProjectSettingsPage() {
     setSuccessMessage(null);
 
     try {
-      const updated = await projectApi.update(project.id, data as ProjectUpdate, session.accessToken);
+      // The form sends undefined for an empty description; send null so clearing it sticks.
+      const payload: ProjectUpdate = { ...data, description: data.description ?? null };
+      const updated = await projectApi.update(project.id, payload, session.accessToken);
       queryClient.setQueryData<Project>(projectKey, updated);
       setSuccessMessage("Project settings saved successfully");
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -356,7 +358,6 @@ export default function ProjectSettingsPage() {
           last_run_id: normalizationStatus?.last_run_id || null,
           last_check: new Date().toISOString(),
           preview_report: result.report,
-          checking: false,
           error: null,
         });
 
@@ -396,7 +397,7 @@ export default function ProjectSettingsPage() {
 
             setNormalizationJobStatus(jobStatus.status);
 
-            if (jobStatus.status === "complete") {
+            if (jobStatus.status === "completed") {
               clearInterval(normalizationPollRef.current!);
               normalizationPollRef.current = null;
               setNormalizationJobId(null);
@@ -408,7 +409,7 @@ export default function ProjectSettingsPage() {
               queryClient.invalidateQueries({ queryKey: normalizationQueryKeys.status(projectId, token) });
               setSuccessMessage("Normalization completed successfully");
               setTimeout(() => setSuccessMessage(null), 3000);
-            } else if (jobStatus.status === "failed" || jobStatus.status === "not_found") {
+            } else if (jobStatus.status === "failed") {
               clearInterval(normalizationPollRef.current!);
               normalizationPollRef.current = null;
               setNormalizationJobId(null);
@@ -417,6 +418,15 @@ export default function ProjectSettingsPage() {
               setLocalError(jobStatus.error || "Normalization job failed");
             }
           } catch (pollErr) {
+            if (pollErr instanceof ApiError && pollErr.status === 404) {
+              clearInterval(normalizationPollRef.current!);
+              normalizationPollRef.current = null;
+              setNormalizationJobId(null);
+              setNormalizationJobStatus(null);
+              setIsRunningNormalization(false);
+              setLocalError("Normalization job not found or expired");
+              return;
+            }
             console.error("Error polling job status:", pollErr);
           }
         }, 2000);
@@ -976,7 +986,7 @@ export default function ProjectSettingsPage() {
                               </p>
                             </div>
                             <div className="text-right text-xs text-slate-500 dark:text-slate-400">
-                              <p>{run.report.triple_count.toLocaleString()} triples</p>
+                              {run.report && <p>{run.report.triple_count.toLocaleString()} triples</p>}
                               {run.commit_hash && (
                                 <p className="font-mono">{run.commit_hash.substring(0, 7)}</p>
                               )}

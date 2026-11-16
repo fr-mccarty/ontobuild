@@ -2,13 +2,15 @@
 
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from "@/lib/utils";
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 interface TooltipProps {
   content: ReactNode;
   children: ReactNode;
   side?: "top" | "right" | "bottom" | "left";
   align?: "start" | "center" | "end";
+  /** Keeps the tooltip closed, e.g. while the trigger's own menu is open. */
+  disabled?: boolean;
 }
 
 export function Tooltip({
@@ -16,12 +18,14 @@ export function Tooltip({
   children,
   side = "top",
   align = "center",
+  disabled = false,
 }: TooltipProps) {
+  const [open, setOpen] = useState(false);
   if (content === null || content === undefined || content === false || content === "") {
     return <>{children}</>;
   }
   return (
-    <TooltipPrimitive.Root>
+    <TooltipPrimitive.Root open={open && !disabled} onOpenChange={(next) => setOpen(next && !disabled)}>
       <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Content

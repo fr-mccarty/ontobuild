@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render as rtlRender, screen, within, waitFor, type RenderOptions } from "@testing-library/react";
+import { render as rtlRender, screen, within, waitFor, fireEvent, type RenderOptions } from "@testing-library/react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type { ReactElement } from "react";
 
@@ -378,5 +378,79 @@ describe("BranchSelector", () => {
     await user.click(screen.getByRole("button"));
 
     expect(screen.getByText("No branches found")).toBeDefined();
+  });
+});
+
+describe("BranchSelector tooltip", () => {
+  beforeEach(() => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  });
+
+  const tooltipText = async () => (await screen.findByRole("tooltip")).textContent;
+
+  it("names the current branch and commit on focus", async () => {
+    render(<BranchSelector canCreateBranch />);
+    fireEvent.focus(screen.getByRole("button"));
+    expect(await tooltipText()).toBe("Branch: main at commit abc1234. Click to switch branches or create a new one.");
+  });
+
+  it("shows on hover too", async () => {
+    const user = userEvent.setup();
+    rtlRender(
+      <TooltipPrimitive.Provider delayDuration={0}>
+        <BranchSelector />
+      </TooltipPrimitive.Provider>,
+    );
+    await user.hover(screen.getByRole("button"));
+    expect(await tooltipText()).toBe("Branch: main at commit abc1234. Click to switch branches.");
+  });
+
+  it("includes commits ahead of and behind the default branch", async () => {
+    mockBranchState = {
+      ...mockBranchState,
+      currentBranch: "feature/test",
+      isFeatureBranch: true,
+      branches: mockBranchState.branches.map((b) =>
+        b.name === "feature/test" ? { ...b, commits_ahead: 2, commits_behind: 1 } : b,
+      ),
+    };
+    render(<BranchSelector />);
+    fireEvent.focus(screen.getByRole("button"));
+    expect(await tooltipText()).toBe(
+      "Branch: feature/test at commit def4567, 2 commits ahead of main, 1 commit behind main. Click to switch branches.",
+    );
+  });
+
+  it("explains why it is read-only", async () => {
+    render(<BranchSelector readOnly readOnlyReason="Sign in to switch or create branches." />);
+    const button = screen.getByRole("button") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    // A disabled button gets no pointer events, so the wrapper is the hover target.
+    fireEvent.focus(button.parentElement!);
+    expect(await tooltipText()).toBe("Branch: main at commit abc1234. Sign in to switch or create branches.");
+  });
+
+  it("says when branches are loading", async () => {
+    mockBranchState = { ...mockBranchState, isLoading: true };
+    render(<BranchSelector />);
+    fireEvent.focus(screen.getByRole("button").parentElement!);
+    expect(await tooltipText()).toBe("Branch: loading branches…");
+  });
+
+  it("closes on click and stays closed while the branch menu is open", async () => {
+    render(<BranchSelector />);
+    const button = screen.getByRole("button");
+    fireEvent.focus(button);
+    await screen.findByRole("tooltip");
+    fireEvent.pointerDown(button);
+    fireEvent.click(button);
+    fireEvent.pointerUp(document);
+    expect(screen.getAllByRole("option").length).toBeGreaterThan(0);
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.blur(button);
+    fireEvent.focus(button);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("tooltip")).toBeNull();
   });
 });

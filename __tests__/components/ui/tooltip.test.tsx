@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -99,5 +99,27 @@ describe("Tooltip without content", () => {
       </Tooltip>,
     );
     expect(screen.getByText("Plain")).toBeDefined();
+  });
+});
+
+describe("Tooltip disabled", () => {
+  it("stays closed while disabled and opens again once re-enabled", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+    const ui = (disabled: boolean) => (
+      <TooltipPrimitive.Provider delayDuration={0}>
+        <Tooltip content="Menu help" disabled={disabled}>
+          <button>Menu</button>
+        </Tooltip>
+      </TooltipPrimitive.Provider>
+    );
+    const { rerender } = render(ui(true));
+    fireEvent.focus(screen.getByText("Menu"));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("tooltip")).toBeNull();
+
+    fireEvent.blur(screen.getByText("Menu"));
+    rerender(ui(false));
+    fireEvent.focus(screen.getByText("Menu"));
+    expect((await screen.findByRole("tooltip")).textContent).toBe("Menu help");
   });
 });

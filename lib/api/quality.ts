@@ -3,6 +3,8 @@ import type {
   CrossReferencesResponse,
   ConsistencyCheckResult,
   DuplicateDetectionResult,
+  LatestConsistencyResult,
+  LatestDuplicateResult,
   QualityJobPendingResponse,
 } from "@/lib/ontology/qualityTypes";
 
@@ -52,7 +54,7 @@ export const qualityApi = {
     token?: string,
     branch?: string
   ) =>
-    api.get<ConsistencyCheckResult>(
+    api.get<LatestConsistencyResult>(
       `/api/v1/projects/${projectId}/quality/issues`,
       {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -92,7 +94,7 @@ export const qualityApi = {
     token?: string,
     branch?: string
   ) =>
-    api.get<DuplicateDetectionResult>(
+    api.get<LatestDuplicateResult>(
       `/api/v1/projects/${projectId}/quality/duplicates/latest`,
       {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,

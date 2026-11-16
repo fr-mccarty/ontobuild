@@ -39,6 +39,14 @@ export const RIGHT_SIDEBAR_WIDTH_KEY = "ontokit:rightSidebarWidth";
 export const RIGHT_SIDEBAR_DEFAULT_WIDTH = 400;
 export const RIGHT_SIDEBAR_MIN_WIDTH = 320;
 
+/**
+ * Below Tailwind's `lg` breakpoint (1024px) the panel floats over the editor instead of
+ * squeezing it: at its 400px default width a side-by-side panel would leave the detail
+ * panel under ~600px there. From `lg` up it sits beside the editor as before.
+ */
+export const RIGHT_SIDEBAR_LAYOUT_CLASSES =
+  "absolute inset-y-0 right-0 z-30 max-w-[calc(100%-2rem)] shadow-xl lg:static lg:z-auto lg:max-w-none lg:shadow-none";
+
 function maxSidebarWidth(): number {
   if (typeof window === "undefined") return 800;
   return Math.max(RIGHT_SIDEBAR_MIN_WIDTH, Math.floor(window.innerWidth * 0.5));
@@ -83,18 +91,30 @@ export function RightSidebar({ onClose, lintSummary, agent, health }: RightSideb
 
   return (
     <>
-      <ResizablePanelDivider
-        width={width}
-        onWidthChange={handleWidthChange}
-        minWidth={RIGHT_SIDEBAR_MIN_WIDTH}
-        maxWidth={maxSidebarWidth()}
-        invert
+      {/* Overlay mode only: dims the editor and closes the panel on a click outside it. */}
+      <div
+        data-testid="right-sidebar-backdrop"
+        aria-hidden="true"
+        onClick={onClose}
+        className="absolute inset-0 z-20 bg-slate-900/20 lg:hidden"
       />
+      <div className="hidden lg:contents">
+        <ResizablePanelDivider
+          width={width}
+          onWidthChange={handleWidthChange}
+          minWidth={RIGHT_SIDEBAR_MIN_WIDTH}
+          maxWidth={maxSidebarWidth()}
+          invert
+        />
+      </div>
       <aside
         data-agent-exclude
         aria-label="Agent and health panel"
         style={{ width }}
-        className="flex h-full min-w-0 flex-shrink-0 flex-col border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+        className={cn(
+          "flex h-full min-w-0 flex-shrink-0 flex-col border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900",
+          RIGHT_SIDEBAR_LAYOUT_CLASSES,
+        )}
       >
         <div className="flex items-stretch border-b border-slate-200 dark:border-slate-700">
           <div role="tablist" aria-label="Right panel" className="flex flex-1">

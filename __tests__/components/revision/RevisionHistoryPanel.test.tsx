@@ -386,6 +386,19 @@ describe("HistoryButton", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("explains itself in a tooltip, with the close shortcut when open", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+    const { rerender } = render(<HistoryButton onClick={vi.fn()} isOpen={false} />);
+    const button = screen.getByRole("button", { name: "History" });
+    fireEvent.focus(button);
+    expect((await screen.findByRole("tooltip")).textContent).toBe(
+      "Revision history: show the commits made to this ontology and their changes",
+    );
+    rerender(<HistoryButton onClick={vi.fn()} isOpen />);
+    expect((await screen.findByRole("tooltip")).textContent).toBe("Hide revision history (shortcut: Esc)");
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("applies className prop", () => {
     const { container } = render(
       <HistoryButton onClick={vi.fn()} isOpen={false} className="extra-class" />

@@ -5,7 +5,9 @@ import {
   AgentChatError,
   streamAgentChat,
   type AgentMessage,
+  type AgentOntologyChange,
   type AgentStreamEvent,
+  type AgentUiAction,
 } from "@/lib/api/agentChat";
 
 export type AgentToolStatus = "pending" | "ok" | "error";
@@ -155,6 +157,8 @@ export function reduceAgentEvent(conv: AgentConversation, event: AgentStreamEven
     }
     case "error":
       return { ...conv, error: event.detail };
+    case "ontology_changed":
+    case "ui_action":
     case "done":
       return conv;
   }
@@ -277,7 +281,15 @@ export interface SendAgentMessageOptions {
   branch?: string;
   text: string;
   buildContext: (lastPageText: string | null) => { context: string; pageText: string };
+  /** A tool call changed project state (any `tool_result` with `mutated: true`). */
   onProjectChanged?: () => void;
+  /**
+   * A tool call committed to the ontology. Also called with `commit_hash: null` when the
+   * stream stopped while a tool was still running, since it may have committed.
+   */
+  onOntologyChanged?: (change: AgentOntologyChange) => void;
+  /** The agent asked the editor to do something, such as select an entity. */
+  onUiAction?: (action: AgentUiAction) => void;
 }
 
 export async function sendAgentMessage({
@@ -286,6 +298,8 @@ export async function sendAgentMessage({
   text,
   buildContext,
   onProjectChanged,
+  onOntologyChanged,
+  onUiAction,
 }: SendAgentMessageOptions): Promise<void> {
   const store = useAgentChatStore.getState();
   const before = store.conversations[projectId] ?? EMPTY_CONVERSATION;
@@ -298,7 +312,7 @@ export async function sendAgentMessage({
   controllers.set(projectId, controller);
   let errorMessage: string | null = null;
   let aborted = false;
-  let sawMutation = false;
+  const runningTools = new Map<string, string>();
 
   try {
     await streamAgentChat({
@@ -312,11 +326,15 @@ export async function sendAgentMessage({
       onEvent: (event) => {
         if (controllers.get(projectId) !== controller) return;
         useAgentChatStore.getState().applyEvent(projectId, event);
-        if (event.type === "tool_result" && event.mutated) {
-          sawMutation = true;
-          onProjectChanged?.();
-        } else if (event.type === "done" && sawMutation) {
-          onProjectChanged?.();
+        if (event.type === "tool_use") {
+          runningTools.set(event.id, event.name);
+        } else if (event.type === "tool_result") {
+          runningTools.delete(event.tool_use_id);
+          if (event.mutated) onProjectChanged?.();
+        } else if (event.type === "ontology_changed") {
+          onOntologyChanged?.(event);
+        } else if (event.type === "ui_action") {
+          onUiAction?.(event.action);
         }
       },
     });
@@ -333,7 +351,19 @@ export async function sendAgentMessage({
       controllers.delete(projectId);
       useAgentChatStore.getState().finishTurn(projectId, { error: errorMessage, aborted });
     }
-    if (aborted && sawMutation) onProjectChanged?.();
+    // A tool that was still running when the stream stopped may have committed before
+    // the server noticed; refresh once in case it did.
+    const [interrupted] = runningTools;
+    if (interrupted) {
+      onProjectChanged?.();
+      onOntologyChanged?.({
+        tool_use_id: interrupted[0],
+        name: interrupted[1],
+        branch: branch ?? "",
+        commit_hash: null,
+        deleted_iris: [],
+      });
+    }
   }
 }
 

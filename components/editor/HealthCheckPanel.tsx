@@ -77,10 +77,13 @@ export function HealthCheckPanel({
   const [consistencyIssues, setConsistencyIssues] = useState<ConsistencyIssue[]>([]);
   const [isCheckingConsistency, setIsCheckingConsistency] = useState(false);
   const [consistencyError, setConsistencyError] = useState<string | null>(null);
+  // null until a check has run on this branch (the API reports checked_at: null then).
+  const [consistencyCheckedAt, setConsistencyCheckedAt] = useState<string | null>(null);
 
   const [duplicateClusters, setDuplicateClusters] = useState<DuplicateCluster[]>([]);
   const [isDetectingDuplicates, setIsDetectingDuplicates] = useState(false);
   const [duplicatesError, setDuplicatesError] = useState<string | null>(null);
+  const [duplicatesCheckedAt, setDuplicatesCheckedAt] = useState<string | null>(null);
 
   const [isLoadingCachedConsistency, setIsLoadingCachedConsistency] = useState(false);
   const [isLoadingCachedDuplicates, setIsLoadingCachedDuplicates] = useState(false);
@@ -192,6 +195,7 @@ export function HealthCheckPanel({
       setSummary((prev) => prev ? {
         ...prev,
         last_run: null,
+        counts_run_id: null,
         error_count: 0,
         warning_count: 0,
         info_count: 0,
@@ -264,6 +268,7 @@ export function HealthCheckPanel({
         }
         const completed = result as ConsistencyCheckResult;
         setConsistencyIssues(completed.issues);
+        setConsistencyCheckedAt(completed.checked_at);
         return;
       }
       setConsistencyError("Consistency check timed out — try again later");
@@ -320,6 +325,7 @@ export function HealthCheckPanel({
         }
         const completed = result as DuplicateDetectionResult;
         setDuplicateClusters(completed.clusters);
+        setDuplicatesCheckedAt(completed.checked_at);
         return;
       }
       setDuplicatesError("Duplicate detection timed out — try again later");
@@ -343,7 +349,11 @@ export function HealthCheckPanel({
         if (cancelled) return;
         setIsLoadingCachedConsistency(true);
         qualityApi.getConsistencyIssues(projectId, accessToken, branch)
-          .then((r) => { if (!cancelled) setConsistencyIssues(r.issues); })
+          .then((r) => {
+            if (cancelled) return;
+            setConsistencyIssues(r.issues);
+            setConsistencyCheckedAt(r.checked_at);
+          })
           .catch((err) => { console.error("Failed to load cached consistency issues", { projectId, err }); })
           .finally(() => { if (!cancelled) setIsLoadingCachedConsistency(false); });
       });
@@ -353,7 +363,11 @@ export function HealthCheckPanel({
         if (cancelled) return;
         setIsLoadingCachedDuplicates(true);
         qualityApi.getLatestDuplicates(projectId, accessToken, branch)
-          .then((r) => { if (!cancelled) setDuplicateClusters(r.clusters); })
+          .then((r) => {
+            if (cancelled) return;
+            setDuplicateClusters(r.clusters);
+            setDuplicatesCheckedAt(r.checked_at);
+          })
           .catch((err) => { console.error("Failed to load cached duplicates", { projectId, err }); })
           .finally(() => { if (!cancelled) setIsLoadingCachedDuplicates(false); });
       });
@@ -364,8 +378,10 @@ export function HealthCheckPanel({
   useEffect(() => {
     setConsistencyIssues([]);
     setConsistencyError(null);
+    setConsistencyCheckedAt(null);
     setDuplicateClusters([]);
     setDuplicatesError(null);
+    setDuplicatesCheckedAt(null);
   }, [projectId, branch]);
 
   useEffect(() => {
@@ -635,14 +651,25 @@ export function HealthCheckPanel({
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
             </div>
           )}
-          {!isCheckingConsistency && !isLoadingCachedConsistency && consistencyIssues.length === 0 && (
+          {!isCheckingConsistency && !isLoadingCachedConsistency && consistencyIssues.length === 0 && !consistencyCheckedAt && (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Info className="h-12 w-12 text-slate-300 dark:text-slate-600" />
+              <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+                Not checked yet
+              </p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Run a consistency check to validate your ontology structure.
+              </p>
+            </div>
+          )}
+          {!isCheckingConsistency && !isLoadingCachedConsistency && consistencyIssues.length === 0 && consistencyCheckedAt && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <ShieldCheck className="h-12 w-12 text-green-500" />
               <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
                 No consistency issues
               </p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Run a consistency check to validate your ontology structure.
+                Last checked {new Date(consistencyCheckedAt).toLocaleString()}
               </p>
             </div>
           )}
@@ -698,14 +725,25 @@ export function HealthCheckPanel({
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
             </div>
           )}
-          {!isDetectingDuplicates && !isLoadingCachedDuplicates && duplicateClusters.length === 0 && (
+          {!isDetectingDuplicates && !isLoadingCachedDuplicates && duplicateClusters.length === 0 && !duplicatesCheckedAt && (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Info className="h-12 w-12 text-slate-300 dark:text-slate-600" />
+              <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+                Not checked yet
+              </p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Click &ldquo;Find Duplicates&rdquo; to scan for near-duplicate entities.
+              </p>
+            </div>
+          )}
+          {!isDetectingDuplicates && !isLoadingCachedDuplicates && duplicateClusters.length === 0 && duplicatesCheckedAt && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle2 className="h-12 w-12 text-green-500" />
               <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
                 No duplicates detected
               </p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Click &ldquo;Find Duplicates&rdquo; to scan for near-duplicate entities.
+                Last checked {new Date(duplicatesCheckedAt).toLocaleString()}
               </p>
             </div>
           )}

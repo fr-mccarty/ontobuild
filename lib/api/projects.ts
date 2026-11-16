@@ -60,7 +60,8 @@ export interface ProjectCreate {
 
 export interface ProjectUpdate {
   name?: string;
-  description?: string;
+  /** null clears the description; omit to leave it unchanged. */
+  description?: string | null;
   is_public?: boolean;
   label_preferences?: string[];
 }

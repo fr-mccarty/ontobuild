@@ -255,4 +255,123 @@ describe("AddEntityDialog", () => {
       "http://example.org/ontology#RedBloodCell"
     );
   });
+
+  describe("while the dialog stays open", () => {
+    const labelInput = () => screen.getByPlaceholderText("e.g., Privileged Altar") as HTMLInputElement;
+    const iriInput = () => screen.getByLabelText("IRI") as HTMLInputElement;
+    const typeSelect = () => screen.getByLabelText("Type") as HTMLSelectElement;
+
+    it("keeps the typed label when nextNumeric changes, and follows it in the untouched IRI", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(
+        <AddEntityDialog {...defaultProps} iriPattern="numeric" nextNumeric={5} />
+      );
+      await user.click(screen.getByText("Advanced"));
+      await user.type(labelInput(), "Half typed");
+      expect(iriInput().value).toBe("http://example.org/ontology#5");
+
+      rerender(<AddEntityDialog {...defaultProps} iriPattern="numeric" nextNumeric={6} />);
+
+      expect(labelInput().value).toBe("Half typed");
+      expect(iriInput().value).toBe("http://example.org/ontology#6");
+    });
+
+    it("keeps a hand-edited IRI when nextNumeric changes", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(
+        <AddEntityDialog {...defaultProps} iriPattern="numeric" nextNumeric={5} />
+      );
+      await user.click(screen.getByText("Advanced"));
+      await user.clear(iriInput());
+      await user.type(iriInput(), "http://custom.iri/Mine");
+
+      rerender(<AddEntityDialog {...defaultProps} iriPattern="numeric" nextNumeric={6} />);
+
+      expect(iriInput().value).toBe("http://custom.iri/Mine");
+    });
+
+    it("keeps the label and re-derives a named IRI when the namespace is detected late", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(
+        <AddEntityDialog {...defaultProps} iriPattern="uuid" ontologyNamespace="http://example.org/ont#" />
+      );
+      await user.click(screen.getByText("Advanced"));
+      await user.type(labelInput(), "Red Cell");
+
+      rerender(
+        <AddEntityDialog {...defaultProps} iriPattern="named" ontologyNamespace="http://real.org/onto#" />
+      );
+
+      expect(labelInput().value).toBe("Red Cell");
+      expect(iriInput().value).toBe("http://real.org/onto#RedCell");
+    });
+
+    it("keeps the uuid IRI stable across unrelated prop changes", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(<AddEntityDialog {...defaultProps} nextNumeric={1} />);
+      await user.click(screen.getByText("Advanced"));
+      expect(iriInput().value).toBe("http://example.org/ontology#TestBase62Uuid");
+
+      rerender(<AddEntityDialog {...defaultProps} nextNumeric={2} />);
+      expect(iriInput().value).toBe("http://example.org/ontology#TestBase62Uuid");
+    });
+
+    it("keeps the label when the parent changes, and only updates an untouched type", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(<AddEntityDialog {...defaultProps} />);
+      await user.type(labelInput(), "Child");
+      expect(typeSelect().value).toBe("class");
+
+      rerender(
+        <AddEntityDialog {...defaultProps} parentIri="http://example.org/ontology#Animal" initialType="individual" />
+      );
+      expect(labelInput().value).toBe("Child");
+      expect(typeSelect().value).toBe("individual");
+      expect(screen.getByText(/Create a new individual of/)).toBeDefined();
+
+      await user.selectOptions(typeSelect(), "class");
+      rerender(
+        <AddEntityDialog {...defaultProps} parentIri="http://example.org/ontology#Plant" initialType="individual" />
+      );
+      expect(labelInput().value).toBe("Child");
+      expect(typeSelect().value).toBe("class");
+    });
+
+    it("drops a chosen type that the new parent does not allow", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(<AddEntityDialog {...defaultProps} />);
+      await user.selectOptions(typeSelect(), "objectProperty");
+
+      rerender(<AddEntityDialog {...defaultProps} parentIri="http://example.org/ontology#Animal" />);
+      expect(typeSelect().value).toBe("class");
+    });
+
+    it("submits the values on screen after props changed mid-edit", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(
+        <AddEntityDialog {...defaultProps} iriPattern="numeric" nextNumeric={5} />
+      );
+      await user.type(labelInput(), "Thing");
+      rerender(<AddEntityDialog {...defaultProps} iriPattern="numeric" nextNumeric={7} />);
+      await user.click(screen.getByText("Create"));
+
+      expect(defaultProps.onConfirm).toHaveBeenCalledWith({
+        iri: "http://example.org/ontology#7",
+        label: "Thing",
+        entityType: "class",
+        parentIri: undefined,
+      });
+    });
+  });
+
+  it("starts with a fresh form each time it is reopened", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { rerender } = render(<AddEntityDialog {...defaultProps} />);
+    await user.type(screen.getByPlaceholderText("e.g., Privileged Altar"), "Leftover");
+
+    rerender(<AddEntityDialog {...defaultProps} open={false} />);
+    rerender(<AddEntityDialog {...defaultProps} open />);
+
+    expect((screen.getByPlaceholderText("e.g., Privileged Altar") as HTMLInputElement).value).toBe("");
+  });
 });

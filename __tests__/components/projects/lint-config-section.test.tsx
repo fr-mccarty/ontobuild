@@ -71,12 +71,14 @@ const summaryWithResults = {
   last_run: {
     id: "run1",
     project_id: "p1",
+    branch: "main",
     status: "completed" as const,
     started_at: "2026-04-20T10:00:00Z",
     completed_at: "2026-04-20T10:01:00Z",
     issues_found: 5,
     error_message: null,
   },
+  counts_run_id: "run1",
   error_count: 2,
   warning_count: 2,
   info_count: 1,
@@ -151,7 +153,7 @@ describe("LintConfigSection", () => {
     vi.clearAllMocks();
     mockLintApi.getLevels.mockResolvedValue(sampleLevels);
     mockLintApi.getStatus.mockResolvedValue({
-      project_id: "p1", last_run: null, error_count: 0, warning_count: 0, info_count: 0, total_issues: 0,
+      project_id: "p1", last_run: null, counts_run_id: null, error_count: 0, warning_count: 0, info_count: 0, total_issues: 0,
     });
   });
 
@@ -462,7 +464,8 @@ describe("LintConfigSection", () => {
     });
     mockLintApi.getStatus.mockResolvedValue({
       project_id: "p1",
-      last_run: { id: "run1", project_id: "p1", status: "completed", started_at: "2026-04-20T10:00:00Z", completed_at: "2026-04-20T10:01:00Z", issues_found: 5, error_message: null },
+      last_run: { id: "run1", project_id: "p1", branch: "main", status: "completed", started_at: "2026-04-20T10:00:00Z", completed_at: "2026-04-20T10:01:00Z", issues_found: 5, error_message: null },
+      counts_run_id: "run1",
       error_count: 2,
       warning_count: 2,
       info_count: 1,
@@ -485,7 +488,8 @@ describe("LintConfigSection", () => {
     });
     mockLintApi.getStatus.mockResolvedValue({
       project_id: "p1",
-      last_run: { id: "run1", project_id: "p1", status: "completed", started_at: "2026-04-20T10:00:00Z", completed_at: "2026-04-20T10:01:00Z", issues_found: 0, error_message: null },
+      last_run: { id: "run1", project_id: "p1", branch: "main", status: "completed", started_at: "2026-04-20T10:00:00Z", completed_at: "2026-04-20T10:01:00Z", issues_found: 0, error_message: null },
+      counts_run_id: "run1",
       error_count: 0,
       warning_count: 0,
       info_count: 0,

@@ -142,4 +142,31 @@ describe("IndividualList", () => {
       expect(mockSearchEntities).toHaveBeenCalledTimes(2);
     });
   });
+
+  it("reloads in place when refreshKey changes, without a spinner", async () => {
+    const ind = (iri: string, label: string) => ({ iri, label, entity_type: "individual", deprecated: false });
+    mockSearchEntities.mockResolvedValue({ results: [ind("http://ex.org/a", "Alpha")] });
+    const { rerender, container } = render(<IndividualList {...defaultProps} refreshKey={0} />);
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeDefined());
+
+    let resolve: (v: unknown) => void = () => {};
+    mockSearchEntities.mockReturnValue(new Promise((r) => { resolve = r; }));
+    rerender(<IndividualList {...defaultProps} refreshKey={1} selectedIri="http://ex.org/b" />);
+    expect(container.querySelector(".animate-spin")).toBeNull();
+    expect(screen.getByText("Alpha")).toBeDefined();
+
+    resolve({ results: [ind("http://ex.org/a", "Alpha"), ind("http://ex.org/b", "Beta")] });
+    await waitFor(() => expect(screen.getByText("Beta")).toBeDefined());
+    expect(screen.getByText("Beta").getAttribute("data-selected")).toBe("true");
+  });
+
+  it("shows the spinner again when the branch changes", async () => {
+    mockSearchEntities.mockResolvedValue({ results: [] });
+    const { rerender, container } = render(<IndividualList {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText("No individuals found in this ontology")).toBeDefined());
+    mockSearchEntities.mockReturnValue(new Promise(() => {}));
+    rerender(<IndividualList {...defaultProps} branch="feature" />);
+    expect(container.querySelector(".animate-spin")).not.toBeNull();
+  });
 });
+

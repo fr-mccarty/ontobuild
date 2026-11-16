@@ -389,10 +389,15 @@ export interface OWLClassTreeResponse {
   total_classes: number;
 }
 
+export interface AnnotationValue extends LocalizedString {
+  /** Whether the value is a literal or an IRI reference. */
+  type: "iri" | "literal";
+}
+
 export interface AnnotationProperty {
   property_iri: string;
   property_label: string;
-  values: LocalizedString[];
+  values: AnnotationValue[];
 }
 
 export interface OWLClassDetail {
@@ -407,8 +412,6 @@ export interface OWLClassDetail {
   child_count: number;
   instance_count: number | null;
   instances?: { iri: string; label: string }[];
-  is_defined: boolean;
-  source_ontology?: string;
   annotations: AnnotationProperty[];
 }
 

@@ -121,7 +121,6 @@ function makeClassDetail(overrides: Record<string, unknown> = {}) {
     disjoint_iris: null,
     child_count: 5,
     instance_count: 42,
-    is_defined: true,
     annotations: [],
     ...overrides,
   };
@@ -1291,7 +1290,6 @@ describe("ClassDetailPanel", () => {
         disjoint_iris: null,
         child_count: 0,
         instance_count: 0,
-        is_defined: true,
         annotations: [],
       });
 

@@ -92,42 +92,64 @@ export function BranchProvider({
 
   const isFeatureBranch = currentBranch !== defaultBranch;
 
-  useEffect(() => {
-    if (!response) return;
-    setCurrentBranch((prev) => {
-      if (!accessToken) return response.default_branch ?? response.current_branch;
-
-      const prevExists = response.items.some((b) => b.name === prev);
-      if (prevExists) return prev;
-      try {
-        sessionStorage.removeItem(`ontokit:branch:${projectId}`);
-      } catch {
+  // Reconcile the selected branch with each new branch-list response (and when the
+  // project or auth changes). Done while rendering — the "adjust state when inputs
+  // change" pattern — so consumers never see an unreconciled branch.
+  const [lastSync, setLastSync] = useState<{
+    response: typeof response;
+    projectId: string;
+    accessToken: string | undefined;
+    clearStoredBranch: boolean;
+  } | null>(null);
+  if (
+    lastSync === null ||
+    lastSync.response !== response ||
+    lastSync.projectId !== projectId ||
+    lastSync.accessToken !== accessToken
+  ) {
+    let clearStoredBranch = false;
+    if (response) {
+      let nextBranch: string;
+      if (!accessToken) {
+        nextBranch = response.default_branch ?? response.current_branch;
+      } else if (response.items.some((b) => b.name === currentBranch)) {
+        nextBranch = currentBranch;
+      } else {
+        clearStoredBranch = true;
+        const prefExists =
+          response.preferred_branch &&
+          response.items.some((b) => b.name === response.preferred_branch);
+        nextBranch = prefExists ? response.preferred_branch! : response.current_branch;
       }
-      const prefExists =
-        response.preferred_branch &&
-        response.items.some((b) => b.name === response.preferred_branch);
-      return prefExists
-        ? response.preferred_branch!
-        : response.current_branch;
-    });
-  }, [response, projectId, accessToken]);
-
-  const [initialBranchHandled, setInitialBranchHandled] = useState(false);
-  useEffect(() => {
-    if (
-      accessToken &&
-      initialBranch &&
-      !initialBranchHandled &&
-      !isLoading &&
-      branches.length > 0
-    ) {
-      const branchExists = branches.some((b) => b.name === initialBranch);
-      if (branchExists && initialBranch !== currentBranch) {
-        setCurrentBranch(initialBranch);
-      }
-      setInitialBranchHandled(true);
+      if (nextBranch !== currentBranch) setCurrentBranch(nextBranch);
     }
-  }, [accessToken, initialBranch, initialBranchHandled, isLoading, branches, currentBranch]);
+    setLastSync({ response, projectId, accessToken, clearStoredBranch });
+  }
+
+  // The remembered branch no longer exists on the server: forget it.
+  useEffect(() => {
+    if (!lastSync?.clearStoredBranch) return;
+    try {
+      sessionStorage.removeItem(`ontokit:branch:${lastSync.projectId}`);
+    } catch {
+    }
+  }, [lastSync]);
+
+  // Once the branch list is available, honour an explicitly requested initial branch.
+  const [initialBranchHandled, setInitialBranchHandled] = useState(false);
+  if (
+    accessToken &&
+    initialBranch &&
+    !initialBranchHandled &&
+    !isLoading &&
+    branches.length > 0
+  ) {
+    const branchExists = branches.some((b) => b.name === initialBranch);
+    if (branchExists && initialBranch !== currentBranch) {
+      setCurrentBranch(initialBranch);
+    }
+    setInitialBranchHandled(true);
+  }
 
   const refreshBranches = useCallback(async () => {
     await queryClient.invalidateQueries({

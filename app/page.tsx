@@ -54,9 +54,12 @@ export default function HomePage() {
 
   const [nextPageError, setNextPageError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Clear a stale "load more" error when the search changes (adjust state during render).
+  const [prevDebouncedSearch, setPrevDebouncedSearch] = useState(debouncedSearch);
+  if (debouncedSearch !== prevDebouncedSearch) {
+    setPrevDebouncedSearch(debouncedSearch);
     setNextPageError(null);
-  }, [debouncedSearch]);
+  }
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {

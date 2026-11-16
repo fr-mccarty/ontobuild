@@ -135,12 +135,53 @@ describe("AgentPanel", () => {
     await act(async () => finish());
     expect(await screen.findByText("Added Puppy")).toBeDefined();
     expect(screen.getByLabelText("Done")).toBeDefined();
-    expect(onProjectChanged).toHaveBeenCalledTimes(2);
+    expect(onProjectChanged).toHaveBeenCalledTimes(1);
 
     expect(screen.queryByText("Add class · Puppy")).toBeNull();
     fireEvent.click(screen.getByText("Added Puppy"));
     expect(screen.getByText("Add class")).toBeDefined();
     expect(screen.getByText(/"label": "Puppy"/)).toBeDefined();
+  });
+
+  it("hands ontology changes and select_entity actions to the page callbacks", async () => {
+    vi.mocked(streamAgentChat).mockImplementation(async ({ onEvent }) => {
+      onEvent({ type: "tool_use", id: "t1", name: "create_entity", input: { label: "Puppy" } });
+      onEvent({ type: "tool_result", tool_use_id: "t1", name: "create_entity", is_error: false, summary: "Created class Puppy", mutated: true });
+      onEvent({ type: "ontology_changed", tool_use_id: "t1", name: "create_entity", branch: "main", commit_hash: "c1", deleted_iris: [] });
+      onEvent({ type: "tool_use", id: "t2", name: "select_entity", input: { iri: "http://ex.org#Puppy" } });
+      onEvent({ type: "tool_result", tool_use_id: "t2", name: "select_entity", is_error: false, summary: "Selected class Puppy", mutated: false });
+      onEvent({
+        type: "ui_action",
+        tool_use_id: "t2",
+        action: { action: "select_entity", iri: "http://ex.org#Puppy", entity_type: "class", label: "Puppy", branch: "main" },
+      });
+      onEvent({ type: "done", stop_reason: "stop" });
+    });
+    const onProjectChanged = vi.fn();
+    const onOntologyChanged = vi.fn();
+    const onUiAction = vi.fn();
+    renderWithQueryClient(
+      <AgentPanel
+        pageInfo={pageInfo}
+        onProjectChanged={onProjectChanged}
+        onOntologyChanged={onOntologyChanged}
+        onUiAction={onUiAction}
+      />,
+    );
+    fireEvent.click(await screen.findByText("Add a subclass under the selected class"));
+    expect(await screen.findByText("Selected class Puppy")).toBeDefined();
+    expect(vi.mocked(streamAgentChat).mock.calls[0][0].branch).toBe("main");
+    expect(onProjectChanged).toHaveBeenCalledTimes(1);
+    expect(onOntologyChanged).toHaveBeenCalledTimes(1);
+    expect(onOntologyChanged.mock.calls[0][0]).toMatchObject({ branch: "main", commit_hash: "c1" });
+    expect(onUiAction).toHaveBeenCalledTimes(1);
+    expect(onUiAction).toHaveBeenCalledWith({
+      action: "select_entity",
+      iri: "http://ex.org#Puppy",
+      entity_type: "class",
+      label: "Puppy",
+      branch: "main",
+    });
   });
 
   it("shows an error with retry", async () => {
@@ -186,7 +227,7 @@ describe("AgentModelPicker", () => {
   });
 
   it("selecting a model saves it and uses it for the next request", async () => {
-    vi.mocked(agentSettingsApi.saveSettings).mockResolvedValue({ settings: configuredStatus.settings });
+    vi.mocked(agentSettingsApi.saveSettings).mockResolvedValue(configuredStatus.settings);
     vi.mocked(streamAgentChat).mockResolvedValue(undefined);
     await openPicker();
     fireEvent.click(screen.getByText("OpenAI: GPT X"));
@@ -207,7 +248,7 @@ describe("AgentModelPicker", () => {
   });
 
   it("saves the effort", async () => {
-    vi.mocked(agentSettingsApi.saveSettings).mockResolvedValue({ settings: configuredStatus.settings });
+    vi.mocked(agentSettingsApi.saveSettings).mockResolvedValue(configuredStatus.settings);
     await openPicker();
     fireEvent.click(screen.getByRole("radio", { name: "Low" }));
     expect(agentSettingsApi.saveSettings).toHaveBeenCalledWith({ effort: "low" });

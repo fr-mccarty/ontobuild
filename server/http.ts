@@ -53,6 +53,16 @@ export function requireString(body: Record<string, unknown>, field: string): str
   return v;
 }
 
+/** Reads an entity IRI path parameter, URL-decoding it (a malformed escape is returned as-is). */
+export function iriParam(c: Context, name = "iri"): string {
+  const raw = c.req.param(name) ?? "";
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 export function noContent(c: Context) {
   return c.body(null, 204);
 }

@@ -1,5 +1,5 @@
 .scalar-container {
-  height: calc(100vh - 4rem);
+  overflow-y: auto;
 }
 
 .scalar-container .scalar-api-reference,
@@ -26,4 +26,88 @@
 
 .scalar-container .darklight-reference {
   flex-shrink: 0 !important;
+}
+
+/*
+ * OntoKit theme for Scalar: Tailwind slate neutrals, the header's blue accent,
+ * and the app fonts. body.light-mode / body.dark-mode are synced from the app's
+ * theme by useSyncScalarDarkMode().
+ */
+.scalar-container .scalar-app,
+.scalar-container .scalar-api-reference {
+  --scalar-font: var(--font-inter), system-ui, sans-serif;
+  --scalar-font-code: var(--font-jetbrains-mono), monospace;
+  --scalar-radius: 0.375rem;
+  --scalar-radius-lg: 0.5rem;
+  --scalar-radius-xl: 0.75rem;
+}
+
+.light-mode .scalar-container {
+  --scalar-color-1: #0f172a; /* slate-900 */
+  --scalar-color-2: #475569; /* slate-600 */
+  --scalar-color-3: #94a3b8; /* slate-400 */
+  --scalar-color-accent: #2563eb; /* blue-600 */
+  --scalar-background-1: #ffffff;
+  --scalar-background-2: #f8fafc; /* slate-50 */
+  --scalar-background-3: #f1f5f9; /* slate-100 */
+  --scalar-background-accent: #dbeafe; /* blue-100 */
+  --scalar-border-color: #e2e8f0; /* slate-200 */
+  --scalar-link-color: #2563eb;
+  --scalar-link-color-hover: #1d4ed8;
+  --scalar-button-1: #2563eb;
+  --scalar-button-1-hover: #1d4ed8;
+  --scalar-button-1-color: #ffffff;
+  --scalar-color-green: #16a34a;
+  --scalar-color-red: #dc2626;
+  --scalar-color-yellow: #ca8a04;
+  --scalar-color-blue: #2563eb;
+  --scalar-color-orange: #ea580c;
+  --scalar-color-purple: #9333ea;
+
+  --scalar-sidebar-background-1: #ffffff;
+  --scalar-sidebar-color-1: #0f172a;
+  --scalar-sidebar-color-2: #475569;
+  --scalar-sidebar-color-active: #1e3a8a; /* blue-900, as in the header */
+  --scalar-sidebar-border-color: #e2e8f0;
+  --scalar-sidebar-item-hover-background: #f8fafc;
+  --scalar-sidebar-item-hover-color: #0f172a;
+  --scalar-sidebar-item-active-background: #dbeafe; /* blue-100, as in the header */
+  --scalar-sidebar-search-background: #ffffff;
+  --scalar-sidebar-search-border-color: #e2e8f0;
+  --scalar-sidebar-search-color: #64748b;
+}
+
+.dark-mode .scalar-container {
+  --scalar-color-1: #f1f5f9; /* slate-100 */
+  --scalar-color-2: #94a3b8; /* slate-400 */
+  --scalar-color-3: #64748b; /* slate-500 */
+  --scalar-color-accent: #60a5fa; /* blue-400 */
+  --scalar-background-1: #0f172a; /* slate-900 */
+  --scalar-background-2: #1e293b; /* slate-800 */
+  --scalar-background-3: #334155; /* slate-700 */
+  --scalar-background-accent: rgb(30 58 138 / 0.5); /* blue-900/50 */
+  --scalar-border-color: #334155; /* slate-700 */
+  --scalar-link-color: #60a5fa;
+  --scalar-link-color-hover: #93c5fd;
+  --scalar-button-1: #3b82f6;
+  --scalar-button-1-hover: #2563eb;
+  --scalar-button-1-color: #ffffff;
+  --scalar-color-green: #4ade80;
+  --scalar-color-red: #f87171;
+  --scalar-color-yellow: #facc15;
+  --scalar-color-blue: #60a5fa;
+  --scalar-color-orange: #fb923c;
+  --scalar-color-purple: #c084fc;
+
+  --scalar-sidebar-background-1: #0f172a;
+  --scalar-sidebar-color-1: #f1f5f9;
+  --scalar-sidebar-color-2: #94a3b8;
+  --scalar-sidebar-color-active: #dbeafe; /* blue-100, as in the header */
+  --scalar-sidebar-border-color: #334155;
+  --scalar-sidebar-item-hover-background: rgb(30 41 59 / 0.5);
+  --scalar-sidebar-item-hover-color: #ffffff;
+  --scalar-sidebar-item-active-background: rgb(30 58 138 / 0.5);
+  --scalar-sidebar-search-background: #1e293b;
+  --scalar-sidebar-search-border-color: #334155;
+  --scalar-sidebar-search-color: #94a3b8;
 }

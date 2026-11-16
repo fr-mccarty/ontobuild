@@ -85,6 +85,19 @@ export async function resolveBranch(projectId: string, branch?: string | null): 
   return git.getDefaultBranch(projectId);
 }
 
+/**
+ * Resolves a branch named by a client (usually the `branch` query parameter).
+ * Unlike resolveBranch, it rejects a name that does not exist with a 404, so a
+ * typo fails up front instead of inside a background job.
+ */
+export async function requireBranch(projectId: string, branch?: string | null): Promise<string> {
+  const name = await resolveBranch(projectId, branch);
+  if (branch && git.repoExists(projectId) && !(await git.branchExists(projectId, name))) {
+    httpError(404, `Branch not found: ${name}`);
+  }
+  return name;
+}
+
 export interface LoadedOntology {
   projectId: string;
   ref: string;

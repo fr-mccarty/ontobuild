@@ -237,4 +237,37 @@ describe("PropertyTree", () => {
       expect(mockSearchEntities).toHaveBeenCalledTimes(2);
     });
   });
+
+  it("reloads in place when refreshKey changes, keeping collapsed groups and without a spinner", async () => {
+    const obj = (iri: string, label: string) => ({ iri, label, entity_type: "property", property_kind: "object", deprecated: false });
+    const data = (iri: string, label: string) => ({ iri, label, entity_type: "property", property_kind: "data", deprecated: false });
+    mockSearchEntities.mockResolvedValue({ results: [obj("http://ex.org/hasPart", "hasPart"), data("http://ex.org/age", "age")] });
+    const { rerender, container } = render(<PropertyTree {...defaultProps} refreshKey={0} />);
+    await waitFor(() => expect(screen.getAllByTestId("tree-group")).toHaveLength(2));
+    fireEvent.click(screen.getByTestId("collapse-__group__data"));
+
+    let resolve: (v: unknown) => void = () => {};
+    mockSearchEntities.mockReturnValue(new Promise((r) => { resolve = r; }));
+    rerender(<PropertyTree {...defaultProps} refreshKey={1} />);
+    expect(container.querySelector(".animate-spin")).toBeNull();
+    expect(screen.getByText("hasPart")).toBeDefined();
+
+    resolve({ results: [obj("http://ex.org/hasPart", "hasPart"), obj("http://ex.org/hasBase", "hasBase"), data("http://ex.org/age", "age")] });
+    await waitFor(() => expect(screen.getByText("hasBase")).toBeDefined());
+    const expanded = screen.getAllByTestId("group-expanded").map((e) => e.textContent);
+    expect(expanded).toEqual(["true", "false"]);
+  });
+
+  it("opens the group that holds a property selected from elsewhere", async () => {
+    mockSearchEntities.mockResolvedValue({
+      results: [{ iri: "http://ex.org/age", label: "age", entity_type: "property", property_kind: "data", deprecated: false }],
+    });
+    const { rerender } = render(<PropertyTree {...defaultProps} />);
+    await waitFor(() => expect(screen.getAllByTestId("tree-group")).toHaveLength(1));
+    fireEvent.click(screen.getByTestId("collapse-__group__data"));
+    expect(screen.getByTestId("group-expanded").textContent).toBe("false");
+    rerender(<PropertyTree {...defaultProps} selectedIri="http://ex.org/age" />);
+    expect(screen.getByTestId("group-expanded").textContent).toBe("true");
+  });
 });
+

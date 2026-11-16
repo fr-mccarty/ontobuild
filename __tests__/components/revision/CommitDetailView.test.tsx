@@ -75,6 +75,8 @@ const mockDiffResponse: RevisionDiffResponse = {
   from_version: "parent123",
   to_version: "abc123",
   files_changed: 2,
+  total_additions: 15,
+  total_deletions: 3,
   changes: [
     {
       path: "ontology.ttl",

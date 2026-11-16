@@ -19,6 +19,8 @@ interface BranchSelectorProps {
   onBranchChange?: (branchName: string) => void;
   canCreateBranch?: boolean;
   readOnly?: boolean;
+  /** Explains in the tooltip why the selector is read-only. */
+  readOnlyReason?: string;
 }
 
 export function BranchSelector({
@@ -26,11 +28,12 @@ export function BranchSelector({
   onBranchChange,
   canCreateBranch = false,
   readOnly = false,
+  readOnlyReason,
 }: BranchSelectorProps) {
   const {
     branches,
     currentBranch,
-    defaultBranch: _defaultBranch,
+    defaultBranch,
     isLoading,
     isFeatureBranch,
     switchBranch,
@@ -99,32 +102,56 @@ export function BranchSelector({
 
   const currentBranchInfo = branches.find((b) => b.name === currentBranch);
 
+  const plural = (n: number) => (n === 1 ? "commit" : "commits");
+  const branchStatus = [
+    currentBranchInfo?.commit_hash && `at commit ${currentBranchInfo.commit_hash.slice(0, 7)}`,
+    currentBranchInfo && currentBranchInfo.commits_ahead > 0 &&
+      `${currentBranchInfo.commits_ahead} ${plural(currentBranchInfo.commits_ahead)} ahead of ${defaultBranch}`,
+    currentBranchInfo && currentBranchInfo.commits_behind > 0 &&
+      `${currentBranchInfo.commits_behind} ${plural(currentBranchInfo.commits_behind)} behind ${defaultBranch}`,
+  ].filter(Boolean).join(", ");
+  const branchTooltip = isLoading
+    ? "Branch: loading branches…"
+    : `Branch: ${currentBranch}${branchStatus ? ` ${branchStatus}` : ""}. ${
+        readOnly
+          ? readOnlyReason ?? "Switching branches isn't available here."
+          : canCreateBranch
+            ? "Click to switch branches or create a new one."
+            : "Click to switch branches."
+      }`;
+
   return (
     <div className={cn("relative", className)}>
-      <Button
-        variant="outline"
-        size="sm"
-        className={cn(
-          "gap-2",
-          isFeatureBranch && "border-amber-500 text-amber-600 dark:text-amber-400"
-        )}
-        onClick={() => !readOnly && setIsOpen(!isOpen)}
-        disabled={isLoading || readOnly}
-      >
-        <GitBranch className="h-4 w-4" />
-        <span className="max-w-32 truncate">{currentBranch}</span>
-        {currentBranchInfo?.commit_hash && (
-          <code className="rounded-sm bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-            {currentBranchInfo.commit_hash.slice(0, 7)}
-          </code>
-        )}
-        {currentBranchInfo && currentBranchInfo.commits_ahead > 0 && (
-          <span className="rounded-sm bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-            +{currentBranchInfo.commits_ahead}
-          </span>
-        )}
-        {!readOnly && <ChevronDown className="h-4 w-4" />}
-      </Button>
+      {/* The span receives hover even when the button is disabled, so the tooltip can explain why. */}
+      <Tooltip side="bottom" disabled={isOpen} content={branchTooltip}>
+        <span className="inline-flex">
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              "gap-2",
+              isFeatureBranch && "border-amber-500 text-amber-600 dark:text-amber-400"
+            )}
+            onClick={() => !readOnly && setIsOpen(!isOpen)}
+            disabled={isLoading || readOnly}
+            aria-expanded={isOpen}
+          >
+            <GitBranch className="h-4 w-4" />
+            <span className="max-w-32 truncate">{currentBranch}</span>
+            {currentBranchInfo?.commit_hash && (
+              <code className="rounded-sm bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                {currentBranchInfo.commit_hash.slice(0, 7)}
+              </code>
+            )}
+            {currentBranchInfo && currentBranchInfo.commits_ahead > 0 && (
+              <span className="rounded-sm bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                +{currentBranchInfo.commits_ahead}
+              </span>
+            )}
+            {!readOnly && <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </span>
+      </Tooltip>
 
       {isOpen && (
         <>

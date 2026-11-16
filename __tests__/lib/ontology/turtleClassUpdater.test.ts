@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Parser } from "n3";
 import { updateClassInTurtle } from "@/lib/ontology/turtleClassUpdater";
 import { TURTLE_FIXTURE } from "./fixtures";
 
@@ -195,5 +196,23 @@ describe("updateClassInTurtle", () => {
     expect(result).toContain("@prefix ex:");
     expect(result).toContain("@prefix owl:");
     expect(result).toContain("@prefix rdfs:");
+  });
+});
+
+describe("updateClassInTurtle block boundaries", () => {
+  it("keeps the next entity when the class ends with a full IRI containing #", () => {
+    // generateTurtleSnippet writes parents as <...#Parent>; the `#` used to be read as a comment.
+    const before = `@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\n`;
+    const after = `\n\n<http://example.org/ont#Next> a owl:Class ;\n    rdfs:label "Next" .\n`;
+    const block = `<http://example.org/ont#Dog> a owl:Class ;\n    rdfs:label "Dog" ;\n    rdfs:subClassOf <http://example.org/ont#Animal> .`;
+    const result = updateClassInTurtle(before + block + after, "http://example.org/ont#Dog", {
+      labels: [{ value: "Hound" }],
+      comments: [],
+      parent_iris: ["http://example.org/ont#Animal"],
+    });
+    expect(result.startsWith(before)).toBe(true);
+    expect(result.endsWith(after)).toBe(true);
+    expect(result).toContain('rdfs:label "Hound"');
+    expect(() => new Parser().parse(result)).not.toThrow();
   });
 });

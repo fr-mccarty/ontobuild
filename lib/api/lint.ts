@@ -27,6 +27,7 @@ export interface LintIssue {
 export interface LintRun {
   id: string;
   project_id: string;
+  branch: string | null;
   status: LintRunStatus;
   started_at: string;
   completed_at: string | null;
@@ -40,7 +41,10 @@ export interface LintRunDetail extends LintRun {
 
 export interface LintSummary {
   project_id: string;
+  /** The most recent run; it may still be pending or running. */
   last_run: LintRun | null;
+  /** The completed run the counts come from, or null when no run has completed. */
+  counts_run_id: string | null;
   error_count: number;
   warning_count: number;
   info_count: number;
@@ -127,10 +131,11 @@ export const lintApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     }),
 
-  getRun: (projectId: string, runId: string, token?: string) =>
+  getRun: (projectId: string, runId: string, token?: string, options?: { include_resolved?: boolean }) =>
     api.get<LintRunDetail>(
       `/api/v1/projects/${projectId}/lint/runs/${runId}`,
       {
+        params: options,
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       }
     ),

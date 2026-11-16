@@ -116,7 +116,6 @@ export function PropertyDetailPanel({
   const [editRelationships, setEditRelationships] = useState<RelationshipGroup[]>([]);
   const [editPropertyType, setEditPropertyType] = useState<PropertyType>("object");
 
-  const editInitializedRef = useRef(false);
   const toast = useToast();
 
   const buildDraftEntry = useCallback((): PropertyDraftEntry | null => {
@@ -249,13 +248,6 @@ export function PropertyDetailPanel({
     };
   }, []);
 
-  const enterEditMode = useCallback(() => {
-    if (!detail) return;
-    initEditState(detail);
-    editInitializedRef.current = true;
-    setIsEditing(true);
-  }, [detail, initEditState]);
-
   const cancelEditMode = useCallback(() => {
     discardDraft();
     if (detail) initEditState(detail);
@@ -266,10 +258,11 @@ export function PropertyDetailPanel({
     await flushToGit();
   }, [triggerSave, flushToGit]);
 
-  useEffect(() => {
-    if (isEditing || editInitializedRef.current) return;
-    if (!canEdit || !onUpdateProperty || !detail) return;
-
+  // Enter edit mode as soon as the property can be edited, seeding the form from a
+  // restored draft if there is one, otherwise from the parsed detail. This adjusts
+  // state during render (it runs once: isEditing never goes back to false).
+  if (!isEditing && canEdit && onUpdateProperty && detail) {
+    setIsEditing(true);
     if (restoredDraft && restoredDraft.entityType === "property" && propertyIri) {
       const d = restoredDraft as PropertyDraftEntry;
       setEditPropertyType(d.propertyType);
@@ -283,14 +276,11 @@ export function PropertyDetailPanel({
       setEditCharacteristics(d.characteristics);
       setEditAnnotations(d.annotations);
       setEditRelationships(d.relationships);
-      editInitializedRef.current = true;
-      setIsEditing(true);
       clearRestoredDraft();
-      return;
+    } else {
+      initEditState(detail);
     }
-
-    enterEditMode();
-  }, [detail, canEdit, restoredDraft, propertyIri, clearRestoredDraft, onUpdateProperty, isEditing, enterEditMode]);
+  }
 
   const updateLabel = useCallback((index: number, val: string) => {
     setEditLabels((prev) => prev.map((l, i) => (i === index ? { ...l, value: val } : l)));

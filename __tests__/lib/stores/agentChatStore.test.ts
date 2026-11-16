@@ -152,11 +152,104 @@ describe("agentChatStore reducers", () => {
       model: "openai/gpt-x",
       messages: [],
     });
-    expect(onProjectChanged).toHaveBeenCalledTimes(2);
+    // Once per mutating tool result, not again at "done".
+    expect(onProjectChanged).toHaveBeenCalledTimes(1);
     const conv = useAgentChatStore.getState().conversations.p1;
     expect(conv.isStreaming).toBe(false);
     expect(conv.messages).toHaveLength(1);
     expect(conv.lastPageText).toBe("pt");
+  });
+
+  it("sendAgentMessage hands ontology changes and UI actions to the page, once each", async () => {
+    const change = {
+      tool_use_id: "t1",
+      name: "create_entity",
+      branch: "main",
+      commit_hash: "abc",
+      deleted_iris: [],
+    };
+    const action = {
+      action: "select_entity" as const,
+      iri: "http://ex.org#Pizza",
+      entity_type: "class" as const,
+      label: "Pizza",
+      branch: "main",
+    };
+    vi.mocked(streamAgentChat).mockImplementation(async ({ onEvent }) => {
+      onEvent({ type: "tool_use", id: "t1", name: "create_entity", input: {} });
+      onEvent({ type: "tool_result", tool_use_id: "t1", name: "create_entity", is_error: false, summary: "", mutated: true });
+      onEvent({ type: "ontology_changed", ...change });
+      onEvent({ type: "tool_use", id: "t2", name: "get_entity", input: {} });
+      onEvent({ type: "tool_result", tool_use_id: "t2", name: "get_entity", is_error: false, summary: "", mutated: false });
+      onEvent({ type: "tool_use", id: "t3", name: "select_entity", input: {} });
+      onEvent({ type: "tool_result", tool_use_id: "t3", name: "select_entity", is_error: false, summary: "", mutated: false });
+      onEvent({ type: "ui_action", tool_use_id: "t3", action });
+      onEvent({ type: "done", stop_reason: "stop" });
+    });
+    const onProjectChanged = vi.fn();
+    const onOntologyChanged = vi.fn();
+    const onUiAction = vi.fn();
+    await sendAgentMessage({
+      projectId: "p2",
+      branch: "main",
+      text: "Add and show",
+      buildContext: () => ({ context: "", pageText: "" }),
+      onProjectChanged,
+      onOntologyChanged,
+      onUiAction,
+    });
+    expect(onProjectChanged).toHaveBeenCalledTimes(1);
+    expect(onOntologyChanged).toHaveBeenCalledTimes(1);
+    expect(onOntologyChanged).toHaveBeenCalledWith({ type: "ontology_changed", ...change });
+    expect(onUiAction).toHaveBeenCalledTimes(1);
+    expect(onUiAction).toHaveBeenCalledWith(action);
+    // The new events do not change the transcript.
+    expect(useAgentChatStore.getState().conversations.p2.toolCalls.t3.status).toBe("ok");
+  });
+
+  it("sendAgentMessage refreshes once when the stream stops while a tool is running", async () => {
+    vi.mocked(streamAgentChat).mockImplementation(async ({ onEvent }) => {
+      onEvent({ type: "tool_use", id: "t1", name: "update_class", input: {} });
+      throw new Error("connection lost");
+    });
+    const onProjectChanged = vi.fn();
+    const onOntologyChanged = vi.fn();
+    await sendAgentMessage({
+      projectId: "p3",
+      branch: "dev",
+      text: "Edit",
+      buildContext: () => ({ context: "", pageText: "" }),
+      onProjectChanged,
+      onOntologyChanged,
+    });
+    expect(onProjectChanged).toHaveBeenCalledTimes(1);
+    expect(onOntologyChanged).toHaveBeenCalledTimes(1);
+    expect(onOntologyChanged).toHaveBeenCalledWith({
+      tool_use_id: "t1",
+      name: "update_class",
+      branch: "dev",
+      commit_hash: null,
+      deleted_iris: [],
+    });
+  });
+
+  it("sendAgentMessage does not refresh after a turn with only read-only tools", async () => {
+    vi.mocked(streamAgentChat).mockImplementation(async ({ onEvent }) => {
+      onEvent({ type: "tool_use", id: "t1", name: "get_entity", input: {} });
+      onEvent({ type: "tool_result", tool_use_id: "t1", name: "get_entity", is_error: false, summary: "", mutated: false });
+      onEvent({ type: "done", stop_reason: "stop" });
+    });
+    const onProjectChanged = vi.fn();
+    const onOntologyChanged = vi.fn();
+    await sendAgentMessage({
+      projectId: "p4",
+      text: "Read",
+      buildContext: () => ({ context: "", pageText: "" }),
+      onProjectChanged,
+      onOntologyChanged,
+    });
+    expect(onProjectChanged).not.toHaveBeenCalled();
+    expect(onOntologyChanged).not.toHaveBeenCalled();
   });
 
   it("new chat clears only that project's conversation", () => {

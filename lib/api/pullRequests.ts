@@ -5,8 +5,8 @@ export type ReviewStatus = "approved" | "changes_requested" | "commented";
 
 export interface PRUser {
   id: string;
-  name?: string;
-  email?: string;
+  name: string | null;
+  email: string | null;
 }
 
 export interface PullRequest {
@@ -14,24 +14,25 @@ export interface PullRequest {
   project_id: string;
   pr_number: number;
   title: string;
-  description?: string;
+  description: string | null;
   source_branch: string;
   target_branch: string;
   status: PRStatus;
   author_id: string;
-  author?: PRUser;
-  merged_by?: string;
-  merged_by_user?: PRUser;
-  merged_at?: string;
-  merge_commit_hash?: string;
-  base_commit_hash?: string;
-  head_commit_hash?: string;
+  author: PRUser | null;
+  merged_by: string | null;
+  merged_by_user: PRUser | null;
+  merged_at: string | null;
+  merge_commit_hash: string | null;
+  base_commit_hash: string | null;
+  head_commit_hash: string | null;
   created_at: string;
-  updated_at?: string;
+  updated_at: string | null;
   review_count: number;
   approval_count: number;
   comment_count: number;
   commits_ahead: number;
+  /** Open, has commits to merge (commits_ahead > 0) and enough approvals. */
   can_merge: boolean;
 }
 
@@ -44,14 +45,15 @@ export interface PRListResponse {
 
 export interface PRCreate {
   title: string;
-  description?: string;
+  description?: string | null;
   source_branch: string;
   target_branch?: string;
 }
 
 export interface PRUpdate {
   title?: string;
-  description?: string;
+  /** null clears the description; omit to leave it unchanged. */
+  description?: string | null;
 }
 
 export interface PRMergeRequest {
@@ -70,9 +72,9 @@ export interface Review {
   id: string;
   pull_request_id: string;
   reviewer_id: string;
-  reviewer?: PRUser;
+  reviewer: PRUser | null;
   status: ReviewStatus;
-  body?: string;
+  body: string | null;
   created_at: string;
 }
 
@@ -90,16 +92,18 @@ export interface Comment {
   id: string;
   pull_request_id: string;
   author_id: string;
-  author?: PRUser;
+  author: PRUser | null;
   body: string;
-  parent_id?: string;
+  parent_id: string | null;
   created_at: string;
-  updated_at?: string;
+  updated_at: string | null;
   replies: Comment[];
 }
 
 export interface CommentListResponse {
+  /** Top-level comments, each with its replies nested. */
   items: Comment[];
+  /** All comments including replies; matches PullRequest.comment_count. */
   total: number;
 }
 
@@ -129,10 +133,10 @@ export interface PRCommitListResponse {
 export interface PRFileChange {
   path: string;
   change_type: "added" | "modified" | "deleted" | "renamed";
-  old_path?: string;
+  old_path: string | null;
   additions: number;
   deletions: number;
-  patch?: string;
+  patch: string | null;
 }
 
 export interface PRDiffResponse {

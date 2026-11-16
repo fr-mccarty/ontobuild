@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSession } from "@/lib/localUser";
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Settings, FileCode, RefreshCw, Keyboard, LayoutDashboard, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { ArrowLeft, Settings, FileCode, RefreshCw, Keyboard, LayoutDashboard, History, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -16,16 +16,19 @@ import { BranchSelector, RevisionHistoryPanel, HistoryButton } from "@/component
 import { HealthCheckPanel } from "@/components/editor/HealthCheckPanel";
 import { RightSidebar, lintSeverity, LINT_DOT_CLASSES } from "@/components/editor/RightSidebar";
 import { AgentPanel } from "@/components/editor/agent/AgentPanel";
+import { useAgentEditorSync } from "@/components/editor/agent/useAgentEditorSync";
 import type { EntityTab } from "@/components/editor/standard/EntityTabBar";
 import type { AgentPageInfo } from "@/lib/agent/pageContext";
 import { useSelectionStore } from "@/lib/stores/selectionStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { BranchProvider, branchQueryKeys } from "@/lib/context/BranchContext";
 import { useProjectViewer } from "@/lib/hooks/useProjectViewer";
+import { useEditorSidebars } from "@/lib/hooks/useEditorSidebars";
 import { revisionsApi } from "@/lib/api/revisions";
 import { projectOntologyApi, type ClassUpdatePayload } from "@/lib/api/client";
 import { getLocalName } from "@/lib/utils";
 import { generateTurtleSnippet } from "@/lib/ontology/turtleSnippetGenerator";
+import { parseDeclarations } from "@/lib/ontology/turtleUtils";
 import { updateClassInTurtle } from "@/lib/ontology/turtleClassUpdater";
 import { updatePropertyInTurtle, type TurtlePropertyUpdateData } from "@/lib/ontology/turtlePropertyUpdater";
 import { updateIndividualInTurtle, type TurtleIndividualUpdateData } from "@/lib/ontology/turtleIndividualUpdater";
@@ -35,8 +38,53 @@ import { commonPrefixes } from "@/lib/editor/languages/turtle";
 import { useKeyboardShortcuts, type ShortcutDefinition } from "@/lib/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutDialog } from "@/components/editor/KeyboardShortcutDialog";
 import { DeleteImpactAnalysis } from "@/components/editor/DeleteImpactAnalysis";
-import { ShareButton } from "@/components/editor/ShareButton";
+import { ShareButton, SHARE_MENU_ITEM_CLASSES } from "@/components/editor/ShareButton";
 import { Tooltip } from "@/components/ui/tooltip";
+
+const BACK_TOOLTIP = "Back to projects: return to the list of all projects";
+
+function projectNameTooltip(project: { name: string; description?: string | null }): string {
+  return project.description
+    ? `Project: ${project.name}. ${project.description}`
+    : `Project: ${project.name}`;
+}
+
+function detectIriSettings(
+  sourceContent: string,
+  sourceIriIndex: Parameters<typeof detectPatternFromIriIndex>[0],
+) {
+  const internalNamespaces = new Set<string>();
+  const prefixMap = new Map<string, string>();
+  const externalNamespaces = new Set(commonPrefixes.map((p) => p.namespace));
+
+  for (const line of sourceContent.split("\n")) {
+    const baseMatch = line.match(/@base\s+<([^>]+)>/i);
+    if (baseMatch) {
+      internalNamespaces.add(baseMatch[1]);
+    }
+    const prefixMatch = line.match(/@?prefix\s+(\w*):\s*<([^>]+)>/i);
+    if (prefixMatch) {
+      const [, pfx, ns] = prefixMatch;
+      prefixMap.set(pfx, ns);
+      if (!externalNamespaces.has(ns)) {
+        internalNamespaces.add(ns);
+      }
+    }
+  }
+
+  const namespace: string | undefined = prefixMap.get("") ?? [...internalNamespaces][0];
+
+  let prefix: string | undefined;
+  for (const [pfx, ns] of prefixMap) {
+    if (ns === namespace && pfx !== "") {
+      prefix = pfx;
+      break;
+    }
+  }
+
+  const { pattern, nextNumeric } = detectPatternFromIriIndex(sourceIriIndex, internalNamespaces);
+  return { namespace, prefix, pattern, nextNumeric };
+}
 
 export default function ProjectEditorPage() {
   const { data: session, status } = useSession();
@@ -72,7 +120,7 @@ export default function ProjectEditorPage() {
     canManage, canEdit,
     hasValidAccess, hasOntology,
     nodes, totalClasses, isTreeLoading, treeError,
-    selectedIri, loadRootClasses, expandNode, collapseNode, selectNode,
+    selectedIri, loadRootClasses, refreshTree, expandNode, collapseNode, selectNode,
     navigateToNode, addOptimisticNode, removeOptimisticNode, updateNodeLabel,
     collapseAll, collapseOneLevel, expandOneLevel, expandAllFully,
     hasExpandableNodes, hasExpandedNodes, isExpandingAll,
@@ -84,11 +132,13 @@ export default function ProjectEditorPage() {
   } = viewer;
 
   const [showHistory, setShowHistory] = useState(false);
-  const [showRightSidebar, setShowRightSidebar] = useState(true);
+  // Below the lg breakpoint only one sidebar shows at a time; from lg up both can (see the hook).
+  const { leftOpen, rightOpen: showRightSidebar, toggleLeft, toggleRight, closeRight } = useEditorSidebars();
   const [leftTab, setLeftTab] = useState<EntityTab>("classes");
   const selectionIri = useSelectionStore((s) => s.iri);
   const selectionType = useSelectionStore((s) => s.type);
   const entityNavigationRef = useRef<((iri: string, type?: string) => void) | null>(null);
+  const entityRemovalRef = useRef<((iris: string[]) => void) | null>(null);
 
   useEffect(() => {
     if (!initialSelection) return;
@@ -128,7 +178,7 @@ export default function ProjectEditorPage() {
   const [nextNumeric, setNextNumeric] = useState<number | undefined>(undefined);
   const [ontologyNamespace, setOntologyNamespace] = useState("http://example.org/ont#");
   const [ontologyPrefix, setOntologyPrefix] = useState<string | undefined>(undefined);
-  const iriPatternDetectedRef = useRef(false);
+  const [iriDetectionPending, setIriDetectionPending] = useState(true);
 
   const [detailRefreshKey, setDetailRefreshKey] = useState(0);
 
@@ -141,47 +191,17 @@ export default function ProjectEditorPage() {
 
   const [shortcutDialogOpen, setShortcutDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (iriPatternDetectedRef.current || sourceIriIndex.size === 0 || !sourceContent) return;
-    iriPatternDetectedRef.current = true;
-
-    const internalNamespaces = new Set<string>();
-    const prefixMap = new Map<string, string>();
-    const externalNamespaces = new Set(commonPrefixes.map((p) => p.namespace));
-
-    for (const line of sourceContent.split("\n")) {
-      const baseMatch = line.match(/@base\s+<([^>]+)>/i);
-      if (baseMatch) {
-        internalNamespaces.add(baseMatch[1]);
-      }
-      const prefixMatch = line.match(/@?prefix\s+(\w*):\s*<([^>]+)>/i);
-      if (prefixMatch) {
-        const [, pfx, ns] = prefixMatch;
-        prefixMap.set(pfx, ns);
-        if (!externalNamespaces.has(ns)) {
-          internalNamespaces.add(ns);
-        }
-      }
-    }
-
-    const defaultNs = prefixMap.get("") ?? [...internalNamespaces][0];
-    if (defaultNs) {
-      setOntologyNamespace(defaultNs);
-    }
-
-    for (const [pfx, ns] of prefixMap) {
-      if (ns === defaultNs && pfx !== "") {
-        setOntologyPrefix(pfx);
-        break;
-      }
-    }
-
-    const result = detectPatternFromIriIndex(sourceIriIndex, internalNamespaces);
-    setIriPattern(result.pattern);
-    if (result.nextNumeric !== undefined) {
-      setNextNumeric(result.nextNumeric);
-    }
-  }, [sourceIriIndex, sourceContent]);
+  // Detect the ontology's namespace, prefix and IRI pattern once the source is indexed,
+  // and again after each edit marks the detection as pending. Adjusting state while
+  // rendering avoids an extra effect pass.
+  if (iriDetectionPending && sourceIriIndex.size > 0 && sourceContent) {
+    setIriDetectionPending(false);
+    const detected = detectIriSettings(sourceContent, sourceIriIndex);
+    if (detected.namespace) setOntologyNamespace(detected.namespace);
+    if (detected.prefix !== undefined) setOntologyPrefix(detected.prefix);
+    setIriPattern(detected.pattern);
+    if (detected.nextNumeric !== undefined) setNextNumeric(detected.nextNumeric);
+  }
 
   const handleAddEntity = useCallback((parentIri?: string, entityType?: "individual") => {
     setAddEntityParentIri(parentIri);
@@ -205,14 +225,6 @@ export default function ProjectEditorPage() {
   const handleEntityConfirm = useCallback(
     async (entity: NewEntityInfo) => {
       if (!canEdit) return;
-      const snippet = generateTurtleSnippet({
-        iri: entity.iri,
-        label: entity.label,
-        entityType: entity.entityType,
-        parentIri: entity.parentIri,
-        ontologyPrefix,
-        ontologyNamespace,
-      });
 
       if (!projectId || !session?.accessToken || !activeBranch) return;
 
@@ -233,6 +245,15 @@ export default function ProjectEditorPage() {
           return;
         }
       }
+      const snippet = generateTurtleSnippet({
+        iri: entity.iri,
+        label: entity.label,
+        entityType: entity.entityType,
+        parentIri: entity.parentIri,
+        ontologyPrefix,
+        ontologyNamespace,
+        prefixes: parseDeclarations(base).prefixes,
+      });
       const newContent = base + snippet;
 
       const typeLabel: Record<string, string> = {
@@ -263,7 +284,7 @@ export default function ProjectEditorPage() {
       }
       setDetailRefreshKey((k) => k + 1);
       setSourceIriIndex(new Map());
-      iriPatternDetectedRef.current = false;
+      setIriDetectionPending(true);
       queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId, session?.accessToken) });
     },
     [canEdit, ontologyPrefix, ontologyNamespace, addOptimisticNode, sourceContent, projectId, session, activeBranch, project, toast, setSourceContent, setSourceIriIndex, queryClient],
@@ -365,7 +386,7 @@ export default function ProjectEditorPage() {
     }
 
     setSourceIriIndex(new Map());
-    iriPatternDetectedRef.current = false;
+    setIriDetectionPending(true);
     queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId, session?.accessToken) });
   }, [session, projectId, activeBranch, project, sourceContent, toast, updateNodeLabel, queryClient, setSourceContent, setSourceIriIndex, loadRootClasses, navigateToNode]);
 
@@ -404,7 +425,7 @@ export default function ProjectEditorPage() {
     toast.success(`Updated "${label}"`);
     setDetailRefreshKey((k) => k + 1);
     setSourceIriIndex(new Map());
-    iriPatternDetectedRef.current = false;
+    setIriDetectionPending(true);
     queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId, session?.accessToken) });
   }, [session, projectId, activeBranch, project, sourceContent, toast, queryClient, setSourceContent, setSourceIriIndex]);
 
@@ -443,7 +464,7 @@ export default function ProjectEditorPage() {
     toast.success(`Updated "${label}"`);
     setDetailRefreshKey((k) => k + 1);
     setSourceIriIndex(new Map());
-    iriPatternDetectedRef.current = false;
+    setIriDetectionPending(true);
     queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId, session?.accessToken) });
   }, [session, projectId, activeBranch, project, sourceContent, toast, queryClient, setSourceContent, setSourceIriIndex]);
 
@@ -501,27 +522,39 @@ export default function ProjectEditorPage() {
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   }, [pathname, router, resetSourceState, searchParamsString]);
 
-  const projectChangedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const refreshAfterAgentRef = useRef<() => void>(() => {});
-  useEffect(() => {
-    refreshAfterAgentRef.current = () => {
+  // Keep the editor in step with the agent: refresh after its changes, select on request.
+  // (useAgentEditorSync reads these callbacks through a ref, so they need no memoization.)
+  const reloadSourceAfterAgent = async () => {
+    if (!activeBranch) {
       resetSourceState();
-      loadRootClasses();
-      setDetailRefreshKey((k) => k + 1);
-      iriPatternDetectedRef.current = false;
-      queryClient.invalidateQueries();
-    };
+      return;
+    }
+    try {
+      const response = await revisionsApi.getFileAtVersion(
+        projectId,
+        activeBranch,
+        session?.accessToken,
+        project?.git_ontology_path,
+      );
+      // Same path as the editor's own saves: new source, re-index, re-detect IRI settings.
+      setSourceContent(response.content);
+      setSourceIriIndex(new Map());
+      setIriDetectionPending(true);
+    } catch {
+      resetSourceState();
+    }
+  };
+
+  const agentSync = useAgentEditorSync({
+    projectId,
+    activeBranch,
+    refreshTree,
+    reloadSource: reloadSourceAfterAgent,
+    refreshDetail: () => setDetailRefreshKey((k) => k + 1),
+    entityNavigationRef,
+    entityRemovalRef,
+    navigateToNode,
   });
-  useEffect(() => () => {
-    if (projectChangedTimerRef.current) clearTimeout(projectChangedTimerRef.current);
-  }, []);
-  const handleAgentProjectChanged = useCallback(() => {
-    if (projectChangedTimerRef.current) clearTimeout(projectChangedTimerRef.current);
-    projectChangedTimerRef.current = setTimeout(() => {
-      projectChangedTimerRef.current = null;
-      refreshAfterAgentRef.current();
-    }, 300);
-  }, []);
 
   const agentPageInfo = useMemo((): AgentPageInfo => ({
     projectId,
@@ -538,6 +571,7 @@ export default function ProjectEditorPage() {
   }), [projectId, project?.name, activeBranch, leftTab, selectionIri, selectionType, selectedNodeFallback]);
 
   const lintDotSeverity = lintSeverity(lintSummary);
+  const showNormalize = !!(hasValidAccess && normalizationStatus?.needs_normalization);
 
   const keyboardShortcuts = useMemo((): ShortcutDefinition[] => [
     {
@@ -581,13 +615,13 @@ export default function ProjectEditorPage() {
         } else if (showHistory) {
           setShowHistory(false);
         } else if (showRightSidebar) {
-          setShowRightSidebar(false);
+          closeRight();
         }
       },
       global: true,
       ignoreWhenEditorFocused: false,
     },
-  ], [handleAddEntity, shortcutDialogOpen, showHistory, showRightSidebar, canEdit]);
+  ], [handleAddEntity, shortcutDialogOpen, showHistory, showRightSidebar, closeRight, canEdit]);
 
   useKeyboardShortcuts(keyboardShortcuts);
 
@@ -655,15 +689,19 @@ export default function ProjectEditorPage() {
           <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Link
-                  href="/"
-                  className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Link>
+                <Tooltip side="bottom" content={BACK_TOOLTIP}>
+                  <Link
+                    href="/"
+                    className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back
+                  </Link>
+                </Tooltip>
                 <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-                <h1 className="font-semibold text-slate-900 dark:text-white">{project.name}</h1>
+                <Tooltip side="bottom" content={projectNameTooltip(project)}>
+                  <h1 className="font-semibold text-slate-900 dark:text-white">{project.name}</h1>
+                </Tooltip>
               </div>
               {canManage && (
                 <Tooltip side="bottom" content="Project settings: settings for this project only (ontology import, normalization, lint rules)">
@@ -700,67 +738,180 @@ export default function ProjectEditorPage() {
     <BranchProvider projectId={projectId} accessToken={session?.accessToken} initialBranch={initialBranch}>
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-100 dark:bg-slate-900">
-        <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-4">
-              <Link
-                href="/"
-                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+        <div className="border-b border-slate-200 bg-white px-2 py-3 sm:px-4 dark:border-slate-700 dark:bg-slate-800">
+          {/* One line at every width: controls that don't fit move into the Share menu (see moreItems). */}
+          <div data-testid="editor-sub-header" className="flex flex-nowrap items-center justify-between gap-2 sm:gap-4">
+            <div className="flex min-w-0 flex-nowrap items-center gap-2 sm:gap-4">
+              <Tooltip
+                side="bottom"
+                content={
+                  leftOpen
+                    ? "Hide the entity tree: the classes, properties and individuals list"
+                    : "Show the entity tree: browse classes, properties and individuals"
+                }
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Link>
-              <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-              <h1 className="font-semibold text-slate-900 dark:text-white">{project.name}</h1>
-              <span className="text-sm text-slate-500 dark:text-slate-400">{totalClasses} classes</span>
+                <Button
+                  variant={leftOpen ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={toggleLeft}
+                  aria-label="Entity tree"
+                  aria-pressed={leftOpen}
+                  className="-my-1 flex-shrink-0 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                >
+                  {leftOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+                </Button>
+              </Tooltip>
+              <Tooltip side="bottom" content={BACK_TOOLTIP}>
+                <Link
+                  href="/"
+                  aria-label="Back"
+                  className="flex flex-shrink-0 items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Back</span>
+                </Link>
+              </Tooltip>
+              <div className="hidden h-5 w-px flex-shrink-0 bg-slate-200 sm:block dark:bg-slate-700" />
+              <Tooltip side="bottom" content={projectNameTooltip(project)}>
+                <h1 className="min-w-0 truncate font-semibold text-slate-900 dark:text-white">{project.name}</h1>
+              </Tooltip>
+              <Tooltip
+                side="bottom"
+                content={`Class count: the number of classes in the ontology on ${activeBranch ? `the ${activeBranch} branch` : "this branch"}`}
+              >
+                <span className="flex-shrink-0 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{totalClasses} classes</span>
+              </Tooltip>
             </div>
-            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-              <BranchSelector onBranchChange={handleBranchChange} canCreateBranch={canEdit} readOnly={!hasValidAccess} />
+            <div className="ml-auto flex flex-shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2">
+              <BranchSelector
+                className="hidden md:block"
+                onBranchChange={handleBranchChange}
+                canCreateBranch={canEdit}
+                readOnly={!hasValidAccess}
+                readOnlyReason="Sign in to switch or create branches."
+              />
 
               <ShareButton
                 projectId={projectId}
                 selectedIri={selectedIri}
                 selectedLabel={selectedNodeFallback?.label}
                 openPRCount={openPRCount}
+                moreHiddenClass={showNormalize ? "xl:hidden" : "lg:hidden"}
+                moreItems={(closeMenu) => (
+                  <>
+                    <div role="group" aria-label="Branch" className="px-3 py-1.5 md:hidden">
+                      {/* The inline selector stays mounted (hidden) and reports branch changes. */}
+                      <BranchSelector
+                        canCreateBranch={canEdit}
+                        readOnly={!hasValidAccess}
+                        readOnlyReason="Sign in to switch or create branches."
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={showHistory}
+                      className={`${SHARE_MENU_ITEM_CLASSES} lg:hidden`}
+                      onClick={() => {
+                        setShowHistory(!showHistory);
+                        closeMenu();
+                      }}
+                    >
+                      <History className="h-3.5 w-3.5 flex-shrink-0" />
+                      {showHistory ? "Hide revision history" : "Revision history"}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={`${SHARE_MENU_ITEM_CLASSES} lg:hidden`}
+                      onClick={() => {
+                        setShortcutDialogOpen(true);
+                        closeMenu();
+                      }}
+                    >
+                      <Keyboard className="h-3.5 w-3.5 flex-shrink-0" />
+                      Keyboard shortcuts
+                    </button>
+                    {showNormalize && (
+                      <Link
+                        href={`/projects/${projectId}/settings#normalization`}
+                        role="menuitem"
+                        className={`${SHARE_MENU_ITEM_CLASSES} text-amber-700 xl:hidden dark:text-amber-400`}
+                        onClick={closeMenu}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 flex-shrink-0" />
+                        Normalize ontology
+                      </Link>
+                    )}
+                    <Link
+                      href={`/projects/${projectId}/dashboard`}
+                      role="menuitem"
+                      className={`${SHARE_MENU_ITEM_CLASSES} sm:hidden`}
+                      onClick={closeMenu}
+                    >
+                      <LayoutDashboard className="h-3.5 w-3.5 flex-shrink-0" />
+                      Project dashboard
+                    </Link>
+                    {canManage && (
+                      <Link
+                        href={`/projects/${projectId}/settings`}
+                        role="menuitem"
+                        className={`${SHARE_MENU_ITEM_CLASSES} sm:hidden`}
+                        onClick={closeMenu}
+                      >
+                        <Settings className="h-3.5 w-3.5 flex-shrink-0" />
+                        Project settings
+                      </Link>
+                    )}
+                  </>
+                )}
               />
 
-              <HistoryButton onClick={() => setShowHistory(!showHistory)} isOpen={showHistory} />
+              <HistoryButton
+                className="hidden lg:inline-flex"
+                onClick={() => setShowHistory(!showHistory)}
+                isOpen={showHistory}
+              />
 
-              {hasValidAccess && normalizationStatus?.needs_normalization && (
-                <Tooltip side="bottom" content="Ontology normalization recommended">
-                  <Link href={`/projects/${projectId}/settings#normalization`} aria-label="Normalize ontology">
+              {showNormalize && (
+                <Tooltip side="bottom" content="Normalization recommended: the ontology file isn't in canonical Turtle format. Opens project settings to normalize it">
+                  <Link href={`/projects/${projectId}/settings#normalization`} aria-label="Normalize ontology" className="hidden xl:inline-flex">
                     <Button
                       variant="ghost"
                       size="sm"
+                      tabIndex={-1}
                       className="gap-2 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
                     >
                       <RefreshCw className="h-4 w-4" />
-                      <span className="hidden sm:inline">Normalize</span>
+                      <span>Normalize</span>
                     </Button>
                   </Link>
                 </Tooltip>
               )}
 
-              <Tooltip side="bottom" content="Project dashboard">
-                <Link href={`/projects/${projectId}/dashboard`}>
-                  <Button variant="ghost" size="sm" aria-label="Project dashboard" className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+              <Tooltip side="bottom" content="Project dashboard: overview of this project with its description and links to the editor and settings">
+                <Link href={`/projects/${projectId}/dashboard`} aria-label="Project dashboard" className="hidden sm:inline-flex">
+                  <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
                     <LayoutDashboard className="h-4 w-4" />
                   </Button>
                 </Link>
               </Tooltip>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShortcutDialogOpen(true)}
-                aria-label="Keyboard shortcuts"
-              >
-                <Keyboard className="h-4 w-4" />
-              </Button>
+              <Tooltip side="bottom" content="Keyboard shortcuts: list the shortcuts available in the editor (shortcut: ?)">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShortcutDialogOpen(true)}
+                  aria-label="Keyboard shortcuts"
+                  className="hidden lg:inline-flex"
+                >
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </Tooltip>
 
               {canManage && (
                 <Tooltip side="bottom" content="Project settings: settings for this project only (ontology import, normalization, lint rules)">
-                  <Link href={`/projects/${projectId}/settings`} aria-label="Project settings">
+                  <Link href={`/projects/${projectId}/settings`} aria-label="Project settings" className="hidden sm:inline-flex">
                     <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
                       <Settings className="h-4 w-4" />
                     </Button>
@@ -768,11 +919,20 @@ export default function ProjectEditorPage() {
                 </Tooltip>
               )}
 
-              <Tooltip side="bottom" content="Agent and health panel">
+              <Tooltip
+                side="bottom"
+                content={
+                  showRightSidebar
+                    ? "Hide the agent and health panel (shortcut: Esc)"
+                    : `Show the agent and health panel: chat with the ontology agent and review lint health checks${
+                        lintSummary && lintSummary.total_issues > 0 ? ` (${lintSummary.total_issues} lint issues)` : ""
+                      }`
+                }
+              >
                 <Button
                   variant={showRightSidebar ? "secondary" : "ghost"}
                   size="sm"
-                  onClick={() => setShowRightSidebar((v) => !v)}
+                  onClick={toggleRight}
                   aria-label={
                     !showRightSidebar && lintSummary && lintSummary.total_issues > 0
                       ? `Agent and health panel (${lintSummary.total_issues} lint issues)`
@@ -802,6 +962,9 @@ export default function ProjectEditorPage() {
               activeBranch={activeBranch}
               canEdit={!!canEdit}
               entityNavigationRef={entityNavigationRef}
+              entityRemovalRef={entityRemovalRef}
+              entityListRefreshKey={agentSync.entityListRefreshKey}
+              detailEpoch={agentSync.detailEpoch}
               nodes={nodes}
               isTreeLoading={isTreeLoading}
               treeError={treeError}
@@ -830,25 +993,32 @@ export default function ProjectEditorPage() {
               reparentOptimistic={reparentOptimistic}
               rollbackReparent={rollbackReparent}
               onActiveTabChange={setLeftTab}
+              treePanelOpen={leftOpen}
             />
           </div>
 
           {showRightSidebar && (
             <RightSidebar
-              onClose={() => setShowRightSidebar(false)}
+              onClose={closeRight}
               lintSummary={lintSummary}
               agent={
-                <AgentPanel pageInfo={agentPageInfo} onProjectChanged={handleAgentProjectChanged} />
+                <AgentPanel
+                  pageInfo={agentPageInfo}
+                  onProjectChanged={agentSync.onProjectChanged}
+                  onOntologyChanged={agentSync.onOntologyChanged}
+                  onUiAction={agentSync.onUiAction}
+                />
               }
               health={(isActive) => (
                 <div className="min-h-0 flex-1">
                   <HealthCheckPanel
+                    key={agentSync.sidePanelsRefreshKey}
                     projectId={projectId}
                     accessToken={session?.accessToken}
                     branch={activeBranch}
                     isOpen={isActive}
                     embedded
-                    onClose={() => setShowRightSidebar(false)}
+                    onClose={closeRight}
                     onNavigateToClass={(iri, subjectType) => {
                       if (entityNavigationRef.current) {
                         entityNavigationRef.current(iri, subjectType);
@@ -868,6 +1038,7 @@ export default function ProjectEditorPage() {
             accessToken={session?.accessToken}
             isOpen={showHistory}
             onClose={() => setShowHistory(false)}
+            refreshKey={agentSync.sidePanelsRefreshKey}
           />
         </div>
       </main>

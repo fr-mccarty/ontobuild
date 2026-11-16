@@ -37,10 +37,12 @@ import { PRCommentThread } from "@/components/pr/PRCommentThread";
 
 function makeComment(overrides: Partial<Comment> = {}): Comment {
   return {
+    parent_id: null,
+    updated_at: null,
     id: "c1",
     pull_request_id: "pr-1",
     author_id: "user-1",
-    author: { id: "user-1", name: "Alice" },
+    author: { id: "user-1", name: "Alice", email: null },
     body: "Looks good!",
     created_at: "2025-01-15T12:00:00Z",
     replies: [],
@@ -128,7 +130,7 @@ describe("PRCommentThread", () => {
     const reply = makeComment({
       id: "c2",
       author_id: "user-2",
-      author: { id: "user-2", name: "Bob" },
+      author: { id: "user-2", name: "Bob", email: null },
       body: "Thanks!",
     });
     const comment = makeComment({ replies: [reply] });
@@ -314,7 +316,7 @@ describe("PRCommentThread", () => {
   it("renders multiple top-level comments", () => {
     const comments = [
       makeComment({ id: "c1", body: "First comment" }),
-      makeComment({ id: "c2", body: "Second comment", author_id: "user-2", author: { id: "user-2", name: "Bob" } }),
+      makeComment({ id: "c2", body: "Second comment", author_id: "user-2", author: { id: "user-2", name: "Bob", email: null } }),
     ];
     render(<PRCommentThread {...defaultProps} comments={comments} />);
     expect(screen.getByText("First comment")).toBeDefined();

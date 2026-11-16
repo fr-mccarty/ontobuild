@@ -21,7 +21,6 @@ describe("normalizationApi", () => {
         last_run_id: null,
         last_check: "2025-01-01T00:00:00Z",
         preview_report: null,
-        checking: false,
         error: null,
       };
       mockOk(data);
@@ -164,7 +163,7 @@ describe("normalizationApi", () => {
     it("fetches job status", async () => {
       const data = {
         job_id: "job-1",
-        status: "complete",
+        status: "completed",
         result: null,
         error: null,
       };

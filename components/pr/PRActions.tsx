@@ -57,6 +57,7 @@ export function PRActions({
   const canReopen = userRole === "owner" || userRole === "admin";
   const isClosed = pr.status === "closed";
   const isMerged = pr.status === "merged";
+  const nothingToMerge = pr.status === "open" && pr.commits_ahead === 0;
 
   useEffect(() => {
     if (isMerged && sourceBranchExists === null) {
@@ -332,7 +333,7 @@ export function PRActions({
           </Button>
 
           {canMerge && (
-            <Tooltip content={!pr.can_merge ? "Cannot merge: approval requirements not met" : undefined}>
+            <Tooltip content={!pr.can_merge ? `Cannot merge: ${nothingToMerge ? "nothing to merge" : "approval requirements not met"}` : undefined}>
               <span className="inline-flex">
                 <Button
                   size="sm"
@@ -396,7 +397,12 @@ export function PRActions({
         variant="danger"
       />
 
-      {!pr.can_merge && canMerge && (
+      {!pr.can_merge && canMerge && nothingToMerge && (
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Nothing to merge: {pr.target_branch} already contains all commits from {pr.source_branch}.
+        </p>
+      )}
+      {!pr.can_merge && canMerge && !nothingToMerge && (
         <p className="text-sm text-amber-600 dark:text-amber-400">
           This pull request requires additional approvals before it can be merged.
           Current: {pr.approval_count} approvals
