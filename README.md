@@ -1,47 +1,77 @@
 # OntoBuilder
 
-OntoBuilder is a local, single-user editor for OWL/RDF ontologies. It runs as one Node app: a
-Next.js frontend and an HTTP API (`/api/v1`) served by the same Next server. There is no login.
-Each project is a folder holding its ontology and its code, kept in its own git repository,
-and metadata is stored in SQLite. Everything runs on your machine except the optional editor agent, which calls
-OpenRouter (see [Editor agent](#editor-agent)).
+OntoBuilder is a local, single-user workspace for building an OWL/RDF ontology together with
+the code that uses it, with an LLM agent that can work on both. Each project is a folder in its
+own git repository: one Turtle ontology file, edited through forms and saved as git commits,
+and a `code/` folder for the project's application code, with files, terminals, a dev server
+and code analysis tools alongside the editor.
 
-![The OntoBuilder editor showing a class form, the class tree and the agent panel](docs/screenshot.png)
+It runs as one Node app: a Next.js frontend and an HTTP API (`/api/v1`) served by the same Next
+server, with metadata in SQLite. There is no login. Everything runs on your machine except the
+optional editor agent, which calls OpenRouter (see [Editor agent](#editor-agent)).
+
+![The OntoBuilder editor showing an imported class, the class tree, and the Agent tab with its model picker and Edit Ontology / Edit Code toggles](docs/screenshot.png)
 
 ## Features
 
-- **Projects.** Create an empty project or import an ontology in Turtle (`.ttl`), N3,
+### Ontology
+
+- **Projects.** Create an empty project, upload an ontology in Turtle (`.ttl`), N3,
   N-Triples (`.nt`), N-Quads (`.nq`), TriG, RDF/XML (`.owl`, `.rdf`, `.xml`) or JSON-LD
-  (`.jsonld`, `.json`). Imports are converted to Turtle before they are committed.
+  (`.jsonld`, `.json`), or clone a Git repository (HTTPS or SSH URL) with its full history.
+  Non-Turtle files are converted to Turtle before they are committed.
+- **One active ontology file.** A project edits one ontology file at a time. If the folder holds
+  several RDF files (common in a cloned repository), switch between them from the file name in
+  the editor's breadcrumb, or choose and create files under **Settings → Ontology File**. A cloned `.ttl` file is edited in place.
 - **Form-based editor.** Browse classes, properties and individuals, and add, edit and
   delete entities through forms. Every change is saved immediately as a git commit.
 - **Branches and pull requests.** Work on branches, open pull requests, review, comment and
   merge.
 - **Health checks.** Lint rules, consistency checks, duplicate detection and normalization,
-  run as background jobs, with results shown in the editor's **Health** tab.
+  run as background jobs, with results shown in the editor's **Health** tab. The same counts
+  appear in the **Agent** tab with a **Fix issues** button (see [Editor agent](#editor-agent)).
+- **Changes made outside the editor.** If the ontology file in the project folder is changed by
+  something else (a terminal, a text editor, another agent), the editor shows a notice and
+  refuses to save over it until you commit or discard the change.
 - **History and analytics.** Per-entity change history, project activity and the most
   frequently edited entities.
-- **Imports.** The **Imports** button in the editor's sub-heading adds `owl:imports` to the
-  ontology: pick another OntoBuilder project or paste any ontology IRI. Imports are followed
-  transitively (for example general principles → Node → your project), and imported classes
-  appear read-only in the class tree, where your own classes can subclass them.
-- **Code and terminals.** Each project has a `code/` folder. The **Files** tab in the right
-  sidebar browses and searches the project folder. **Space** opens a Quick View of the selected
-  file (code, text, Markdown, images, PDF, CSV, Word documents, audio and video) and closes it
-  again. Files ending in `.sh`, `.py`, `.ts` or `.js` run from the same panel, in a tabbed
-  terminal panel at the bottom of the editor that can also open interactive shells.
+- **Imports.** **Settings → Imports** adds `owl:imports` to the ontology: pick another
+  OntoBuilder project or paste any ontology IRI. Imports are followed transitively (for example
+  general principles → Node → your project), and imported classes appear read-only in the class
+  tree, where your own classes can subclass them.
+
+### Code
+
+- **The `code/` folder.** Each project has a `code/` folder for the application, scripts or
+  tooling built on the ontology. Code files are not committed automatically: commit them with
+  git in a terminal (or ask the agent to), as you would in any repository.
+- **Files and Quick View.** The **Files** tab in the right sidebar browses and searches the
+  project folder. **Space** opens a Quick View of the selected file (code, text, Markdown,
+  images, PDF, CSV, Word documents, audio and video) and closes it again.
+- **Terminals.** Files ending in `.sh`, `.py`, `.ts` or `.js` run from the Files tab, in a
+  tabbed terminal panel at the bottom of the editor that can also open interactive shells.
 - **Dev server and View in Browser.** The run menu in the sub-heading starts and stops a dev
   server command for the project, and **View in Browser** opens the URL it reports.
-- **GitHub.** Link a project to a GitHub (or other git) remote, then fetch, pull and push, or
-  create the repository with the `gh` CLI. Sign-in uses your existing git credentials, SSH keys
-  or `gh auth login`; OntoBuilder stores no tokens.
+- **Code tools.** The **Tools** tab in the right sidebar analyzes the JavaScript and TypeScript
+  in `code/` statically, with the TypeScript compiler, so the dev server doesn't need to be
+  running:
+  - **Component tree:** which React components render which, resolved through imports, barrel
+    files and `tsconfig`/`jsconfig` paths.
+  - **Orphans:** files, exports, tests and scripts that nothing reaches from the project's
+    entry points (Next.js `app/` and `pages/`, `package.json`, `index.html` and so on).
+- **GitHub.** Under **Settings → GitHub**, link a project to a GitHub (or other git) remote,
+  then fetch, pull and push, or create the repository with the `gh` CLI. Sign-in uses your
+  existing git credentials, SSH keys or `gh auth login`; OntoBuilder stores no tokens.
+
+### Agent and API
 - **Run as prompt, with approval.** The ▶ button next to any text value puts that text in the
   agent's message box (it is not sent until you send it). A green dot means the text was
   approved: it reached the default branch through a merged pull request with an approving
   review. Otherwise OntoBuilder asks before using it. This lets a team agree on a prompt, as part of
   the ontology, before anyone runs it.
-- **Editor agent.** An optional LLM chat in the editor that can read and edit the open project
-  (see [Editor agent](#editor-agent)).
+- **Editor agent.** An optional LLM chat in the editor that works on the open project: the
+  ontology, its branches and pull requests, and, when you allow it, the code in the project
+  folder (see [Editor agent](#editor-agent)).
 - **Documented API.** Every operation is described in an OpenAPI 3.1 document served at
   `/api/v1/openapi.json` and rendered at `/api-docs`.
 
@@ -108,8 +138,10 @@ somewhere else.
   comments, lint runs, issues and per-project lint configs, quality results, normalization
   runs, entity change events, background jobs, user and agent settings)
 - `data/projects/<folder>/`: one folder per project, named after the project when it is
-  created. It is a normal git repository: `ontology.ttl` (Turtle) and a `code/` folder for the
-  project's code. Each branch is a git branch, and each save in the editor is a commit.
+  created. It is a normal git repository: `ontology.ttl` (Turtle, or the active ontology file
+  of a cloned repository) and a `code/` folder for the project's code. Each branch is a git
+  branch, and each save in the editor is a commit. Files under `code/` are committed only when
+  you (or the agent, with Edit Code on) run git.
   Edits to the checked-out branch are written to the folder too. If `ontology.ttl` has
   uncommitted changes there, the editor refuses to save over them until you commit or
   discard them.
@@ -122,33 +154,79 @@ To reset everything, stop the server and delete `data/`.
 
 ## Editor agent
 
-The **Agent** tab in the editor's right sidebar is a chat with an LLM that can read and edit the
-open project. It can search and inspect entities, create, update and delete them, edit the
-Turtle source directly, run lint, consistency and duplicate checks and fix what they find, and
-work with branches and pull requests. Each change is a normal commit on the current branch.
-It can also read the files in the project folder and, when allowed, write code under `code/`
-and run shell commands there. The agent sends ontology content, and any files it reads, to
-OpenRouter.
+The **Agent** tab in the editor's right sidebar is a chat with an LLM, run through
+[OpenRouter](https://openrouter.ai), that works on the open project and branch through a fixed
+set of tools. It cannot reach other projects except the ones this project imports.
+
+### What it sees
+
+Each message carries a short description of what you are looking at: the page, the selected
+entity, the active ontology file and the current health counts. So "explain this class" or "add
+a subclass here" refer to the entity selected in the editor. The tab also offers starter
+prompts, such as explaining the selected entity or running the health checks and fixing what
+they find.
+
+### Ontology work (Edit Ontology)
+
+- **Read and search:** the class tree, entities and their references, the Turtle source, the
+  revision history and diffs.
+- **Edit:** create, update and delete classes, properties and individuals, or edit the Turtle
+  source directly for constructs the forms can't express (restrictions, prefixes, the ontology
+  header). Each change is a normal commit on the current branch with its own message, and the
+  editor refreshes as the agent works, keeping your unsaved form edits.
+- **Show:** after a change, it selects the entity in the editor so you can see the result.
+- **Health:** run lint, consistency and duplicate checks, read the full report, fix the issues
+  and re-run the checks to confirm. **Fix issues** in the Agent tab's health strip puts that
+  request in the message box for you to send.
+- **Branches and pull requests:** create and switch branches, and open, comment on, merge and
+  close pull requests.
+- **Project:** update project settings, list the RDF files in the folder, switch or create the
+  active ontology file, and commit changes made to the ontology file outside the editor.
+- **Imported ontologies:** open them read-only to look things up.
+
+It asks before large or destructive changes (bulk deletes, replacing the whole source, merging,
+normalizing) unless you clearly asked for them.
+
+### Code work (Edit Code)
+
+- **Read** any file in the project folder (`list_files`, `read_file`). This is always allowed.
+- **Write and delete** files, putting new code under `code/`.
+- **Run commands** with `bash -lc` in the project folder or a subfolder, for example to install
+  packages, run tests or scripts, or commit code with git. Commands time out after 60 s by
+  default (at most 300 s) and return the exit code and the last 20 KB of output.
+
+The ontology file is never changed through these tools, only through the ontology tools, so
+every ontology change stays a reviewed, structured commit. Code files the agent writes are not
+committed automatically. The agent's commands do not see `OPENROUTER_API_KEY` in their
+environment, but they otherwise run as your user and can reach anything you can.
+
+### Permissions
 
 Two toggles above the message box control what the agent may change:
 
-- **Edit Ontology** (on by default): changes to the ontology, branches, pull requests and
-  project settings.
+- **Edit Ontology** (on by default): the ontology, branches, pull requests and project settings.
 - **Edit Code** (off by default): writing and deleting files in the project folder and running
-  commands with `bash -lc` there (60 s timeout by default, at most 300 s).
+  commands.
 
-With both off the agent is read-only. The agent can open imported ontologies to read them,
-but not change them. The choice is remembered in the browser and sent with
-every message. The server enforces it: tools that aren't allowed are hidden from the model and
-refused if it calls them anyway, and the agent is told which toggle to ask you to turn on.
-`ontology.ttl` is changed only through the ontology tools, never as a plain file. Note that a
-command run with Edit Code on runs as your user and can reach anything you can.
+With both off the agent is read-only: it can still read, search, explain and run checks. The
+choice is remembered in the browser and sent with every message, and the server enforces it:
+tools that aren't allowed are hidden from the model and refused if it calls them anyway. When
+you ask for something that is turned off, the agent says which toggle to turn on instead of
+working around it.
 
-**Run as prompt** elsewhere in the editor puts text in the agent's message box without sending
-it, with a "From:" chip naming its source.
+### Run as prompt
 
-To enable it, add `OPENROUTER_API_KEY=sk-or-...` to `.env.local` in the project root. Choose
-the model, reasoning effort and custom instructions under **Settings → Agent**.
+The ▶ button next to any text value in the ontology puts that text in the agent's message box
+without sending it, with a "From:" chip naming its source. A green dot means the text was
+approved through a merged, reviewed pull request (see [Features](#features)).
+
+### Setup
+
+Add `OPENROUTER_API_KEY=sk-or-...` to `.env.local` in the project root and restart the server.
+Pick the model and reasoning effort from the menu at the top of the Agent tab or under
+**Settings → Agent**, where you can also add custom instructions. **New chat** starts a fresh
+conversation. The agent sends ontology content, page context and any files it reads to
+OpenRouter and the model provider you choose.
 
 ## Architecture
 
@@ -170,16 +248,22 @@ app/api/v1/[[...path]]/route.ts               forwards every /api/v1/* request t
 server/app.ts                                 Hono app (basePath /api/v1), error handler, /health, /openapi.json
 server/http.ts                                shared request and response helpers
 server/routes/<domain>.ts                     projects, ontology, pullRequests, lint, quality,
-                                              normalization, analytics, userSettings, agent
+                                              normalization, analytics, userSettings, agent,
+                                              imports, github, workspace, prompts, tools
 server/openapi/                               OpenAPI 3.1 spec built from the Hono route table
                                               (summaries, parameters and schemas per operation)
 server/agent/                                 editor agent: chat loop (OpenRouter via the openai SDK),
-                                              tools, system prompt, settings, prefixed-name handling
+                                              ontology tools (tools.ts), file and command tools
+                                              (codeTools.ts), permissions, system prompt, settings
 server/schema/*.sql                           SQLite schema, applied at startup (idempotent)
 server/db.ts                                  SQLite access helpers
 server/git.ts                                 repository helper using the git CLI; keeps the project folder
                                               in step with commits to the checked-out branch
 server/workspace.ts                           project folders: naming, lookup, migration from bare repos
+server/gitImport.ts                           new projects cloned from a git repository
+server/ontologyFiles.ts                       the RDF files in a folder and which one is the active ontology
+server/ontologyLocalChanges.ts                ontology file changes made outside the editor
+server/tools/                                 static analysis of code/: component tree, orphans
 server/localOnly.ts                           Host and Origin checks for the API
 server/workspaceFiles.ts                      safe file access inside a project folder
 server/terminals.ts  devServer.ts             terminal sessions (node-pty) and the dev server
