@@ -47,6 +47,7 @@ export const projectSchemas: Record<string, Schema> = {
       "updated_at",
       "source_file_path",
       "git_ontology_path",
+      "folder",
       "ontology_iri",
       "label_preferences",
       "normalization_report",
@@ -63,6 +64,12 @@ export const projectSchemas: Record<string, Schema> = {
         type: ["string", "null"],
         description: "Path of the ontology file inside the project's repository.",
         examples: ["ontology.ttl"],
+      },
+      folder: {
+        type: ["string", "null"],
+        description:
+          "Name of the project's folder under the data directory's projects/ folder. It holds the git working tree: the ontology file and a code/ folder. Chosen from the project name when the project is created and kept when it is renamed.",
+        examples: ["pizza-ontology"],
       },
       ontology_iri: { type: ["string", "null"], format: "uri" },
       label_preferences: {

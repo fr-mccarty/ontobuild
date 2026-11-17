@@ -13,9 +13,22 @@ import lint from "./routes/lint";
 import quality from "./routes/quality";
 import normalization from "./routes/normalization";
 import { createAgentRoutes } from "./routes/agent";
+import workspace from "./routes/workspace";
+import imports from "./routes/imports";
+import github from "./routes/github";
+import prompts from "./routes/prompts";
 import { buildOpenApiSpec } from "./openapi";
+import { localOnly } from "./localOnly";
+import { ensureMigrated } from "./workspace";
 
 const app = new Hono().basePath("/api/v1");
+
+app.use("*", localOnly());
+// Move projects stored before project folders existed (once per database).
+app.use("*", async (_c, next) => {
+  ensureMigrated();
+  await next();
+});
 
 app.onError((err, c) => {
   if (err instanceof ApiError) {
@@ -47,6 +60,10 @@ app.route("/", projects);
 app.route("/", analytics);
 app.route("/", userSettings);
 app.route("/", ontology);
+app.route("/", workspace);
+app.route("/", imports);
+app.route("/", github);
+app.route("/", prompts);
 app.route("/", createAgentRoutes(() => app));
 
 app.get("/openapi.json", (c) => c.json(buildOpenApiSpec(app.routes)));

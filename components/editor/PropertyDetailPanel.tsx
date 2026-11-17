@@ -500,6 +500,7 @@ export function PropertyDetailPanel({
                   <AnnotationRow
                     key={index}
                     propertyIri={DEFINITION_IRI}
+                    subjectIri={propertyIri ?? undefined}
                     value={def.value}
                     onValueChange={(v) => updateDefinition(index, v)}
                     onRemove={editDefinitions.filter((d) => d.value.trim()).length > 0 && index < editDefinitions.length - 1 ? () => removeDefinition(index) : undefined}
@@ -529,6 +530,7 @@ export function PropertyDetailPanel({
                   <AnnotationRow
                     key={index}
                     propertyIri={COMMENT_IRI}
+                    subjectIri={propertyIri ?? undefined}
                     value={comment.value}
                     onValueChange={(v) => updateComment(index, v)}
                     onRemove={editComments.filter((c) => c.value.trim()).length > 0 && index < editComments.length - 1 ? () => removeComment(index) : undefined}
@@ -672,6 +674,7 @@ export function PropertyDetailPanel({
                       <AnnotationRow
                         key={`${ann.property_iri}-${vi}`}
                         propertyIri={ann.property_iri}
+                        subjectIri={propertyIri ?? undefined}
                         value={v.value}
                         onValueChange={(val) => updateAnnotationValue(ann.property_iri, vi, val)}
                         onRemove={ann.values.filter((x) => x.value.trim()).length > 0 && vi < ann.values.length - 1 ? () => removeAnnotationValue(ann.property_iri, vi) : undefined}

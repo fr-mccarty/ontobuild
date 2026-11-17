@@ -6,7 +6,8 @@ import { ChevronRight, ChevronDown, Circle, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { TreeNodeContextMenu } from "@/components/editor/TreeNodeContextMenu";
-import type { EntityTreeNode as EntityTreeNodeType } from "@/lib/ontology/types";
+import { Tooltip } from "@/components/ui/tooltip";
+import { importedFromText, type EntityTreeNode as EntityTreeNodeType } from "@/lib/ontology/types";
 import type { DragState } from "@/lib/hooks/useTreeDragDrop";
 
 interface EntityTreeNodeProps {
@@ -61,11 +62,15 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
   const isFocused = focusedIri === node.iri;
   const hasChildren = node.hasChildren || node.children.length > 0;
   const isRoot = depth === 0;
+  // Classes from an imported ontology are read-only: no delete, no dragging them elsewhere
+  // (a local class can still be dropped onto one to become its subclass).
+  const isImported = !!node.importedFrom;
+  const rowOnDelete = isImported ? undefined : onDelete;
 
   const isDndEnabled = !!dragState;
   const { attributes: dragAttributes, listeners: dragListeners, setNodeRef: setDragRef } = useDraggable({
     id: node.iri,
-    disabled: !isDndEnabled,
+    disabled: !isDndEnabled || isImported,
   });
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: node.iri,
@@ -163,7 +168,7 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
     );
   }
 
-  const hasContextMenu = onCopyIri || onDelete || onAddChild;
+  const hasContextMenu = onCopyIri || rowOnDelete || onAddChild;
   const treeItemId = `tree-item-${node.iri.replace(/[^a-zA-Z0-9-_]/g, "_")}`;
 
   const rowContent = (
@@ -177,6 +182,7 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
         isFocused && "tree-item-focused",
         node.isSearchMatch && "tree-search-match",
         node.deprecated && "opacity-60",
+        isImported && "text-slate-500 dark:text-slate-400",
         isBeingDragged && "tree-item-dragging",
         isValidDrop && "tree-item-drop-valid",
         isInvalidDrop && "tree-item-drop-invalid",
@@ -189,6 +195,7 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
       aria-selected={isSelected}
       aria-expanded={hasChildren ? node.isExpanded : undefined}
       data-iri={node.iri}
+      data-imported={isImported ? "true" : undefined}
       {...(isDndEnabled ? { ...dragAttributes, ...dragListeners, role: "treeitem" } : { role: "treeitem" })}
     >
       {hasChildren ? (
@@ -223,6 +230,18 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
           : node.label}
       </span>
 
+      {isImported && (
+        <Tooltip content={`Imported from ${importedFromText(node)}. Read-only here: edit it in its own ontology.`}>
+          <span
+            className="shrink-0 rounded-sm border border-slate-300 px-1 text-[10px] uppercase leading-4 tracking-wide text-slate-500 dark:border-slate-600 dark:text-slate-400"
+            aria-label={`Imported from ${importedFromText(node)}`}
+            data-testid="imported-badge"
+          >
+            imported
+          </span>
+        </Tooltip>
+      )}
+
       {draftIris?.has(node.iri) && (
         <span
           className="h-2 w-2 shrink-0 rounded-full bg-amber-400"
@@ -253,7 +272,7 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
             node={node}
             onAddChild={onAddChild}
             onCopyIri={onCopyIri}
-            onDelete={onDelete}
+            onDelete={rowOnDelete}
           />
         </ContextMenu>
       ) : (

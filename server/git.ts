@@ -2,8 +2,8 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { REPOS_DIR } from "./db";
 import { ApiError } from "./http";
+import { CODE_DIR, projectDir, removeProjectDir } from "./workspace";
 
 export const DEFAULT_BRANCH = "main";
 export const COMMITTER_NAME = "OntoKit";
@@ -73,13 +73,25 @@ export class GitError extends Error {
   }
 }
 
-export function repoPath(projectId: string): string {
+/** The project's folder (the git working tree). */
+export function workTreePath(projectId: string): string {
   if (!/^[A-Za-z0-9_-]+$/.test(projectId)) throw new ApiError(400, "Invalid project id");
-  return path.join(REPOS_DIR, `${projectId}.git`);
+  const dir = projectDir(projectId);
+  if (!dir) throw new ApiError(404, "Project not found");
+  return dir;
+}
+
+/** The project's git directory (`<folder>/.git`). */
+export function repoPath(projectId: string): string {
+  return path.join(workTreePath(projectId), ".git");
 }
 
 export function repoExists(projectId: string): boolean {
-  return fs.existsSync(path.join(repoPath(projectId), "HEAD"));
+  try {
+    return fs.existsSync(path.join(repoPath(projectId), "HEAD"));
+  } catch {
+    return false;
+  }
 }
 
 interface RunOpts {
@@ -142,14 +154,60 @@ export async function withRepoLock<T>(projectId: string, fn: () => Promise<T>): 
 }
 
 export async function initRepo(projectId: string): Promise<void> {
-  const dir = repoPath(projectId);
+  const dir = workTreePath(projectId);
+  fs.mkdirSync(path.join(dir, CODE_DIR), { recursive: true });
   if (repoExists(projectId)) return;
-  fs.mkdirSync(dir, { recursive: true });
-  await gitRaw(dir, ["init", "--bare", "--quiet", `--initial-branch=${DEFAULT_BRANCH}`, dir]);
+  await gitRaw(path.join(dir, ".git"), ["init", "--quiet", `--initial-branch=${DEFAULT_BRANCH}`, dir]);
 }
 
+/** Delete the project's folder: the repository, the ontology and the code. */
 export async function deleteRepo(projectId: string): Promise<void> {
-  fs.rmSync(repoPath(projectId), { recursive: true, force: true });
+  const dir = projectDir(projectId);
+  if (dir) removeProjectDir(dir);
+}
+
+/** The branch checked out in the project folder, or null when HEAD is detached. */
+export async function checkedOutBranch(projectId: string): Promise<string | null> {
+  try {
+    const out = (await git(projectId, ["symbolic-ref", "--quiet", "HEAD"])).trim();
+    return out.startsWith("refs/heads/") ? out.slice("refs/heads/".length) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Move the working tree and index from commit `from` to commit `to`, like `git checkout`
+ * does: files that differ between the two are rewritten, and other local changes are kept.
+ * Fails without touching anything if a file it must rewrite has uncommitted changes.
+ * Call with the repo lock held, before moving the branch ref.
+ */
+async function updateWorkTree(projectId: string, from: string | null, to: string): Promise<void> {
+  const env = { GIT_WORK_TREE: workTreePath(projectId) };
+  try {
+    await git(projectId, from ? ["read-tree", "-m", "-u", from, to] : ["read-tree", "-m", "-u", to], { env });
+  } catch (e) {
+    if (e instanceof GitError) {
+      throw new ApiError(
+        409,
+        `The project folder has uncommitted changes that this would overwrite. Commit or discard them first. (${e.stderr.trim().split("\n")[0]})`,
+      );
+    }
+    throw e;
+  }
+}
+
+/** Point HEAD at another branch and update the project folder to match. */
+export async function checkoutBranch(projectId: string, name: string): Promise<void> {
+  return withRepoLock(projectId, () => checkoutBranchLocked(projectId, name));
+}
+
+async function checkoutBranchLocked(projectId: string, name: string): Promise<void> {
+  const to = await resolveRefOrNull(projectId, `refs/heads/${name}`);
+  if (!to) throw new GitError(`Branch not found: ${name}`, "", null);
+  const from = await resolveRefOrNull(projectId, "HEAD");
+  if (from !== to) await updateWorkTree(projectId, from, to);
+  await git(projectId, ["symbolic-ref", "HEAD", `refs/heads/${name}`]);
 }
 
 export async function branchExists(projectId: string, name: string): Promise<boolean> {
@@ -291,12 +349,7 @@ export async function deleteBranch(projectId: string, name: string, force = fals
       if (ahead > 0)
         throw new Error(`Branch '${name}' has ${ahead} unmerged commits. Use force=True to delete.`);
     }
-    try {
-      const head = (await git(projectId, ["symbolic-ref", "--quiet", "HEAD"])).trim();
-      if (head === `refs/heads/${name}`)
-        await git(projectId, ["symbolic-ref", "HEAD", `refs/heads/${def}`]);
-    } catch {
-    }
+    if ((await checkedOutBranch(projectId)) === name) await checkoutBranchLocked(projectId, def);
     await git(projectId, ["update-ref", "-d", `refs/heads/${name}`]);
   });
 }
@@ -488,6 +541,7 @@ export async function commitFiles(
       const commit = (
         await git(projectId, args, { input: opts.message, env: authorEnv(opts.author) })
       ).trim();
+      if ((await checkedOutBranch(projectId)) === opts.branch) await updateWorkTree(projectId, parent, commit);
       await git(projectId, ["update-ref", ref, commit, parent ?? ""]);
       return commit;
     });
@@ -544,6 +598,7 @@ export async function mergeBranch(
         env: authorEnv(opts.author),
       })
     ).trim();
+    if ((await checkedOutBranch(projectId)) === target) await updateWorkTree(projectId, tgt, commit);
     await git(projectId, ["update-ref", `refs/heads/${target}`, commit, tgt]);
     return { success: true, message: "Merge successful", merge_commit_hash: commit, conflicts: [] };
   });

@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ResizablePanelDivider } from "@/components/editor/ResizablePanelDivider";
+import { useWorkspaceStore, type RightSidebarTab } from "@/lib/stores/workspaceStore";
 
-export type RightSidebarTab = "agent" | "health";
+export type { RightSidebarTab };
 export type LintSeverity = "error" | "warning" | "info";
 
 export interface LintCounts {
@@ -68,15 +69,27 @@ interface RightSidebarProps {
   lintSummary?: LintCounts | null;
   agent: ReactNode;
   health: (isActive: boolean) => ReactNode;
+  files?: (isActive: boolean) => ReactNode;
 }
 
 const TABS: { id: RightSidebarTab; label: string }[] = [
   { id: "agent", label: "Agent" },
   { id: "health", label: "Health" },
+  { id: "files", label: "Files" },
 ];
 
-export function RightSidebar({ onClose, lintSummary, agent, health }: RightSidebarProps) {
-  const [activeTab, setActiveTab] = useState<RightSidebarTab>("agent");
+export function RightSidebar({ onClose, lintSummary, agent, health, files }: RightSidebarProps) {
+  const activeTab = useWorkspaceStore((s) => s.rightTab);
+  const setActiveTab = useWorkspaceStore((s) => s.setRightTab);
+  const tabs = files ? TABS : TABS.filter((t) => t.id !== "files");
+  // Opens on the Agent tab each time, unless an action (Run as prompt, Files) asked for a tab.
+  const resetRightTabOnOpen = useWorkspaceStore((s) => s.resetRightTabOnOpen);
+  useEffect(() => resetRightTabOnOpen(), [resetRightTabOnOpen]);
+  // A request that arrives while the panel is already open has been honoured; forget it.
+  const rightTabRequested = useWorkspaceStore((s) => s.rightTabRequested);
+  useEffect(() => {
+    if (rightTabRequested) useWorkspaceStore.setState({ rightTabRequested: false });
+  }, [rightTabRequested]);
   const [width, setWidth] = useState(readStoredWidth);
   const severity = lintSeverity(lintSummary);
 
@@ -118,7 +131,7 @@ export function RightSidebar({ onClose, lintSummary, agent, health }: RightSideb
       >
         <div className="flex items-stretch border-b border-slate-200 dark:border-slate-700">
           <div role="tablist" aria-label="Right panel" className="flex flex-1">
-            {TABS.map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -176,6 +189,17 @@ export function RightSidebar({ onClose, lintSummary, agent, health }: RightSideb
         >
           {health(activeTab === "health")}
         </div>
+        {files && (
+          <div
+            role="tabpanel"
+            id="right-sidebar-panel-files"
+            aria-labelledby="right-sidebar-tab-files"
+            hidden={activeTab !== "files"}
+            className={cn("min-h-0 flex-1 flex-col", activeTab === "files" ? "flex" : "hidden")}
+          >
+            {files(activeTab === "files")}
+          </div>
+        )}
       </aside>
     </>
   );

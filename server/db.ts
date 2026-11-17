@@ -6,7 +6,9 @@ import crypto from "node:crypto";
 export const DATA_DIR = path.resolve(
   /*turbopackIgnore: true*/ process.env.ONTOKIT_DATA_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "data"),
 );
+/** Legacy location of bare project repositories, moved into PROJECTS_DIR by server/workspace.ts. */
 export const REPOS_DIR = path.join(/*turbopackIgnore: true*/ DATA_DIR, "repos");
+export const PROJECTS_DIR = path.join(/*turbopackIgnore: true*/ DATA_DIR, "projects");
 const SCHEMA_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), "server", "schema");
 
 type GlobalWithDb = typeof globalThis & { __ontokitDb?: DatabaseSync };
@@ -14,7 +16,7 @@ const g = globalThis as GlobalWithDb;
 
 function open(): DatabaseSync {
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.mkdirSync(REPOS_DIR, { recursive: true });
+  fs.mkdirSync(PROJECTS_DIR, { recursive: true });
   const db = new DatabaseSync(path.join(DATA_DIR, "ontokit.db"));
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
   applySchema(db);
@@ -26,6 +28,18 @@ function applySchema(db: DatabaseSync) {
   for (const file of fs.readdirSync(SCHEMA_DIR).filter((f) => f.endsWith(".sql")).sort()) {
     db.exec(fs.readFileSync(path.join(SCHEMA_DIR, file), "utf8"));
   }
+  for (const [table, column, type] of ADDED_COLUMNS) ensureColumn(db, table, column, type);
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS ux_projects_folder ON projects(folder)");
+}
+
+/** Columns added after a table was first created (CREATE TABLE IF NOT EXISTS won't add them). */
+const ADDED_COLUMNS: [table: string, column: string, type: string][] = [
+  ["projects", "folder", "TEXT"],
+];
+
+function ensureColumn(db: DatabaseSync, table: string, column: string, type: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
 }
 
 export function getDb(): DatabaseSync {

@@ -3,8 +3,9 @@
 import { useMemo } from "react";
 import { cn, getLocalName } from "@/lib/utils";
 import { EntityTree } from "@/components/editor/shared/EntityTree";
+import { Tooltip } from "@/components/ui/tooltip";
 import { classTreeNodesToEntityNodes } from "@/lib/ontology/types";
-import type { ClassTreeNode, EntityTreeNode } from "@/lib/ontology/types";
+import type { ClassTreeNode, EntityTreeNode, ImportedMarker } from "@/lib/ontology/types";
 import type { EntitySearchResult } from "@/lib/api/client";
 import type { DragState } from "@/lib/hooks/useTreeDragDrop";
 
@@ -143,7 +144,7 @@ export function ClassTree({
 }
 
 interface SearchResultItemProps {
-  result: EntitySearchResult;
+  result: EntitySearchResult & ImportedMarker;
   onSelect: (iri: string) => void;
 }
 
@@ -157,11 +158,18 @@ function SearchResultItem({ result, onSelect }: SearchResultItemProps) {
     individual: { letter: "I", color: "bg-purple-100 border-purple-500 text-purple-600 dark:bg-purple-900/30 dark:border-purple-400 dark:text-purple-400" },
   }[result.entity_type];
 
+  const importedFrom = result.imported_from
+    ? result.imported_from_label
+      ? `${result.imported_from_label} (${result.imported_from})`
+      : result.imported_from
+    : null;
+
   return (
     <button
-      className="tree-item group w-full text-left"
+      className={cn("tree-item group w-full text-left", importedFrom && "text-slate-500 dark:text-slate-400")}
       style={{ paddingLeft: "8px" }}
       onClick={() => onSelect(result.iri)}
+      data-imported={importedFrom ? "true" : undefined}
     >
       <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0", typeIcon.color)}>
         <span className="text-[10px] font-bold">{typeIcon.letter}</span>
@@ -178,9 +186,17 @@ function SearchResultItem({ result, onSelect }: SearchResultItemProps) {
         )}
       </div>
 
-      <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 flex-shrink-0">
-        {result.entity_type}
-      </span>
+      {importedFrom ? (
+        <Tooltip content={`Imported from ${importedFrom}. Read-only here.`}>
+          <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 flex-shrink-0">
+            imported {result.entity_type}
+          </span>
+        </Tooltip>
+      ) : (
+        <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 flex-shrink-0">
+          {result.entity_type}
+        </span>
+      )}
     </button>
   );
 }

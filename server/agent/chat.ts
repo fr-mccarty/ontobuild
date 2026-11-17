@@ -13,7 +13,14 @@ import type {
 import type { AgentEffort } from "@/lib/api/agentSettings";
 import { OPENROUTER_BASE_URL, OPENROUTER_HEADERS } from "./config";
 import { buildSystemPrompt } from "./systemPrompt";
-import { executeTool, openAiTools, parseToolArguments, type ToolContext } from "./tools";
+import {
+  DEFAULT_AGENT_PERMISSIONS,
+  executeTool,
+  openAiTools,
+  parseToolArguments,
+  type AgentPermissions,
+  type ToolContext,
+} from "./tools";
 
 export const MAX_TURNS = 40;
 
@@ -136,6 +143,8 @@ export interface RunChatOptions {
   userMessage: string;
   pageContext: string;
   toolContext: ToolContext;
+  /** What the agent may change. Defaults to toolContext.permissions, then DEFAULT_AGENT_PERMISSIONS. */
+  permissions?: AgentPermissions;
   send: SendEvent;
   signal: AbortSignal;
   maxTurns?: number;
@@ -149,15 +158,19 @@ interface PendingCall {
 
 export async function runAgentChat(opts: RunChatOptions): Promise<void> {
   const { client, send, signal } = opts;
+  const permissions = opts.permissions ?? opts.toolContext.permissions ?? DEFAULT_AGENT_PERMISSIONS;
+  // Tools check this too, so a call to a tool the model was not offered is still refused.
+  opts.toolContext.permissions = permissions;
   const system = buildSystemMessage(
     opts.model,
     buildSystemPrompt({
       projectId: opts.toolContext.projectId,
       branch: opts.toolContext.branch,
       customInstructions: opts.customInstructions,
+      permissions,
     }),
   );
-  const tools = openAiTools();
+  const tools = openAiTools(permissions);
   const conversation: ChatCompletionMessageParam[] = [...opts.history];
 
   const append = async (message: ChatCompletionMessageParam) => {

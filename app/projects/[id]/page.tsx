@@ -23,6 +23,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { BranchProvider, branchQueryKeys } from "@/lib/context/BranchContext";
 import { useProjectViewer } from "@/lib/hooks/useProjectViewer";
 import { useEditorSidebars } from "@/lib/hooks/useEditorSidebars";
+import { useWorkspaceStore } from "@/lib/stores/workspaceStore";
+import { ImportsButton } from "@/components/project/ImportsButton";
+import { GitHubButton } from "@/components/project/GitHubButton";
+import { RunMenu } from "@/components/workspace/RunMenu";
+import { FilesPanel } from "@/components/workspace/FilesPanel";
+import { TerminalPanel } from "@/components/workspace/TerminalPanel";
 import { revisionsApi } from "@/lib/api/revisions";
 import { projectOntologyApi, type ClassUpdatePayload } from "@/lib/api/client";
 import { getLocalName } from "@/lib/utils";
@@ -129,6 +135,14 @@ export default function ProjectEditorPage() {
   const [showHistory, setShowHistory] = useState(false);
   // Below the lg breakpoint only one sidebar shows at a time; from lg up both can (see the hook).
   const { leftOpen, rightOpen: showRightSidebar, toggleLeft, toggleRight, closeRight } = useEditorSidebars();
+  // "Run as prompt", "Files" and similar actions ask for the right sidebar through the workspace store.
+  const rightOpenRequest = useWorkspaceStore((s) => s.rightOpenRequest);
+  const handledRightOpenRequest = useRef(rightOpenRequest);
+  useEffect(() => {
+    if (rightOpenRequest === handledRightOpenRequest.current) return;
+    handledRightOpenRequest.current = rightOpenRequest;
+    if (!showRightSidebar) toggleRight();
+  }, [rightOpenRequest, showRightSidebar, toggleRight]);
   const [leftTab, setLeftTab] = useState<EntityTab>("classes");
   const selectionIri = useSelectionStore((s) => s.iri);
   const selectionType = useSelectionStore((s) => s.type);
@@ -517,6 +531,14 @@ export default function ProjectEditorPage() {
     }
   };
 
+  // Imports and GitHub pulls change ontology.ttl outside the editor. The editor saves by rewriting
+  // its cached source, so reload it (and the tree) or the next save would undo those changes.
+  const reloadOntologyFromServer = () => {
+    void reloadSourceAfterAgent();
+    void refreshTree();
+    setDetailRefreshKey((k) => k + 1);
+  };
+
   const agentSync = useAgentEditorSync({
     projectId,
     activeBranch,
@@ -737,8 +759,12 @@ export default function ProjectEditorPage() {
               >
                 <span className="flex-shrink-0 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{totalClasses} classes</span>
               </Tooltip>
+              <ImportsButton projectId={projectId} branch={activeBranch} onChanged={reloadOntologyFromServer} />
             </div>
             <div className="ml-auto flex flex-shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2">
+              <RunMenu projectId={projectId} />
+              <GitHubButton projectId={projectId} onPulled={reloadOntologyFromServer} />
+
               <BranchSelector
                 className="hidden md:block"
                 onBranchChange={handleBranchChange}
@@ -899,7 +925,8 @@ export default function ProjectEditorPage() {
           </div>
         </div>
 
-        <div className="relative flex h-[calc(100vh-4rem-3.5rem)]">
+        <div className="flex h-[calc(100vh-4rem-3.5rem)] flex-col">
+        <div className="relative flex min-h-0 flex-1">
           <div className="flex-1 flex overflow-hidden">
             <StandardEditorLayout
               projectId={projectId}
@@ -953,6 +980,7 @@ export default function ProjectEditorPage() {
                   onUiAction={agentSync.onUiAction}
                 />
               }
+              files={(isActive) => <FilesPanel projectId={projectId} isActive={isActive} />}
               health={(isActive) => (
                 <div className="min-h-0 flex-1">
                   <HealthCheckPanel
@@ -982,6 +1010,8 @@ export default function ProjectEditorPage() {
             onClose={() => setShowHistory(false)}
             refreshKey={agentSync.sidePanelsRefreshKey}
           />
+        </div>
+        <TerminalPanel projectId={projectId} />
         </div>
       </main>
 

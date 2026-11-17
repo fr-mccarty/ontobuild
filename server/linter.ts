@@ -222,6 +222,16 @@ interface Ctx {
   g: Graph;
   uriSubjects: Term[];
   prefixes: Record<string, string>;
+  /** Classes the ontology's owl:imports provide; they count as defined. */
+  externalClasses: ReadonlySet<string>;
+}
+
+/** Tells the linter which classes an ontology's imports provide (set by server/imports.ts). */
+export type ExternalClassResolver = (store: Store) => ReadonlySet<string> | null;
+const resolverG = globalThis as typeof globalThis & { __ontokitLintExternalClasses?: ExternalClassResolver };
+
+export function setExternalClassResolver(fn: ExternalClassResolver): void {
+  resolverG.__ontokitLintExternalClasses = fn;
 }
 
 type Checker = (ctx: Ctx) => LintResult[];
@@ -273,10 +283,10 @@ const CHECKERS: Record<string, Checker> = {
     return out;
   },
 
-  "undefined-parent": ({ g }) => {
+  "undefined-parent": ({ g, externalClasses }) => {
     const out: LintResult[] = [];
     const classes = uniqueNamed(g.subjects(RDF_TYPE, OWL_CLASS));
-    const defined = new Set(classes.map((c) => c.value));
+    const defined = new Set([...classes.map((c) => c.value), ...externalClasses]);
     defined.add(OWL_THING);
     for (const cls of classes) {
       for (const parent of g.objects(cls, RDFS_SUBCLASS_OF)) {
@@ -752,7 +762,13 @@ export function lintOntology(
   const g = new Graph(store);
   const enabled = opts.enabledRules ?? ALL_RULE_IDS;
   const uriSubjects = uniqueNamed(store.getSubjects(null, null, null)).filter((s) => s.value !== OWL_THING);
-  const ctx: Ctx = { g, uriSubjects, prefixes: opts.prefixes ?? {} };
+  let externalClasses: ReadonlySet<string> = new Set();
+  try {
+    externalClasses = resolverG.__ontokitLintExternalClasses?.(store) ?? new Set();
+  } catch {
+    externalClasses = new Set();
+  }
+  const ctx: Ctx = { g, uriSubjects, prefixes: opts.prefixes ?? {}, externalClasses };
   const issues: LintResult[] = [];
   for (const rule of LINT_RULES) {
     if (!enabled.has(rule.rule_id)) continue;

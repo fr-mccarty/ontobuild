@@ -458,7 +458,7 @@ export function IndividualDetailPanel({
             <Section title="Definition" icon={<Lightbulb className="h-4 w-4" />}>
               <div className="space-y-2">
                 {editDefinitions.map((def, index) => (
-                  <AnnotationRow key={index} propertyIri={DEFINITION_IRI} value={def.value}
+                  <AnnotationRow key={index} propertyIri={DEFINITION_IRI} subjectIri={individualIri ?? undefined} value={def.value}
                     onValueChange={(v) => updateDefinition(index, v)}
                     onRemove={editDefinitions.filter((d) => d.value.trim()).length > 0 && index < editDefinitions.length - 1 ? () => removeDefinition(index) : undefined}
                     onBlur={() => triggerSave()} showPropertyLabel={false} placeholder="Add a definition..." />
@@ -479,7 +479,7 @@ export function IndividualDetailPanel({
             <Section title="Comment(s)" icon={<MessageSquare className="h-4 w-4" />}>
               <div className="space-y-2">
                 {editComments.map((c, index) => (
-                  <AnnotationRow key={index} propertyIri={COMMENT_IRI} value={c.value}
+                  <AnnotationRow key={index} propertyIri={COMMENT_IRI} subjectIri={individualIri ?? undefined} value={c.value}
                     onValueChange={(v) => updateComment(index, v)}
                     onRemove={editComments.filter((x) => x.value.trim()).length > 0 && index < editComments.length - 1 ? () => removeComment(index) : undefined}
                     onBlur={() => triggerSave()} showPropertyLabel={false} placeholder="Add a comment..." />
@@ -650,7 +650,7 @@ export function IndividualDetailPanel({
                 {editAnnotations.map((ann) => (
                   <div key={ann.property_iri} className="space-y-2">
                     {ann.values.map((v, vi) => (
-                      <AnnotationRow key={`${ann.property_iri}-${vi}`} propertyIri={ann.property_iri} value={v.value}
+                      <AnnotationRow key={`${ann.property_iri}-${vi}`} propertyIri={ann.property_iri} subjectIri={individualIri ?? undefined} value={v.value}
                         onValueChange={(val) => updateAnnotationValue(ann.property_iri, vi, val)}
                         onRemove={ann.values.filter((x) => x.value.trim()).length > 0 && vi < ann.values.length - 1 ? () => removeAnnotationValue(ann.property_iri, vi) : undefined}
                         onBlur={() => triggerSave()} />

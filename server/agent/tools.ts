@@ -28,7 +28,40 @@ import { findBlock, literal, parseDeclarations } from "@/lib/ontology/turtleUtil
 import { labelToLocalName, uuidToBase62, type EntityType } from "@/lib/ontology/iriGeneration";
 import { commonPrefixes } from "@/lib/editor/languages/turtle";
 import { expandPrefixedIris, hasPrefixedIris } from "./prefixedNames";
+import { CODE_TOOLS } from "./codeTools";
 import type { AnnotationUpdate, LocalizedString } from "@/lib/api/client";
+
+/**
+ * What a tool may change. Every tool declares one, and the chat's permissions decide which
+ * classes the model sees and may call:
+ * - `read`: never changes anything (always allowed).
+ * - `ontology`: changes the ontology, branches, pull requests or project settings (Edit Ontology).
+ * - `code`: changes files in the project folder or runs commands there (Edit Code).
+ */
+export type ToolClass = "read" | "ontology" | "code";
+
+export const TOOL_CLASSES: readonly ToolClass[] = ["read", "ontology", "code"];
+
+/** What the user allowed the agent to change in this conversation (the Agent tab toggles). */
+export interface AgentPermissions {
+  edit_code: boolean;
+  edit_ontology: boolean;
+}
+
+/** Used when a request has no permissions field, so older clients keep their behavior. */
+export const DEFAULT_AGENT_PERMISSIONS: AgentPermissions = { edit_code: false, edit_ontology: true };
+
+export function isToolClassAllowed(kind: ToolClass, permissions: AgentPermissions): boolean {
+  if (kind === "ontology") return permissions.edit_ontology;
+  if (kind === "code") return permissions.edit_code;
+  return true;
+}
+
+export function permissionRefusal(kind: ToolClass): string {
+  return kind === "code"
+    ? "Editing code is turned off for this conversation. Ask the user to turn on Edit Code."
+    : "Editing the ontology is turned off for this conversation. Ask the user to turn on Edit Ontology.";
+}
 
 export interface ToolContext {
   projectId: string;
@@ -39,6 +72,8 @@ export interface ToolContext {
   signal?: AbortSignal;
   pollIntervalMs?: number;
   pollTimeoutMs?: number;
+  /** What the agent may change. Defaults to DEFAULT_AGENT_PERMISSIONS. */
+  permissions?: AgentPermissions;
 }
 
 export type SelectableEntityKind = "class" | "property" | "individual";
@@ -71,6 +106,8 @@ export interface ToolRunResult {
 
 export interface ToolDef {
   name: string;
+  /** What the tool may change; decides whether the current permissions allow it. */
+  kind: ToolClass;
   description: string;
   parameters: JsonSchema;
   run: (input: Record<string, unknown>, ctx: ToolContext) => Promise<ToolRunResult>;
@@ -338,9 +375,10 @@ const OWL_ONTOLOGY = "http://www.w3.org/2002/07/owl#Ontology";
 const s = (input: Record<string, unknown>, key: string) => input[key] as string;
 const opt = <T>(input: Record<string, unknown>, key: string): T | undefined => input[key] as T | undefined;
 
-export const AGENT_TOOLS: ToolDef[] = [
+const ONTOLOGY_TOOLS: ToolDef[] = [
   {
     name: "get_project",
+    kind: "read",
     description: "Get the current project's metadata: name, description, ontology IRI and label preferences.",
     parameters: { type: "object", properties: {} },
     async run(_input, ctx) {
@@ -360,6 +398,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "search_entities",
+    kind: "read",
     description:
       "Search classes, properties and individuals by label, local name or IRI substring. Use query '*' to list every entity. Returns up to 50 matches for a text query.",
     parameters: {
@@ -384,6 +423,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "get_class_tree",
+    kind: "read",
     description:
       "List root classes of the class hierarchy, or the direct subclasses of parent_iri. Each node has iri, label, child_count and deprecated.",
     parameters: {
@@ -402,6 +442,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "get_entity",
+    kind: "read",
     description:
       "Read one entity (class, property or individual) by IRI. Returns its type, structured detail (labels, comments, parents, domains, ranges, types, annotations...) and its raw Turtle block. Always call this before updating an entity.",
     parameters: { type: "object", properties: { iri: str("IRI (full or prefixed name) of the entity") }, required: ["iri"] },
@@ -433,6 +474,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "get_entity_references",
+    kind: "read",
     description:
       "Find everything that references an entity (as parent, domain, range, type, restriction filler, annotation value...). Use before deleting or renaming.",
     parameters: { type: "object", properties: { iri: str("IRI (full or prefixed name) of the entity") }, required: ["iri"] },
@@ -444,6 +486,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "select_entity",
+    kind: "read",
     description:
       "Show an entity to the user in the editor, exactly as if they clicked it: switches to the Classes, Properties or Individuals tab, expands the tree down to the entity, selects it and opens its detail panel. Changes nothing in the ontology. Only works for the branch open in the editor.",
     parameters: { type: "object", properties: { iri: str("IRI (full or prefixed name) of the class, property or individual") }, required: ["iri"] },
@@ -469,6 +512,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "get_source",
+    kind: "read",
     description: "Read the full Turtle source of the ontology on the current branch.",
     parameters: { type: "object", properties: {} },
     async run(_input, ctx) {
@@ -486,6 +530,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "list_revisions",
+    kind: "read",
     description: "List recent commits across all branches, newest first. Each commit lists the branches that point at it.",
     parameters: {
       type: "object",
@@ -513,6 +558,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "get_diff",
+    kind: "read",
     description: "Show the textual diff of the ontology between two commits or branches.",
     parameters: {
       type: "object",
@@ -536,6 +582,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "create_entity",
+    kind: "ontology",
     description:
       "Create a class, object property, data property, annotation property or individual. The IRI is generated from the ontology's default namespace and the label when omitted. parent_iri is the superclass for a class, the superproperty for a property, or the class (rdf:type) for an individual.",
     parameters: {
@@ -590,6 +637,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "update_class",
+    kind: "ontology",
     description:
       "Update a class. Partial update: only the fields you pass are replaced; every omitted field keeps its current value. List fields replace the whole list, so include existing values you want to keep.",
     parameters: {
@@ -635,6 +683,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "update_property",
+    kind: "ontology",
     description:
       "Update an object, data or annotation property. Partial update: only the fields you pass are replaced; omitted fields keep their current values. List fields replace the whole list.",
     parameters: {
@@ -697,6 +746,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "update_individual",
+    kind: "ontology",
     description:
       "Update a named individual. Partial update: only the fields you pass are replaced; omitted fields keep their current values. List fields replace the whole list.",
     parameters: {
@@ -777,6 +827,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "delete_entity",
+    kind: "ontology",
     description:
       "Delete a class, property or individual: removes every triple about it, every triple pointing at it, and anonymous expressions that mention it. Check get_entity_references first.",
     parameters: {
@@ -799,6 +850,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "edit_source",
+    kind: "ontology",
     description:
       "Replace one exact snippet of the Turtle source. old_text must occur exactly once; include enough surrounding text to make it unique. Prefer the entity tools; use this for constructs they cannot express (restrictions, prefixes, ontology header).",
     parameters: {
@@ -824,6 +876,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "replace_source",
+    kind: "ontology",
     description:
       "Replace the entire Turtle source. Last resort for large restructurings; the content must be complete, valid Turtle.",
     parameters: {
@@ -841,6 +894,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "run_lint",
+    kind: "read",
     description:
       "Run the ontology linter on the project's default branch and wait for the results. Returns counts and the open issues.",
     parameters: { type: "object", properties: {} },
@@ -883,6 +937,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "get_lint_issues",
+    kind: "read",
     description: "List open issues from the most recent completed lint run.",
     parameters: {
       type: "object",
@@ -907,6 +962,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "get_lint_config",
+    kind: "read",
     description: "Get the project's lint configuration: preset level or custom enabled rules, plus the effective rules.",
     parameters: { type: "object", properties: {} },
     async run(_input, ctx) {
@@ -916,6 +972,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "update_lint_config",
+    kind: "ontology",
     description:
       "Change the lint configuration. Pass either lint_level (preset 1-5) or enabled_rules (custom list of rule ids), not both.",
     parameters: {
@@ -935,6 +992,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "list_lint_rules",
+    kind: "read",
     description: "List every available lint rule with id, name, description, severity and scope.",
     parameters: { type: "object", properties: {} },
     async run(_input, ctx) {
@@ -944,6 +1002,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "run_consistency_check",
+    kind: "read",
     description:
       "Run the structural consistency check (cycles, orphan references, domain/range problems...) on the current branch and wait for the results.",
     parameters: { type: "object", properties: {} },
@@ -959,6 +1018,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "find_duplicates",
+    kind: "read",
     description: "Find likely duplicate entities by label similarity on the current branch and wait for the results.",
     parameters: {
       type: "object",
@@ -980,6 +1040,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "get_normalization_status",
+    kind: "read",
     description: "Check whether the Turtle source differs from its canonical normalized form.",
     parameters: { type: "object", properties: {} },
     async run(_input, ctx) {
@@ -999,6 +1060,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "normalize",
+    kind: "ontology",
     description:
       "Normalize the Turtle source into canonical form (sorted triples, standard formatting). With dry_run true nothing is committed and only the report is returned.",
     parameters: {
@@ -1041,6 +1103,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "update_project",
+    kind: "ontology",
     description: "Rename the project or change its description. Also syncs the ontology title/description on the default branch.",
     parameters: {
       type: "object",
@@ -1064,6 +1127,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "list_branches",
+    kind: "read",
     description: "List the project's git branches with their latest commit and ahead/behind counts versus the default branch.",
     parameters: { type: "object", properties: {} },
     async run(_input, ctx) {
@@ -1092,6 +1156,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "create_branch",
+    kind: "ontology",
     description: "Create a new git branch. It does not switch to it; call switch_branch to edit it.",
     parameters: {
       type: "object",
@@ -1115,6 +1180,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "switch_branch",
+    kind: "read",
     description:
       "Switch which branch the following tool calls read and edit, for the rest of this reply. The next user message starts again on the branch open in the editor, which this does not change.",
     parameters: {
@@ -1139,6 +1205,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "list_pull_requests",
+    kind: "read",
     description: "List pull requests, newest first.",
     parameters: {
       type: "object",
@@ -1157,6 +1224,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "get_pull_request",
+    kind: "read",
     description: "Get one pull request with its description, status, mergeability and comments.",
     parameters: {
       type: "object",
@@ -1180,6 +1248,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "create_pull_request",
+    kind: "ontology",
     description: "Open a pull request to merge source_branch into target_branch (defaults to the project's default branch).",
     parameters: {
       type: "object",
@@ -1211,6 +1280,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "merge_pull_request",
+    kind: "ontology",
     description: "Merge an open pull request.",
     parameters: {
       type: "object",
@@ -1232,6 +1302,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "close_pull_request",
+    kind: "ontology",
     description: "Close an open pull request without merging.",
     parameters: {
       type: "object",
@@ -1248,6 +1319,7 @@ export const AGENT_TOOLS: ToolDef[] = [
   },
   {
     name: "comment_on_pull_request",
+    kind: "ontology",
     description: "Add a comment to a pull request.",
     parameters: {
       type: "object",
@@ -1303,10 +1375,13 @@ async function runJob(ctx: ToolContext, startPath: string, jobsPath: string, que
   });
 }
 
+export const AGENT_TOOLS: ToolDef[] = [...ONTOLOGY_TOOLS, ...CODE_TOOLS];
+
 const TOOL_MAP = new Map(AGENT_TOOLS.map((t) => [t.name, t]));
 
-export function openAiTools(): ChatCompletionFunctionTool[] {
-  return AGENT_TOOLS.map((t) => ({
+/** Tool definitions for the model, without the tools the permissions don't allow. */
+export function openAiTools(permissions: AgentPermissions = DEFAULT_AGENT_PERMISSIONS): ChatCompletionFunctionTool[] {
+  return AGENT_TOOLS.filter((t) => isToolClassAllowed(t.kind, permissions)).map((t) => ({
     type: "function",
     function: { name: t.name, description: t.description, parameters: t.parameters as Record<string, unknown> },
   }));
@@ -1385,6 +1460,10 @@ export async function executeTool(
 ): Promise<ToolExecution> {
   const tool = TOOL_MAP.get(name);
   if (!tool) return failure(input, `Unknown tool: ${name}`);
+  // The model only sees allowed tools, but it can still name a hidden one; refuse before any side effect.
+  if (!isToolClassAllowed(tool.kind, ctx.permissions ?? DEFAULT_AGENT_PERMISSIONS)) {
+    return failure(input, permissionRefusal(tool.kind));
+  }
   const errors = validateJson(tool.parameters, input);
   if (errors.length) return failure(input, `Invalid input for ${name}: ${errors.join("; ")}`);
   let args = input;

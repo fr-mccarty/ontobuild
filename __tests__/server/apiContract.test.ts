@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPizzaProject, removeDir, useTempDataDir, type AppLike } from "./agent/helpers";
 

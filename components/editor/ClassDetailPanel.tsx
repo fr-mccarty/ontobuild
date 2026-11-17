@@ -41,6 +41,7 @@ import { EntityHistoryTab } from "@/components/editor/EntityHistoryTab";
 import { useAutoSave } from "@/lib/hooks/useAutoSave";
 import { useToast } from "@/lib/context/ToastContext";
 import { Tooltip } from "@/components/ui/tooltip";
+import type { ImportedMarker } from "@/lib/ontology/types";
 
 export function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
@@ -86,6 +87,10 @@ export function ClassDetailPanel({
   headerActions,
 }: ClassDetailPanelProps) {
   const [classDetail, setClassDetail] = useState<OWLClassDetail | null>(null);
+  // A class from an imported ontology (owl:imports) is shown read-only.
+  const importedMarker = classDetail as (OWLClassDetail & ImportedMarker) | null;
+  const importedFrom = importedMarker?.imported_from;
+  const editable = !!canEdit && !importedFrom;
   const [classIssues, setClassIssues] = useState<LintIssue[]>([]);
   const [showInstances, setShowInstances] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -121,7 +126,7 @@ export function ClassDetailPanel({
     branch: branch || "main",
     classIri,
     classDetail,
-    canEdit: !!canEdit && !!onUpdateClass,
+    canEdit: editable && !!onUpdateClass,
     onUpdateClass,
     onError: (msg) => toast.error(msg),
   });
@@ -217,7 +222,7 @@ export function ClassDetailPanel({
 
   useEffect(() => {
     if (isEditing || editInitializedRef.current) return;
-    if (!canEdit || !onUpdateClass || !classDetail) return;
+    if (!editable || !onUpdateClass || !classDetail) return;
 
     if (restoredDraft && classIri) {
       setEditLabels(restoredDraft.labels.length > 0 ? restoredDraft.labels : [{ value: "" }]);
@@ -233,7 +238,7 @@ export function ClassDetailPanel({
     }
 
     enterEditMode();
-  }, [classDetail, canEdit, restoredDraft, classIri, clearRestoredDraft, onUpdateClass, isEditing, enterEditMode]);
+  }, [classDetail, editable, restoredDraft, classIri, clearRestoredDraft, onUpdateClass, isEditing, enterEditMode]);
 
   useEffect(() => {
     if (!classIri) {
@@ -569,6 +574,22 @@ export function ClassDetailPanel({
         </div>
       </div>
 
+      {importedFrom && (
+        <div
+          className="flex shrink-0 items-start gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300"
+          role="note"
+          data-testid="imported-class-note"
+        >
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            Imported from{" "}
+            <span className="font-medium">{importedMarker?.imported_from_label || importedFrom}</span>
+            {importedMarker?.imported_from_label && <span className="text-slate-400"> ({importedFrom})</span>}
+            . It is read-only here; edit it in its own ontology.
+          </span>
+        </div>
+      )}
+
       {isEditing && (
         <AutoSaveAffordanceBar
           status={saveStatus}
@@ -657,6 +678,7 @@ export function ClassDetailPanel({
                         <AnnotationRow
                           key={vIdx}
                           propertyIri={DEFINITION_IRI}
+                          subjectIri={classIri ?? undefined}
                           value={val.value}
                           onValueChange={(v) => updateAnnotationValue(DEFINITION_IRI, vIdx, v)}
                           onRemove={isGhost ? undefined : () => removeAnnotationValue(DEFINITION_IRI, vIdx)}
@@ -755,6 +777,7 @@ export function ClassDetailPanel({
                               <AnnotationRow
                                 key={vIdx}
                                 propertyIri={annotation.property_iri}
+                                subjectIri={classIri ?? undefined}
                                 value={val.value}
                                 onValueChange={(v) => updateAnnotationValue(annotation.property_iri, vIdx, v)}
                                 onRemove={isGhost ? undefined : () => removeAnnotationValue(annotation.property_iri, vIdx)}

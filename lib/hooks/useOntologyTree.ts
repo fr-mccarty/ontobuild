@@ -2,7 +2,15 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { projectOntologyApi, type OWLClassTreeNode as ApiTreeNode } from "@/lib/api/client";
-import type { ClassTreeNode } from "@/lib/ontology/types";
+import type { ClassTreeNode, ImportedMarker } from "@/lib/ontology/types";
+
+/** Fired (on window) after something outside the editor's own forms changes the ontology's imports. */
+export const IMPORTS_CHANGED_EVENT = "ontokit:imports-changed";
+
+export interface ImportsChangedDetail {
+  projectId: string;
+  branch?: string;
+}
 
 interface UseOntologyTreeOptions {
   projectId: string;
@@ -44,7 +52,7 @@ interface UseOntologyTreeReturn {
   rollbackReparent: (snapshot: ReparentSnapshot) => void;
 }
 
-function apiNodeToTreeNode(apiNode: ApiTreeNode): ClassTreeNode {
+function apiNodeToTreeNode(apiNode: ApiTreeNode & ImportedMarker): ClassTreeNode {
   return {
     iri: apiNode.iri,
     label: apiNode.label,
@@ -52,6 +60,9 @@ function apiNodeToTreeNode(apiNode: ApiTreeNode): ClassTreeNode {
     isExpanded: false,
     isLoading: false,
     hasChildren: apiNode.child_count > 0,
+    ...(apiNode.imported_from
+      ? { importedFrom: apiNode.imported_from, importedFromLabel: apiNode.imported_from_label ?? null }
+      : {}),
   };
 }
 
@@ -479,6 +490,19 @@ export function useOntologyTree({
   useEffect(() => {
     loadRootClasses();
   }, [loadRootClasses]);
+
+  // Imports added or removed (the Imports dialog) change which classes the tree shows.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onImportsChanged = (e: Event) => {
+      const detail = (e as CustomEvent<ImportsChangedDetail>).detail;
+      if (!detail || detail.projectId !== projectId) return;
+      if (detail.branch && branchKey && detail.branch !== branchKey) return;
+      void refreshTree();
+    };
+    window.addEventListener(IMPORTS_CHANGED_EVENT, onImportsChanged);
+    return () => window.removeEventListener(IMPORTS_CHANGED_EVENT, onImportsChanged);
+  }, [projectId, branchKey, refreshTree]);
 
   return {
     nodes,

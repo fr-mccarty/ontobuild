@@ -4,6 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X } from "lucide-react";
 import { cn, getLocalName } from "@/lib/utils";
 import { projectOntologyApi, type EntitySearchResult } from "@/lib/api/client";
+import type { ImportedMarker } from "@/lib/ontology/types";
+import { Tooltip } from "@/components/ui/tooltip";
+
+type PickerResult = EntitySearchResult & ImportedMarker;
 
 interface ParentClassPickerProps {
   projectId: string;
@@ -21,7 +25,7 @@ export function ParentClassPicker({
   onClose,
 }: ParentClassPickerProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<EntitySearchResult[]>([]);
+  const [results, setResults] = useState<PickerResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +71,7 @@ export function ParentClassPicker({
   }, [query, projectId, branch, excludeIris]);
 
   const handleSelect = useCallback(
-    (result: EntitySearchResult) => {
+    (result: PickerResult) => {
       onSelect(result.iri, result.label || getLocalName(result.iri));
       onClose();
     },
@@ -127,6 +131,15 @@ export function ParentClassPicker({
                     {result.iri}
                   </p>
                 </div>
+                {result.imported_from && (
+                  <Tooltip
+                    content={`Imported from ${result.imported_from_label ? `${result.imported_from_label} (${result.imported_from})` : result.imported_from}`}
+                  >
+                    <span className="shrink-0 rounded-sm border border-slate-300 px-1 text-[10px] uppercase leading-4 tracking-wide text-slate-500 dark:border-slate-500 dark:text-slate-300">
+                      imported
+                    </span>
+                  </Tooltip>
+                )}
               </button>
             ))}
           </div>

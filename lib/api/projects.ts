@@ -23,6 +23,8 @@ export interface Project {
   updated_at?: string;
   source_file_path?: string;
   git_ontology_path?: string;
+  /** Folder name under data/projects (the git working tree with ontology.ttl and code/). */
+  folder?: string | null;
   ontology_iri?: string;
   label_preferences?: string[];
   normalization_report?: NormalizationReport;

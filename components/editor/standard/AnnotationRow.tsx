@@ -3,6 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { getAnnotationPropertyInfo } from "@/lib/ontology/annotationProperties";
 import { Tooltip } from "@/components/ui/tooltip";
+import { RunAsPromptButton } from "@/components/editor/RunAsPromptButton";
 
 interface AnnotationRowProps {
   propertyIri: string;
@@ -12,6 +13,8 @@ interface AnnotationRowProps {
   onBlur?: () => void;
   showPropertyLabel?: boolean;
   placeholder?: string;
+  /** IRI of the entity this value belongs to (used as the prompt's source by "Run as prompt"). */
+  subjectIri?: string;
 }
 
 export function AnnotationRow({
@@ -22,6 +25,7 @@ export function AnnotationRow({
   onBlur,
   showPropertyLabel = true,
   placeholder = "Value",
+  subjectIri,
 }: AnnotationRowProps) {
   const { displayLabel, curie } = getAnnotationPropertyInfo(propertyIri);
   const isLongValue = value.length > 80;
@@ -56,6 +60,7 @@ export function AnnotationRow({
           className="flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
         />
       )}
+      <RunAsPromptButton text={value} propertyIri={propertyIri} subjectIri={subjectIri} />
       {onRemove ? (
         <button
           onClick={onRemove}

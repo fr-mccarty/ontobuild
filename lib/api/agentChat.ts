@@ -223,6 +223,12 @@ export function toAgentStreamEvent(raw: SSEEvent): AgentStreamEvent | null {
   }
 }
 
+/** What the agent may change in a turn; the server defaults to edit_ontology on, edit_code off. */
+export interface AgentPermissions {
+  edit_code: boolean;
+  edit_ontology: boolean;
+}
+
 export interface StreamAgentChatOptions {
   projectId: string;
   branch?: string;
@@ -230,6 +236,7 @@ export interface StreamAgentChatOptions {
   userMessage: string;
   pageContext: string;
   model?: string;
+  permissions?: AgentPermissions;
   signal?: AbortSignal;
   onEvent: (event: AgentStreamEvent) => void;
 }
@@ -259,6 +266,7 @@ export async function streamAgentChat({
   userMessage,
   pageContext,
   model,
+  permissions,
   signal,
   onEvent,
 }: StreamAgentChatOptions): Promise<void> {
@@ -270,6 +278,7 @@ export async function streamAgentChat({
       user_message: userMessage,
       page_context: pageContext,
       ...(model ? { model } : {}),
+      ...(permissions ? { permissions } : {}),
     }),
     signal,
   });

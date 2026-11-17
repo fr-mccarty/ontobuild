@@ -9,6 +9,7 @@ import {
   type AgentStreamEvent,
   type AgentUiAction,
 } from "@/lib/api/agentChat";
+import { getAgentPermissions } from "@/lib/stores/agentPermissionsStore";
 
 export type AgentToolStatus = "pending" | "ok" | "error";
 
@@ -322,6 +323,7 @@ export async function sendAgentMessage({
       userMessage: text,
       pageContext: context,
       model: useAgentChatStore.getState().model ?? undefined,
+      permissions: getAgentPermissions(),
       signal: controller.signal,
       onEvent: (event) => {
         if (controllers.get(projectId) !== controller) return;

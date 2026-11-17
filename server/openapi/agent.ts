@@ -106,7 +106,11 @@ export const agentDocs: DocMap = {
       "Read-only tools never send it. " +
       "`ui_action` asks the editor to do something: `{tool_use_id, action: \"select_entity\", iri, entity_type, label, branch}` (sent by the `select_entity` tool) selects and reveals an entity, " +
       "where `entity_type` is `class`, `property` or `individual`. " +
-      "The agent can read and edit the project's ontology on the given branch.",
+      "The agent can read the project's ontology on the given branch and the files in the project folder. " +
+      "What it may change is set per request by `permissions`: `edit_ontology` allows tools that change the ontology, branches, pull requests or project settings; " +
+      "`edit_code` allows writing and deleting files in the project folder and running shell commands there. " +
+      "Tools that are not allowed are left out of the tool list sent to the model, and a call to one anyway returns an error tool result without side effects. " +
+      "When `permissions` (or one of its fields) is absent, `edit_ontology` defaults to true and `edit_code` to false.",
     query: [{ name: "branch", description: "Branch to work on. Defaults to the repository's default branch.", schema: { type: "string" } }],
     body: {
       required: true,
@@ -122,6 +126,22 @@ export const agentDocs: DocMap = {
           },
           page_context: { type: "string", description: "Description of what the user is looking at in the editor." },
           model: { type: ["string", "null"], maxLength: 200, description: "Overrides the configured model for this turn." },
+          permissions: {
+            type: "object",
+            description: "What the agent may change in this turn. Defaults to `{edit_ontology: true, edit_code: false}`.",
+            properties: {
+              edit_ontology: {
+                type: "boolean",
+                default: true,
+                description: "Allow changes to the ontology, branches, pull requests and project settings.",
+              },
+              edit_code: {
+                type: "boolean",
+                default: false,
+                description: "Allow writing and deleting files in the project folder and running shell commands there.",
+              },
+            },
+          },
         },
       },
     },
@@ -129,7 +149,7 @@ export const agentDocs: DocMap = {
       "200": { description: "Event stream.", contentType: "text/event-stream", schema: { type: "string" } },
       "400": error("No API key is configured."),
       "404": error("Project or branch not found."),
-      "422": error("The request body is invalid."),
+      "422": error("The request body is invalid (including a `permissions` field that is not an object of booleans)."),
     },
   },
 };

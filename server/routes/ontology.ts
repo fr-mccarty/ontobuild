@@ -37,6 +37,7 @@ import {
   type LocalizedString,
 } from "../ontology";
 import { serializeTurtle } from "../rdf";
+import { getImportView, type ImportedFrom } from "../imports";
 
 const r = new Hono();
 
@@ -71,14 +72,24 @@ interface TreeNode {
   label: string;
   child_count: number;
   deprecated: boolean;
+  /** Set for classes that come from an imported ontology: that ontology's IRI. */
+  imported_from?: string;
+  /** Name of the importing source (project name or ontology title), when known. */
+  imported_from_label?: string | null;
 }
 
-function treeNode(store: Store, iri: string, prefs: string[] | null): TreeNode {
+function importedFields(importedFrom: Map<string, ImportedFrom> | undefined, iri: string) {
+  const from = importedFrom?.get(iri);
+  return from ? { imported_from: from.iri, imported_from_label: from.label } : {};
+}
+
+function treeNode(store: Store, iri: string, prefs: string[] | null, importedFrom?: Map<string, ImportedFrom>): TreeNode {
   return {
     iri,
     label: displayLabel(store, iri, prefs),
     child_count: childClasses(store, iri).length,
     deprecated: deprecated(store, iri),
+    ...importedFields(importedFrom, iri),
   };
 }
 
@@ -104,7 +115,12 @@ interface Ctx {
   branch: string;
   prefs: string[] | null;
   onto: LoadedOntology;
+  /** The project's own triples: what edits change. */
   store: Store;
+  /** The own triples merged with every imported ontology's (read-only; equals `store` without imports). */
+  view: Store;
+  /** Imported classes and the ontology each comes from. */
+  importedFrom: Map<string, ImportedFrom>;
 }
 
 async function loadCtx(c: Context): Promise<Ctx> {
@@ -112,7 +128,22 @@ async function loadCtx(c: Context): Promise<Ctx> {
   const project = requireProject(projectId);
   const branch = await requireBranch(projectId, c.req.query("branch"));
   const onto = await loadOntology(projectId, branch);
-  return { projectId, branch, prefs: projectLabelPreferences(project), onto, store: onto.store };
+  const imports = await getImportView(onto);
+  return {
+    projectId,
+    branch,
+    prefs: projectLabelPreferences(project),
+    onto,
+    store: onto.store,
+    view: imports.store,
+    importedFrom: imports.importedFrom,
+  };
+}
+
+/** 403 for a class that comes from an imported ontology: it can only be changed in its own ontology. */
+function rejectImported(ctx: Ctx, iri: string): void {
+  const from = ctx.importedFrom.get(iri);
+  if (from) httpError(403, `${localName(iri)} is imported from ${from.label ?? from.iri} and is read-only here`);
 }
 
 function rootClasses(store: Store): string[] {
@@ -122,22 +153,24 @@ function rootClasses(store: Store): string[] {
   );
 }
 
+// The tree shows imported classes too (marked with imported_from); total_classes counts the
+// project's own classes.
 r.get("/projects/:id/ontology/tree", async (c) => {
-  const { store, prefs } = await loadCtx(c);
-  const nodes = sortByLabel(rootClasses(store).map((iri) => treeNode(store, iri, prefs)));
-  return c.json({ nodes, total_classes: listClasses(store).length });
+  const { store: local, view: store, prefs, importedFrom } = await loadCtx(c);
+  const nodes = sortByLabel(rootClasses(store).map((iri) => treeNode(store, iri, prefs, importedFrom)));
+  return c.json({ nodes, total_classes: listClasses(local).length });
 });
 
 r.get("/projects/:id/ontology/tree/:iri{.+}/children", async (c) => {
-  const { store, prefs } = await loadCtx(c);
+  const { store: local, view: store, prefs, importedFrom } = await loadCtx(c);
   const iri = iriParam(c);
   requireMentioned(store, iri);
-  const nodes = sortByLabel(childClasses(store, iri).map((i) => treeNode(store, i, prefs)));
-  return c.json({ nodes, total_classes: listClasses(store).length });
+  const nodes = sortByLabel(childClasses(store, iri).map((i) => treeNode(store, i, prefs, importedFrom)));
+  return c.json({ nodes, total_classes: listClasses(local).length });
 });
 
 r.get("/projects/:id/ontology/tree/:iri{.+}/ancestors", async (c) => {
-  const { store, prefs } = await loadCtx(c);
+  const { store: local, view: store, prefs, importedFrom } = await loadCtx(c);
   const iri = iriParam(c);
   requireMentioned(store, iri);
   const path: string[] = [];
@@ -160,8 +193,8 @@ r.get("/projects/:id/ontology/tree/:iri{.+}/ancestors", async (c) => {
     }
     path.reverse();
   }
-  const nodes = path.map((i) => treeNode(store, i, prefs));
-  return c.json({ nodes, total_classes: listClasses(store).length });
+  const nodes = path.map((i) => treeNode(store, i, prefs, importedFrom));
+  return c.json({ nodes, total_classes: listClasses(local).length });
 });
 
 const ANNOTATION_PROPERTIES: [string, string][] = [
@@ -225,10 +258,10 @@ function classDetail(store: Store, iri: string, prefs: string[] | null) {
 }
 
 r.get("/projects/:id/ontology/classes/:iri{.+}", async (c) => {
-  const { store, prefs } = await loadCtx(c);
+  const { view: store, prefs, importedFrom } = await loadCtx(c);
   const iri = iriParam(c);
   if (!isClass(store, iri)) httpError(404, `Class not found: ${iri}`);
-  return c.json(classDetail(store, iri, prefs));
+  return c.json({ ...classDetail(store, iri, prefs), ...importedFields(importedFrom, iri) });
 });
 
 function removeEntityTriples(source: Store, iri: string): Store {
@@ -303,6 +336,7 @@ async function deleteEntityAndCommit(c: Context, ctx: Ctx, iri: string, defaultM
 r.delete("/projects/:id/ontology/classes/:iri{.+}", async (c) => {
   const ctx = await loadCtx(c);
   const iri = iriParam(c);
+  rejectImported(ctx, iri);
   if (!isClass(ctx.store, iri)) httpError(404, `Class not found: ${iri}`);
   return deleteEntityAndCommit(c, ctx, iri, `Delete class ${localName(iri)}`);
 });
@@ -310,6 +344,7 @@ r.delete("/projects/:id/ontology/classes/:iri{.+}", async (c) => {
 r.delete("/projects/:id/ontology/entities/:iri{.+}", async (c) => {
   const ctx = await loadCtx(c);
   const iri = iriParam(c);
+  rejectImported(ctx, iri);
   if (ctx.store.countQuads(iri, null, null, null) === 0) httpError(404, `Entity not found: ${iri}`);
   const kind = rdfEntityType(ctx.store, iri);
   return deleteEntityAndCommit(c, ctx, iri, `Delete ${kind === "unknown" ? "entity" : kind} ${localName(iri)}`);
@@ -359,7 +394,7 @@ r.get("/projects/:id/ontology/search", async (c) => {
     );
   }
   const allowed = new Set<string>(requested.length ? requested : ENTITY_KINDS);
-  const { store, prefs } = await loadCtx(c);
+  const { store: local, view: store, prefs, importedFrom } = await loadCtx(c);
   const needle = q.toLowerCase();
 
   const results: {
@@ -368,9 +403,13 @@ r.get("/projects/:id/ontology/search", async (c) => {
     entity_type: EntityKind;
     property_kind: PropertyKind;
     deprecated: boolean;
+    imported_from?: string;
+    imported_from_label?: string | null;
   }[] = [];
   for (const [iri, { type, kind }] of allEntities(store)) {
     if (!allowed.has(type)) continue;
+    // Imported classes are listed (marked); other imported entities are not.
+    if (store !== local && !importedFrom.has(iri) && local.countQuads(iri, null, null, null) === 0) continue;
     if (needle !== "*") {
       const matched =
         localName(iri).toLowerCase().includes(needle) ||
@@ -386,6 +425,7 @@ r.get("/projects/:id/ontology/search", async (c) => {
       entity_type: type,
       property_kind: kind,
       deprecated: deprecated(store, iri),
+      ...importedFields(importedFrom, iri),
     });
   }
   const key = (r: { label: string }) => [needle !== "*" && r.label.toLowerCase().startsWith(needle) ? 0 : 1, r.label.toLowerCase()] as const;
@@ -529,9 +569,10 @@ function bnodeOwners(store: Store, bnode: Term): string[] {
 }
 
 r.get("/projects/:id/entities/:iri{.+}/references", async (c) => {
-  const { store, prefs } = await loadCtx(c);
+  // References from the project's own ontology only, so an imported class can be looked up too.
+  const { store, view, prefs } = await loadCtx(c);
   const target = iriParam(c);
-  requireMentioned(store, target);
+  requireMentioned(view, target);
   const byContext = new Map<string, Map<string, Record<string, unknown>>>();
 
   for (const q of store.getQuads(null, null, target, null)) {

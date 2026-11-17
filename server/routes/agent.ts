@@ -23,6 +23,7 @@ import {
   type AgentClient,
   type AgentEventName,
 } from "../agent/chat";
+import { DEFAULT_AGENT_PERMISSIONS, type AgentPermissions } from "../agent/tools";
 import type { AgentModel } from "@/lib/api/agentSettings";
 
 export interface AppLike {
@@ -103,6 +104,20 @@ function validHistory(v: unknown): v is ChatCompletionMessageParam[] {
   );
 }
 
+/** The request's `permissions`, with defaults for an absent object or field; null when invalid. */
+export function parsePermissions(v: unknown): AgentPermissions | null {
+  if (v === undefined || v === null) return { ...DEFAULT_AGENT_PERMISSIONS };
+  if (typeof v !== "object" || Array.isArray(v)) return null;
+  const p = v as Record<string, unknown>;
+  const out = { ...DEFAULT_AGENT_PERMISSIONS };
+  for (const key of ["edit_code", "edit_ontology"] as const) {
+    if (p[key] === undefined) continue;
+    if (typeof p[key] !== "boolean") return null;
+    out[key] = p[key];
+  }
+  return out;
+}
+
 export function createAgentRoutes(getApp: () => AppLike) {
   const r = new Hono();
 
@@ -163,6 +178,8 @@ export function createAgentRoutes(getApp: () => AppLike) {
     const pageContext = typeof body.page_context === "string" ? body.page_context : "";
     if (body.model !== undefined && body.model !== null && !isValidModelId(body.model))
       httpError(422, "model must be a non-empty string of at most 200 characters");
+    const permissions = parsePermissions(body.permissions);
+    if (!permissions) httpError(422, "permissions must be an object with boolean edit_code and edit_ontology");
     const apiKey = getApiKey();
     if (!apiKey) httpError(400, notConfiguredDetail());
     const branch = await requireBranch(projectId, c.req.query("branch"));
@@ -195,12 +212,14 @@ export function createAgentRoutes(getApp: () => AppLike) {
           history,
           userMessage,
           pageContext,
+          permissions,
           send,
           signal: controller.signal,
           toolContext: {
             projectId,
             branch,
             editorBranch: branch,
+            permissions,
             signal: controller.signal,
             request: (path, init) => Promise.resolve(getApp().request(path, init)),
           },

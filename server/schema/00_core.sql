@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS projects (
   label_preferences TEXT,          -- JSON array of strings
   normalization_report TEXT,       -- JSON object
   pr_approval_required INTEGER NOT NULL DEFAULT 0,
-  preferred_branch TEXT            -- local user's preferred branch
+  preferred_branch TEXT,           -- local user's preferred branch
+  folder TEXT                      -- project folder name under data/projects (see server/workspace.ts)
 );
 
 CREATE TABLE IF NOT EXISTS branch_metadata (

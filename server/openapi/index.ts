@@ -8,6 +8,10 @@ import { pullRequestDocs, pullRequestSchemas } from "./pullRequests";
 import { projectDocs, projectSchemas } from "./projects";
 import { ontologyDocs, ontologySchemas } from "./ontology";
 import { analyticsDocs, analyticsSchemas } from "./analytics";
+import { workspaceDocs, workspaceSchemas } from "./workspace";
+import { importsDocs, importsSchemas } from "./imports";
+import { githubDocs, githubSchemas } from "./github";
+import { promptsDocs, promptsSchemas } from "./prompts";
 
 export const API_PREFIX = "/api/v1";
 
@@ -21,6 +25,10 @@ export const operationDocs: DocMap = {
   ...ontologyDocs,
   ...analyticsDocs,
   ...agentDocs,
+  ...workspaceDocs,
+  ...importsDocs,
+  ...githubDocs,
+  ...promptsDocs,
 };
 
 const sharedSchemas: Record<string, Schema> = {
@@ -42,6 +50,10 @@ export const schemaSources: Record<string, Schema>[] = [
   ontologySchemas,
   analyticsSchemas,
   agentSchemas,
+  workspaceSchemas,
+  importsSchemas,
+  githubSchemas,
+  promptsSchemas,
 ];
 
 export const componentSchemas: Record<string, Schema> = Object.assign({}, ...schemaSources);
@@ -71,6 +83,12 @@ export const tags: { name: string; description: string }[] = [
   { name: "Agent", description: "Settings for, and chat with, the AI editing agent." },
   { name: "Users", description: "The local user and their preferences." },
   { name: "Health", description: "Server status." },
+  { name: "Files", description: "Read, write and download files in a project's folder." },
+  { name: "Terminals", description: "Shell and run-file terminal sessions in a project's folder." },
+  { name: "Dev Server", description: "Configure, start and stop a project's dev server." },
+  { name: "Imports", description: "Other ontologies a project imports (owl:imports), resolved from local projects or the web." },
+  { name: "GitHub", description: "Link a project to a GitHub repository and push and pull." },
+  { name: "Provenance", description: "Where a text value came from and whether a reviewed pull request approved it." },
 ];
 
 /** "/api/v1/projects/:id/lint/runs/:runId" → "/projects/{id}/lint/runs/{runId}" */
@@ -95,8 +113,10 @@ export function tagFor(path: string): string {
     "branch-preference": "branches",
     import: "projects",
     source: "projects",
+    "import-candidates": "imports",
   };
   const name = aliases[seg] ?? seg;
+  if (name === "github") return "GitHub";
   return name.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, KeyRound, Loader2, RotateCcw, SquarePen, Sparkles } from "lucide-react";
+import { AlertCircle, FileText, KeyRound, Loader2, RotateCcw, SquarePen, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { DEFAULT_AGENT_API_KEY_ENV } from "@/lib/api/agentSettings";
@@ -16,6 +16,9 @@ import {
   useAgentChatStore,
   useAgentConversation,
 } from "@/lib/stores/agentChatStore";
+import { useAgentPermissionsStore } from "@/lib/stores/agentPermissionsStore";
+import { useWorkspaceStore } from "@/lib/stores/workspaceStore";
+import { AgentPermissionToggles } from "./AgentPermissionToggles";
 import { AgentTranscript } from "./AgentTranscript";
 import { AgentComposer } from "./AgentComposer";
 import { AgentModelPicker } from "./AgentModelPicker";
@@ -27,6 +30,11 @@ export const AGENT_EXAMPLE_PROMPTS = [
   "Add a subclass under the selected class",
   "Find classes that are missing labels or definitions",
 ];
+
+/** The line put before a message that came from "Run as prompt" with a source. */
+export function withPromptSource(text: string, source: string | null): string {
+  return source ? `Prompt source: ${source}\n${text}` : text;
+}
 
 export interface AgentPanelProps {
   pageInfo: AgentPageInfo;
@@ -54,6 +62,41 @@ export function AgentPanel({ pageInfo, onProjectChanged, onOntologyChanged, onUi
   const setEffort = useAgentChatStore((s) => s.setEffort);
   const { data: status, isLoading: statusLoading, error: statusError, refetch } = useAgentStatus();
   const [draft, setDraft] = useState("");
+  const [promptSource, setPromptSource] = useState<string | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const focusPendingRef = useRef(false);
+
+  // Restore the Edit Code / Edit Ontology choice after mount (the first render uses the defaults).
+  useEffect(() => {
+    void useAgentPermissionsStore.persist.rehydrate();
+  }, []);
+
+  // "Run as prompt" queues text in the workspace store; put it in the composer without sending.
+  useEffect(() => {
+    const consume = () => {
+      const prompt = useWorkspaceStore.getState().takePendingPrompt();
+      if (!prompt) return;
+      setDraft(prompt.text);
+      setPromptSource(prompt.source?.trim() || null);
+      focusPendingRef.current = true;
+      inputRef.current?.focus();
+    };
+    const unsubscribe = useWorkspaceStore.subscribe((state) => {
+      if (state.pendingPrompt) consume();
+    });
+    queueMicrotask(consume);
+    return unsubscribe;
+  }, []);
+
+  // Focus once the composer exists (it is not rendered while the status loads).
+  useEffect(() => {
+    if (focusPendingRef.current && inputRef.current) {
+      focusPendingRef.current = false;
+      const el = inputRef.current;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
+  });
 
   const pageInfoRef = useRef(pageInfo);
   const callbacksRef = useRef<AgentPanelCallbacks>({ onProjectChanged, onOntologyChanged, onUiAction });
@@ -85,9 +128,10 @@ export function AgentPanel({ pageInfo, onProjectChanged, onOntologyChanged, onUi
       const trimmed = text.trim();
       if (!trimmed) return;
       setDraft("");
-      void sendAgentMessage({ ...runOptions(), text: trimmed });
+      setPromptSource(null);
+      void sendAgentMessage({ ...runOptions(), text: withPromptSource(trimmed, promptSource) });
     },
-    [runOptions],
+    [runOptions, promptSource],
   );
 
   const configured = status?.configured ?? false;
@@ -205,6 +249,29 @@ export function AgentPanel({ pageInfo, onProjectChanged, onOntologyChanged, onUi
           onSend={() => send(draft)}
           onStop={() => stopAgentMessage(projectId)}
           isStreaming={conversation.isStreaming}
+          inputRef={inputRef}
+          toolbar={
+            <>
+              <AgentPermissionToggles />
+              {promptSource && (
+                <div
+                  data-testid="agent-prompt-source"
+                  className="inline-flex max-w-full items-center gap-1 self-start rounded-full bg-slate-100 py-0.5 pl-2 pr-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  <FileText className="h-3 w-3 shrink-0" />
+                  <span className="truncate">From: {promptSource}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPromptSource(null)}
+                    aria-label="Remove prompt source"
+                    className="rounded-full p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </>
+          }
         />
       </>
     );
@@ -226,6 +293,7 @@ export function AgentPanel({ pageInfo, onProjectChanged, onOntologyChanged, onUi
               onClick={() => {
                 startNewAgentChat(projectId);
                 setDraft("");
+                setPromptSource(null);
               }}
               disabled={isEmpty}
               aria-label="New chat"

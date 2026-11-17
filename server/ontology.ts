@@ -23,6 +23,7 @@ export interface ProjectRow {
   normalization_report: string | null;
   pr_approval_required: number;
   preferred_branch: string | null;
+  folder: string | null;
 }
 
 export const DEFAULT_ONTOLOGY_FILE = "ontology.ttl";
@@ -68,6 +69,7 @@ export function projectToResponse(p: ProjectRow) {
     updated_at: p.updated_at,
     source_file_path: p.source_file_path,
     git_ontology_path: p.source_file_path ? ontologyFilePath(p) : null,
+    folder: p.folder,
     ontology_iri: p.ontology_iri,
     label_preferences: projectLabelPreferences(p),
     normalization_report: fromJson<Record<string, unknown> | null>(p.normalization_report, null),

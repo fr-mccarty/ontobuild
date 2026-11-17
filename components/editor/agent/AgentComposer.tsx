@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { useImperativeHandle, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type Ref } from "react";
 import { ArrowUp, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -12,12 +12,17 @@ interface AgentComposerProps {
   onStop: () => void;
   isStreaming: boolean;
   disabled?: boolean;
+  /** Shown above the input, for example the permission toggles and a prompt source chip. */
+  toolbar?: ReactNode;
+  /** Receives the textarea, so the panel can focus it. */
+  inputRef?: Ref<HTMLTextAreaElement>;
 }
 
 const MAX_HEIGHT = 200;
 
-export function AgentComposer({ value, onChange, onSend, onStop, isStreaming, disabled }: AgentComposerProps) {
+export function AgentComposer({ value, onChange, onSend, onStop, isStreaming, disabled, toolbar, inputRef }: AgentComposerProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  useImperativeHandle(inputRef, () => ref.current as HTMLTextAreaElement, []);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -37,6 +42,7 @@ export function AgentComposer({ value, onChange, onSend, onStop, isStreaming, di
 
   return (
     <div className="border-t border-slate-200 p-2 dark:border-slate-700">
+      {toolbar && <div className="mb-1.5 flex flex-col gap-1.5 px-0.5">{toolbar}</div>}
       <div className="flex items-end gap-2 rounded-lg border border-slate-300 bg-white px-2 py-1.5 focus-within:border-primary-500 focus-within:ring-1 focus-within:ring-primary-500 dark:border-slate-600 dark:bg-slate-800">
         <textarea
           ref={ref}

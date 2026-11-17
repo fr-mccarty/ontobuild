@@ -1,5 +1,18 @@
 import { error, ref, type DocMap, type QueryParamDoc, type Schema } from "./types";
 
+/** Fields set on classes that come from an imported ontology (see the Imports operations). */
+const importedProps: Record<string, Schema> = {
+  imported_from: {
+    type: "string",
+    description:
+      "Present only for a class that comes from an ontology this one imports (`owl:imports`, followed transitively): that ontology's IRI. Such classes are read-only here.",
+  },
+  imported_from_label: {
+    type: ["string", "null"],
+    description: "Present with `imported_from`: the importing source's project name or ontology title, if known.",
+  },
+};
+
 export const ontologySchemas: Record<string, Schema> = {
   OntologyLiteral: {
     type: "object",
@@ -23,6 +36,7 @@ export const ontologySchemas: Record<string, Schema> = {
       label: { type: "string", description: "Preferred label, falling back to the IRI's local name." },
       child_count: { type: "integer", description: "Number of direct subclasses." },
       deprecated: { type: "boolean", description: "True when the class has `owl:deprecated true`." },
+      ...importedProps,
     },
   },
   OntologyTreeNodes: {
@@ -30,7 +44,7 @@ export const ontologySchemas: Record<string, Schema> = {
     required: ["nodes", "total_classes"],
     properties: {
       nodes: { type: "array", items: ref("OntologyTreeNode") },
-      total_classes: { type: "integer", description: "Number of classes in the whole ontology." },
+      total_classes: { type: "integer", description: "Number of classes in the whole ontology (the project's own classes, not imported ones)." },
     },
   },
   OntologyAnnotation: {
@@ -87,6 +101,7 @@ export const ontologySchemas: Record<string, Schema> = {
         },
       },
       annotations: { type: "array", items: ref("OntologyAnnotation") },
+      ...importedProps,
     },
   },
   OntologySearchResult: {
@@ -102,6 +117,7 @@ export const ontologySchemas: Record<string, Schema> = {
         description: "Set for OWL properties; `null` for classes, individuals and plain `rdf:Property`.",
       },
       deprecated: { type: "boolean" },
+      ...importedProps,
     },
   },
   OntologyIndexStatus: {
@@ -166,7 +182,9 @@ const treeResponse = (description: string) => ({
 export const ontologyDocs: DocMap = {
   "GET /projects/{id}/ontology/tree": {
     summary: "Get the class tree roots",
-    description: "Returns the top-level classes: those with no named superclass other than `owl:Thing`, sorted by label.",
+    description:
+      "Returns the top-level classes: those with no named superclass other than `owl:Thing`, sorted by label. " +
+      "Classes from imported ontologies are included and marked with `imported_from`; a local class that is a subclass of an imported class appears under it.",
     query: [branchQuery],
     responses: treeResponse("Root classes."),
   },
@@ -205,6 +223,7 @@ export const ontologyDocs: DocMap = {
     body: deleteBody,
     responses: {
       "204": { description: "The class was deleted and the change committed." },
+      "403": error("The class comes from an imported ontology and is read-only."),
       "404": error("Project, branch or ontology not found, or the IRI is not a class."),
       "422": error("The ontology could not be parsed, the body is not valid JSON, or `commit_message` is invalid or longer than 500 characters."),
     },
@@ -217,6 +236,7 @@ export const ontologyDocs: DocMap = {
     body: deleteBody,
     responses: {
       "204": { description: "The entity was deleted and the change committed." },
+      "403": error("The entity is a class from an imported ontology and is read-only."),
       "404": error("Project, branch or ontology not found, or the IRI is not the subject of any triple."),
       "422": error("The ontology could not be parsed, the body is not valid JSON, or `commit_message` is invalid or longer than 500 characters."),
     },
@@ -226,7 +246,8 @@ export const ontologyDocs: DocMap = {
     description:
       "Case-insensitive substring match on local name, IRI and label-like properties (`rdfs:label`, `skos:prefLabel`, `skos:altLabel`, `dc(terms):title`). " +
       "Results whose label starts with the query come first; at most 50 are returned. " +
-      "`q=*` deliberately returns every entity unpaged: the property tree and individual list use it to list all entities of a type.",
+      "`q=*` deliberately returns every entity unpaged: the property tree and individual list use it to list all entities of a type. " +
+      "Classes from imported ontologies are included and marked with `imported_from`; other imported entities are not.",
     query: [
       { name: "q", description: "Search text, or `*` for all entities.", required: true, schema: { type: "string", minLength: 1, maxLength: 200 } },
       {

@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { DataFactory, Store } from "n3";
 import * as git from "../git";
+import { CODE_DIR, allocateFolder } from "../workspace";
+import { killProjectTerminals } from "../terminals";
 import { all, get, insert, newId, nowIso, run, toJson, transaction, update } from "../db";
 import { ApiError, httpError, noContent, queryBool, queryInt, readJson } from "../http";
 import { LOCAL_USER } from "../user";
@@ -149,22 +151,26 @@ async function createProjectWithContent(opts: {
     updated_at: now,
     source_file_path: `projects/${id}/${DEFAULT_ONTOLOGY_FILE}`,
     git_ontology_path: DEFAULT_ONTOLOGY_FILE,
+    folder: allocateFolder(opts.name),
     ontology_iri: opts.ontologyIri,
     normalization_report: toJson(opts.normalizationReport),
   });
   let commit: git.CommitInfo;
   try {
     await git.initRepo(id);
-    commit = await git.commitFile(id, {
+    commit = await git.commitFiles(id, {
       branch: git.DEFAULT_BRANCH,
-      path: DEFAULT_ONTOLOGY_FILE,
-      content: (await stripLanguageTagsFromTurtle(opts.content)).content,
+      files: [
+        { path: DEFAULT_ONTOLOGY_FILE, content: (await stripLanguageTagsFromTurtle(opts.content)).content },
+        // Keeps the (otherwise empty) code folder in the repository and in clones of it.
+        { path: `${CODE_DIR}/.gitkeep`, content: "" },
+      ],
       message: opts.commitMessage,
       author: AUTHOR,
     });
   } catch (e) {
-    run("DELETE FROM projects WHERE id = ?", id);
     await git.deleteRepo(id).catch(() => undefined);
+    run("DELETE FROM projects WHERE id = ?", id);
     throw e;
   }
   await emitOntologyEvent({
@@ -410,9 +416,12 @@ r.patch("/projects/:id", async (c) => {
 r.delete("/projects/:id", async (c) => {
   const id = c.req.param("id");
   requireProject(id);
+  // Stop the project's terminals and dev server, then delete the folder first: its location is
+  // looked up from the project row.
+  await killProjectTerminals(id).catch((e) => console.warn(`[ontokit] failed to stop terminals for ${id}:`, e));
+  await git.deleteRepo(id).catch((e) => console.warn(`[ontokit] failed to delete project folder ${id}:`, e));
   run("DELETE FROM projects WHERE id = ?", id);
   invalidateOntologyCache(id);
-  await git.deleteRepo(id).catch((e) => console.warn(`[ontokit] failed to delete repo ${id}:`, e));
   await emitOntologyEvent({ type: "project-deleted", projectId: id });
   return noContent(c);
 });
