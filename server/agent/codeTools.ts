@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import { commitFolderChanges } from "../folderChanges";
 import { ApiError } from "../http";
 import { DEFAULT_ONTOLOGY_FILE, ontologyFilePath, requireProject } from "../ontology";
 import { deletePath, listFiles, normalizeRelPath, readTextFile, resolveProjectPath, writeTextFile } from "../workspaceFiles";
@@ -216,6 +217,34 @@ export const CODE_TOOLS: ToolDef[] = [
       const rel = normalizeRelPath(s(input, "path"));
       deletePath(ctx.projectId, rel);
       return { result: { path: rel, deleted: true }, summary: `Deleted ${rel}`, mutated: true };
+    },
+  },
+  {
+    name: "commit_folder_changes",
+    kind: "code",
+    description:
+      "Save the project: commit every change in the project folder except the ontology file (files you wrote or deleted, output of commands, edits made in a terminal or text editor) " +
+      "to the branch checked out in the folder, locally (not pushed). New files are added and deleted ones removed; node_modules, virtualenvs and build output are left out. " +
+      "Your ontology edits are already committed as you make them. If `ontology_changed` comes back true, the ontology file was also changed outside the ontology tools: " +
+      "commit it with commit_ontology_folder_changes. Fails when there is nothing to commit.",
+    parameters: {
+      type: "object",
+      properties: {
+        commit_message: {
+          type: "string",
+          description:
+            "What the changes are, in the imperative mood, for example \"Add the import script\". Defaults to \"Commit <n> changed files in the project folder\".",
+        },
+      },
+    },
+    async run(input, ctx) {
+      const out = await commitFolderChanges(ctx.projectId, input.commit_message);
+      const n = out.files.length;
+      return {
+        result: out,
+        summary: `Committed ${n} ${n === 1 ? "file" : "files"} on ${out.branch}`,
+        mutated: true,
+      };
     },
   },
   {

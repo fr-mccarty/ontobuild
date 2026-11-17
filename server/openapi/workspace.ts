@@ -1,6 +1,37 @@
 import { error, ref, type DocMap, type QueryParamDoc, type Schema } from "./types";
 
 export const workspaceSchemas: Record<string, Schema> = {
+  FolderChange: {
+    type: "object",
+    required: ["path", "status"],
+    properties: {
+      path: { type: "string", description: "Path relative to the project folder.", examples: ["code/app.py"] },
+      status: { type: "string", enum: ["added", "modified", "deleted"] },
+    },
+  },
+  FolderChanges: {
+    type: "object",
+    description:
+      "Uncommitted changes in the project folder, other than the ontology file (which has its own commit, `POST /projects/{id}/ontology-file/local-changes/commit`). " +
+      "Dependency and build folders such as node_modules, .venv, dist and build are ignored.",
+    required: ["branch", "files", "ontology_changed"],
+    properties: {
+      branch: { type: ["string", "null"], description: "The branch checked out in the project folder (the one a commit goes to); null when HEAD is detached." },
+      files: { type: "array", items: ref("FolderChange") },
+      ontology_changed: { type: "boolean", description: "The ontology file has uncommitted changes too." },
+    },
+  },
+  FolderCommit: {
+    type: "object",
+    description: "The commit made from the project folder.",
+    required: ["branch", "commit_hash", "files", "ontology_changed"],
+    properties: {
+      branch: { type: "string" },
+      commit_hash: { type: "string" },
+      files: { type: "array", items: ref("FolderChange"), description: "The files the commit added, modified or deleted." },
+      ontology_changed: { type: "boolean", description: "The ontology file still has uncommitted changes, which this commit left out." },
+    },
+  },
   WorkspaceFileEntry: {
     type: "object",
     required: ["path", "type", "size"],
@@ -138,6 +169,39 @@ export const workspaceDocs: DocMap = {
       ...pathErrors,
       "404": error("Project or path not found."),
       "422": error("The `path` query parameter is missing."),
+    },
+  },
+  "GET /projects/{id}/files/changes": {
+    summary: "List uncommitted folder changes",
+    description: "Lists files in the project folder, other than the ontology file, that differ from the checked-out branch's last commit.",
+    responses: {
+      "200": { description: "The uncommitted changes.", schema: ref("FolderChanges") },
+      "404": error("Project not found."),
+    },
+  },
+  "POST /projects/{id}/files/commit": {
+    summary: "Commit folder changes",
+    description:
+      "Commits every change in the project folder except the ontology file to the checked-out branch (locally, not pushed): new files are added and deleted files removed. " +
+      "Dependency and build folders are left out.",
+    body: {
+      required: false,
+      schema: {
+        type: "object",
+        properties: {
+          commit_message: {
+            type: ["string", "null"],
+            maxLength: 500,
+            description: "The commit message. Defaults to \"Commit <n> changed files in the project folder\".",
+          },
+        },
+      },
+    },
+    responses: {
+      "200": { description: "The changes were committed.", schema: ref("FolderCommit") },
+      "404": error("Project not found."),
+      "409": error("Nothing to commit, no git repository, or no branch is checked out in the folder."),
+      "422": error("commit_message isn't a string."),
     },
   },
   "GET /projects/{id}/files/raw": {

@@ -26,6 +26,7 @@ import {
   type TerminalListener,
   type TerminalSession,
 } from "../terminals";
+import { commitFolderChanges, getFolderChanges } from "../folderChanges";
 import { devServerStatus, startDevServer, stopDevServer, updateDevServerSettings, type DevServerPatch } from "../devServer";
 
 const r = new Hono();
@@ -75,6 +76,15 @@ r.delete("/projects/:id/files", (c) => {
   requireProject(id);
   deletePath(id, requirePathQuery(c.req.query("path")));
   return noContent(c);
+});
+
+r.get("/projects/:id/files/changes", async (c) => {
+  return c.json(await getFolderChanges(c.req.param("id")));
+});
+
+r.post("/projects/:id/files/commit", async (c) => {
+  const body = await readJson<{ commit_message?: unknown }>(c);
+  return c.json(await commitFolderChanges(c.req.param("id"), body.commit_message));
 });
 
 r.get("/projects/:id/files/raw", (c) => {

@@ -115,7 +115,7 @@ describe("tool classification", () => {
   });
 
   it("classifies the mutating tools", () => {
-    expect(namesOf(["code"])).toEqual(["delete_file", "run_command", "write_file"]);
+    expect(namesOf(["code"])).toEqual(["commit_folder_changes", "delete_file", "run_command", "write_file"]);
     const ontology = namesOf(["ontology"]);
     for (const n of [
       "create_entity",

@@ -492,7 +492,7 @@ export async function diff(projectId: string, fromVersion: string, toVersion = "
   };
 }
 
-function authorEnv(author?: Author): Record<string, string> {
+export function authorEnv(author?: Author): Record<string, string> {
   return {
     GIT_AUTHOR_NAME: author?.name || COMMITTER_NAME,
     GIT_AUTHOR_EMAIL: author?.email || COMMITTER_EMAIL,

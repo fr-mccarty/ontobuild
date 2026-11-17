@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPizzaProject, removeDir, useTempDataDir, type AppLike } from "./helpers";
 import type { ToolContext, ToolExecution } from "@/server/agent/tools";
 
-/** The sidebar agent committing changes made to the ontology file outside its ontology tools. */
+/** The sidebar agent committing changes made in the project folder outside its ontology tools. */
 
 let dataDir: string;
 let app: AppLike;
@@ -84,5 +84,74 @@ describe("commit_ontology_folder_changes", () => {
     const out = await executeTool("commit_ontology_folder_changes", {}, readOnly);
     expect(out.is_error).toBe(true);
     expect(sh("status", "--porcelain")).not.toBe("");
+  });
+});
+
+describe("commit_folder_changes", () => {
+  const codeCtx = (): ToolContext => ({ ...ctx, permissions: { edit_ontology: true, edit_code: true, edit_imports: false } });
+  const runCode = async (input: Record<string, unknown> = {}) => {
+    const out = await executeTool("commit_folder_changes", input, codeCtx());
+    return { ...out, data: out.is_error ? null : JSON.parse(out.content) };
+  };
+
+  it("commits added, modified and deleted files with the agent's message, leaving out the ontology file and node_modules", async () => {
+    // Start clean: commit what the previous describe left in the ontology file.
+    if (sh("status", "--porcelain")) await run("commit_ontology_folder_changes");
+    fs.mkdirSync(path.join(folder, "code"), { recursive: true });
+    fs.writeFileSync(path.join(folder, "code", "old.py"), "print('old')\n");
+    fs.writeFileSync(path.join(folder, "code", "keep.py"), "print(1)\n");
+    await runCode({ commit_message: "Add scripts" });
+
+    fs.writeFileSync(path.join(folder, "code", "keep.py"), "print(2)\n");
+    fs.rmSync(path.join(folder, "code", "old.py"));
+    fs.writeFileSync(path.join(folder, "code", "new.py"), "print('new')\n");
+    fs.mkdirSync(path.join(folder, "code", "node_modules", "pkg"), { recursive: true });
+    fs.writeFileSync(path.join(folder, "code", "node_modules", "pkg", "index.js"), "x");
+    fs.appendFileSync(ontologyFile, OUTSIDE_EDIT.replace(/Calzone/g, "Stromboli"));
+
+    const changes = (await (await app.request(`/api/v1/projects/${ctx.projectId}/files/changes`)).json()) as {
+      files: { path: string; status: string }[];
+      ontology_changed: boolean;
+    };
+    expect(changes.ontology_changed).toBe(true);
+    expect(changes.files).toEqual(
+      expect.arrayContaining([
+        { path: "code/keep.py", status: "modified" },
+        { path: "code/old.py", status: "deleted" },
+        { path: "code/new.py", status: "added" },
+      ]),
+    );
+    expect(changes.files).toHaveLength(3);
+
+    const out = await runCode({ commit_message: "Rework the scripts" });
+    expect(out.is_error).toBe(false);
+    expect(out.summary).toBe("Committed 3 files on main");
+    expect(out.data.ontology_changed).toBe(true);
+    expect(out.data.commit_hash).toBe(sh("rev-parse", "main"));
+    expect(sh("log", "-1", "--format=%s")).toBe("Rework the scripts");
+    expect(sh("show", "--name-status", "--format=", "HEAD").split("\n").sort()).toEqual([
+      "A\tcode/new.py",
+      "D\tcode/old.py",
+      "M\tcode/keep.py",
+    ]);
+    // The ontology file and node_modules are still uncommitted.
+    const raw = execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "-z"], { cwd: folder, encoding: "utf8", env: ENV });
+    expect(raw.split("\0").filter(Boolean).sort()).toEqual([
+      " M ontology.ttl",
+      "?? code/node_modules/pkg/index.js",
+    ]);
+  });
+
+  it("is an error when there is nothing to commit", async () => {
+    const out = await runCode();
+    expect(out.is_error).toBe(true);
+    expect(out.summary).toContain("no uncommitted changes");
+  });
+
+  it("is refused without permission to edit code", async () => {
+    fs.writeFileSync(path.join(folder, "code", "blocked.py"), "x\n");
+    const out = await executeTool("commit_folder_changes", {}, { ...ctx, permissions: { edit_ontology: true, edit_code: false, edit_imports: false } });
+    expect(out.is_error).toBe(true);
+    expect(sh("status", "--porcelain", "--", "code/blocked.py")).toBe("?? code/blocked.py");
   });
 });
