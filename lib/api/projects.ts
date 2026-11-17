@@ -30,6 +30,22 @@ export interface Project {
   normalization_report?: NormalizationReport;
 }
 
+/** The ontology file in the project folder, compared with the checked-out branch's last commit. */
+export interface OntologyLocalChanges {
+  /** The branch checked out in the folder (where a commit goes); null when detached. */
+  branch: string | null;
+  path: string | null;
+  changed: boolean;
+  /** Why the changes can't be committed (the file is missing or doesn't parse); null when they can. */
+  problem: string | null;
+}
+
+export interface OntologyLocalCommit {
+  branch: string;
+  path: string;
+  commit_hash: string;
+}
+
 export interface ProjectListResponse {
   items: Project[];
   total: number;
@@ -255,6 +271,14 @@ export const projectApi = {
    */
   switchOntologyFile: (id: string, path: string, branch?: string, options: { reconvert?: boolean } = {}) =>
     api.put<OntologyFileChange>(`/api/v1/projects/${id}/ontology-file`, { path, branch, reconvert: options.reconvert }),
+
+  /** Whether the ontology file in the project folder has changes made outside OntoBuilder that aren't committed. */
+  getOntologyLocalChanges: (id: string) =>
+    api.get<OntologyLocalChanges>(`/api/v1/projects/${id}/ontology-file/local-changes`),
+
+  /** Commit the ontology file as it is in the project folder to the checked-out branch. */
+  commitOntologyLocalChanges: (id: string) =>
+    api.post<OntologyLocalCommit>(`/api/v1/projects/${id}/ontology-file/local-changes/commit`),
 
   /** Create a new, empty ontology file and make it the project's ontology. */
   createOntologyFile: (id: string, data: OntologyFileCreate) =>

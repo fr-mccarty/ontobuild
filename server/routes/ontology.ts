@@ -240,6 +240,8 @@ function classDetail(store: Store, iri: string, prefs: string[] | null) {
     store.getSubjects(RDF_TYPE, iri, null).filter((s) => s.termType === "NamedNode").map((s) => s.value),
   );
 
+  const children = childClasses(store, iri);
+
   return {
     iri,
     labels: getLiterals(store, iri, RDFS_LABEL),
@@ -249,7 +251,10 @@ function classDetail(store: Store, iri: string, prefs: string[] | null) {
     parent_labels: parentLabels,
     equivalent_iris: getObjectIris(store, iri, OWL_EQUIVALENT_CLASS),
     disjoint_iris: getObjectIris(store, iri, OWL_DISJOINT_WITH),
-    child_count: childClasses(store, iri).length,
+    child_count: children.length,
+    subclasses: children
+      .map((i) => ({ iri: i, label: displayLabel(store, i, prefs) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
     instance_count: instances.size,
     instances: [...instances]
       .map((i) => ({ iri: i, label: displayLabel(store, i, prefs) }))

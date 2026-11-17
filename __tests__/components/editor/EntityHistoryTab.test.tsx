@@ -82,6 +82,8 @@ describe("EntityHistoryTab", () => {
       <EntityHistoryTab projectId="p1" entityIri="http://example.org/A" />
     );
     expect(screen.getByText("History (1)")).toBeDefined();
+    // Closed by default.
+    expect(screen.queryByText("Alice")).toBeNull();
     await userEvent.click(screen.getByText("History (1)"));
     expect(screen.getByText("Alice")).toBeDefined();
     expect(screen.getByText("created")).toBeDefined();

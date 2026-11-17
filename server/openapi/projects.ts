@@ -251,6 +251,32 @@ export const projectSchemas: Record<string, Schema> = {
       },
     },
   },
+  OntologyLocalChanges: {
+    type: "object",
+    description:
+      "Whether the ontology file in the project folder has changes that aren't committed, made outside OntoBuilder (by an agent, a terminal or a text editor). " +
+      "The editor shows the branch's last commit, so these stay out of view until they are committed.",
+    required: ["branch", "path", "changed", "problem"],
+    properties: {
+      branch: { type: ["string", "null"], description: "The branch checked out in the project folder (the one a commit goes to); null when HEAD is detached." },
+      path: { type: ["string", "null"], description: "The ontology file, relative to the project folder; null when the project has no ontology yet." },
+      changed: { type: "boolean", description: "The file in the folder differs from the branch's last commit (modified, deleted or never committed)." },
+      problem: {
+        type: ["string", "null"],
+        description: "Why the changed file can't be committed: it's missing or doesn't parse as Turtle. Null when it can, or nothing changed.",
+      },
+    },
+  },
+  OntologyLocalCommit: {
+    type: "object",
+    description: "The commit made from the ontology file in the project folder.",
+    required: ["branch", "path", "commit_hash"],
+    properties: {
+      branch: { type: "string" },
+      path: { type: "string" },
+      commit_hash: { type: "string" },
+    },
+  },
   OntologyFileChange: {
     type: "object",
     description: "The result of switching or creating the project's ontology file.",
@@ -555,6 +581,40 @@ export const projectDocs: DocMap = {
       "404": error("Project or branch not found."),
       "409": error("A file or folder of that name already exists."),
       "422": error("A field is missing or invalid: the file name is outside the repository or doesn't end in .ttl, or the IRI is not an absolute IRI."),
+    },
+  },
+  "GET /projects/{id}/ontology-file/local-changes": {
+    summary: "Check for uncommitted ontology changes",
+    description:
+      "Says whether the ontology file in the project folder has changes that aren't committed on the checked-out branch, and whether they could be committed.",
+    responses: {
+      "200": { description: "The state of the ontology file in the folder.", schema: ref("OntologyLocalChanges") },
+      "404": error("Project not found."),
+    },
+  },
+  "POST /projects/{id}/ontology-file/local-changes/commit": {
+    summary: "Commit uncommitted ontology changes",
+    description:
+      "Commits the ontology file as it is in the project folder to the checked-out branch (locally, not pushed). Language tags are stripped as for every commit; " +
+      "the folder is left matching the commit.",
+    body: {
+      required: false,
+      schema: {
+        type: "object",
+        properties: {
+          commit_message: {
+            type: ["string", "null"],
+            maxLength: 500,
+            description: "The commit message. Defaults to \"Commit changes to <file> made outside OntoBuilder\".",
+          },
+        },
+      },
+    },
+    responses: {
+      "200": { description: "The changes were committed.", schema: ref("OntologyLocalCommit") },
+      "404": error("Project not found, or it has no ontology file yet."),
+      "409": error("Nothing to commit, or no branch is checked out in the folder."),
+      "422": error("The file is missing or doesn't parse as Turtle, or commit_message isn't a string."),
     },
   },
   "GET /projects/{id}/source": {

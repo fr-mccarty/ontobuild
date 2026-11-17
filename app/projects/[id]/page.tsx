@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from "react";
 import { useParams, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Settings, FileCode, Keyboard, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Share2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, Settings, FileCode, Keyboard, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Share2, UserCog } from "lucide-react";
 import { Header } from "@/components/layout/header";
+import { HomeIconLink, UserSettingsLink } from "@/components/layout/compact-app-links";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddEntityDialog, type NewEntityInfo } from "@/components/editor/AddEntityDialog";
@@ -50,6 +51,7 @@ import { DeleteImpactAnalysis } from "@/components/editor/DeleteImpactAnalysis";
 import { MoreMenu, MORE_MENU_ITEM_CLASSES } from "@/components/editor/MoreMenu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { OntologyFileMenu, OntologyFilePanel, OntologyLoadError } from "@/components/project/OntologyFile";
+import { OntologyLocalChangesNotice } from "@/components/project/OntologyLocalChangesNotice";
 
 const PROJECTS_TOOLTIP = "Projects: return to the list of all projects";
 
@@ -725,11 +727,11 @@ export default function ProjectEditorPage() {
   useKeyboardShortcuts(keyboardShortcuts);
 
   if (isLoading) {
+    // No main header: the editor brings its own top row once loaded, so showing one now would only flash.
     return (
       <>
-        <Header />
-        <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
-          <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <main id="main-content" className="min-h-dvh bg-slate-50 dark:bg-slate-900">
+          <div className="flex h-dvh items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600" />
           </div>
         </main>
@@ -769,13 +771,15 @@ export default function ProjectEditorPage() {
   if (!hasOntology) {
     return (
       <>
-        <Header />
-        <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-100 dark:bg-slate-900">
+        <main id="main-content" className="min-h-dvh bg-slate-100 dark:bg-slate-900">
           <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
+                <HomeIconLink />
                 <ProjectBreadcrumb project={project} />
               </div>
+              <div className="flex items-center gap-1">
+              <UserSettingsLink />
               <Tooltip side="bottom" content="Project settings: settings for this project only (ontology file, imports, GitHub, normalization, lint rules)">
                 <Link href={`/projects/${projectId}/settings`} aria-label="Project settings">
                   <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
@@ -783,9 +787,10 @@ export default function ProjectEditorPage() {
                   </Button>
                 </Link>
               </Tooltip>
+              </div>
             </div>
           </div>
-          <div className="flex min-h-[calc(100vh-4rem-3.5rem)] justify-center overflow-y-auto px-4 py-12">
+          <div className="flex min-h-[calc(100dvh-3.5rem)] justify-center overflow-y-auto px-4 py-12">
             <div className="w-full max-w-xl">
               <div className="text-center">
                 <FileCode className="mx-auto h-16 w-16 text-slate-400" />
@@ -817,13 +822,13 @@ export default function ProjectEditorPage() {
 
   return (
     <BranchProvider projectId={projectId} initialBranch={initialBranch}>
-      <Header />
-      {/* Fills the window below the header (4rem plus its 1px border); the panes below share the rest so nothing spills past the bottom. */}
-      <main id="main-content" className="flex h-[calc(100dvh-4rem-1px)] flex-col overflow-hidden bg-slate-100 dark:bg-slate-900">
+      {/* No main header here: the editor's own top row carries the home icon, and user settings is in the More menu. Fills the window; the panes below share the rest so nothing spills past the bottom. */}
+      <main id="main-content" className="flex h-dvh flex-col overflow-hidden bg-slate-100 dark:bg-slate-900">
         <div className="flex-shrink-0 border-b border-slate-200 bg-white px-2 py-3 sm:px-4 dark:border-slate-700 dark:bg-slate-800">
           {/* One line at every width: rarely used controls live in the ⋮ More menu. */}
           <div data-testid="editor-sub-header" className="flex flex-nowrap items-center justify-between gap-2 sm:gap-4">
             <div className="flex min-w-0 flex-nowrap items-center gap-2 sm:gap-4">
+              <HomeIconLink />
               <Tooltip
                 side="bottom"
                 content={
@@ -928,6 +933,10 @@ export default function ProjectEditorPage() {
                       Project settings
                       {showNormalize && <span className="ml-auto h-2 w-2 rounded-full bg-amber-500" aria-label="normalization recommended" role="img" />}
                     </Link>
+                    <Link href="/settings" role="menuitem" className={MORE_MENU_ITEM_CLASSES} onClick={closeMenu}>
+                      <UserCog className="h-3.5 w-3.5 flex-shrink-0" />
+                      User settings
+                    </Link>
                   </>
                 )}
               </MoreMenu>
@@ -963,6 +972,15 @@ export default function ProjectEditorPage() {
             </div>
           </div>
         </div>
+
+        <OntologyLocalChangesNotice
+          projectId={projectId}
+          activeBranch={activeBranch}
+          onCommitted={() => {
+            reloadOntologyFromServer();
+            void queryClient.invalidateQueries({ predicate: (q) => q.queryKey.includes(projectId) });
+          }}
+        />
 
         <div className="flex min-h-0 flex-1 flex-col">
         <div className="relative flex min-h-0 flex-1">

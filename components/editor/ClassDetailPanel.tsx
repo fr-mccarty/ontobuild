@@ -17,7 +17,8 @@ import {
   Trash2,
   Equal,
   Ban,
-  BarChart3,
+  ArrowDown,
+  Circle,
   Star,
   Tags,
   EyeOff,
@@ -26,12 +27,15 @@ import {
   Hash,
   Link2,
 } from "lucide-react";
+import { DisclosureSection } from "@/components/editor/shared/Disclosure";
 import { projectOntologyApi, type OWLClassDetail, type ClassUpdatePayload, type AnnotationUpdate } from "@/lib/api/client";
 import type { LocalizedString } from "@/lib/api/client";
 import { lintApi, type LintIssue } from "@/lib/api/lint";
 import { cn, getLocalName, getPreferredLabel } from "@/lib/utils";
 import { ParentClassPicker } from "@/components/editor/ParentClassPicker";
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
+import { COMMENT_ROWS } from "@/components/editor/standard/commentRows";
+import { sectionHelp } from "@/lib/editor/sectionHelp";
 import { InlineAnnotationAdder } from "@/components/editor/standard/InlineAnnotationAdder";
 import { RelationshipSection, type RelationshipGroup, type RelationshipTarget } from "@/components/editor/standard/RelationshipSection";
 import { LABEL_IRI, COMMENT_IRI, DEFINITION_IRI, RELATIONSHIP_PROPERTY_IRIS, SEE_ALSO_IRI, getAnnotationPropertyInfo } from "@/lib/ontology/annotationProperties";
@@ -92,7 +96,6 @@ export function ClassDetailPanel({
   const importedFrom = importedMarker?.imported_from;
   const editable = !!canEdit && !importedFrom;
   const [classIssues, setClassIssues] = useState<LintIssue[]>([]);
-  const [showInstances, setShowInstances] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resolvedTargetLabels, setResolvedTargetLabels] = useState<Record<string, string>>({});
@@ -251,7 +254,6 @@ export function ClassDetailPanel({
     const fetchClassData = async () => {
       setIsLoading(true);
       setError(null);
-      setShowInstances(false);
 
       try {
         const [detail, issuesResponse] = await Promise.all([
@@ -677,13 +679,12 @@ export function ClassDetailPanel({
                         <AnnotationRow
                           key={vIdx}
                           propertyIri={DEFINITION_IRI}
-                          subjectIri={classIri ?? undefined}
                           value={val.value}
                           onValueChange={(v) => updateAnnotationValue(DEFINITION_IRI, vIdx, v)}
                           onRemove={isGhost ? undefined : () => removeAnnotationValue(DEFINITION_IRI, vIdx)}
                           onBlur={() => triggerSave()}
                           showPropertyLabel={false}
-                          placeholder={isGhost ? "Add another Definition" : undefined}
+                          placeholder={isGhost ? (defValues.length > 1 ? "Add another definition" : "Add a definition") : undefined}
                         />
                       );
                     })}
@@ -720,8 +721,8 @@ export function ClassDetailPanel({
                         value={comment.value}
                         onChange={(e) => updateComment(index, e.target.value)}
                         onBlur={() => triggerSave()}
-                        placeholder={isGhost ? "Add another Comment" : ""}
-                        rows={isGhost ? 1 : 2}
+                        placeholder={isGhost ? (editComments.length > 1 ? "Add another comment" : "Add a comment") : ""}
+                        rows={isGhost && editComments.length > 1 ? 1 : COMMENT_ROWS}
                         className="flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                       />
                       {!isGhost ? (
@@ -776,7 +777,6 @@ export function ClassDetailPanel({
                               <AnnotationRow
                                 key={vIdx}
                                 propertyIri={annotation.property_iri}
-                                subjectIri={classIri ?? undefined}
                                 value={val.value}
                                 onValueChange={(v) => updateAnnotationValue(annotation.property_iri, vIdx, v)}
                                 onRemove={isGhost ? undefined : () => removeAnnotationValue(annotation.property_iri, vIdx)}
@@ -943,60 +943,43 @@ export function ClassDetailPanel({
             );
           })()}
 
-          <Section title="Statistics" icon={<BarChart3 className="h-4 w-4" />}>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center">
-                <StatItem label="subclasses" value={classDetail.child_count} />
-              </div>
-              <div className="flex items-center gap-4">
-                {onNavigateToIndividual && classDetail.instances && classDetail.instances.length > 0 ? (
-                  <Tooltip content={classDetail.instances.length === 1 ? "Show this instance" : "Show instances"}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const list = classDetail.instances ?? [];
-                        if (list.length === 1) onNavigateToIndividual(list[0].iri);
-                        else setShowInstances((v) => !v);
-                      }}
-                      className="rounded-sm hover:underline focus:outline-hidden focus-visible:ring-1 focus-visible:ring-primary-500"
-                      aria-expanded={classDetail.instances.length > 1 ? showInstances : undefined}
-                    >
-                      <StatItem label="instances" value={classDetail.instance_count ?? classDetail.instances.length} />
-                    </button>
-                  </Tooltip>
-                ) : (
-                  <StatItem label="instances" value={classDetail.instance_count ?? "—"} />
-                )}
-                {canEdit && onAddIndividual && (
-                  <button
-                    type="button"
-                    onClick={() => onAddIndividual(classIri)}
-                    className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add individual
-                  </button>
-                )}
-              </div>
-              {showInstances && onNavigateToIndividual && (classDetail.instances?.length ?? 0) > 1 && (
-                <ul className="ml-1 space-y-0.5 border-l border-slate-200 pl-3 dark:border-slate-700">
-                  {classDetail.instances!.map((inst) => (
-                    <li key={inst.iri}>
-                      <Tooltip content={inst.iri}>
-                        <button
-                          type="button"
-                          onClick={() => onNavigateToIndividual(inst.iri)}
-                          className="text-sm text-primary-600 hover:underline dark:text-primary-400"
-                        >
-                          {inst.label}
-                        </button>
-                      </Tooltip>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </Section>
+          <DisclosureSection
+            testId="subclasses-section"
+            icon={<ArrowDown className="h-4 w-4" />}
+            title="Subclasses"
+            count={classDetail.child_count}
+            tooltip={sectionHelp("Subclasses")}
+            key={`subclasses:${classIri}`}
+            defaultOpen
+            openable={!!onNavigateToClass && !!classDetail.subclasses?.length}
+          >
+            <EntityLinkList items={classDetail.subclasses ?? []} onNavigate={onNavigateToClass} />
+          </DisclosureSection>
+
+          <DisclosureSection
+            testId="individuals-section"
+            icon={<Circle className="h-4 w-4" />}
+            title="Individuals"
+            count={classDetail.instance_count ?? classDetail.instances?.length ?? 0}
+            tooltip={sectionHelp("Individuals")}
+            key={`instances:${classIri}`}
+            defaultOpen
+            openable={!!onNavigateToIndividual && !!classDetail.instances?.length}
+            aside={
+              canEdit && onAddIndividual ? (
+                <button
+                  type="button"
+                  onClick={() => onAddIndividual(classIri)}
+                  className="inline-flex items-center gap-1 pt-0.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add individual
+                </button>
+              ) : undefined
+            }
+          >
+            <EntityLinkList items={classDetail.instances ?? []} onNavigate={onNavigateToIndividual} />
+          </DisclosureSection>
 
           <CrossReferencesPanel
             projectId={projectId}
@@ -1051,6 +1034,27 @@ const ANNOTATION_ICON_MAP: Record<string, React.ReactNode> = {
   "http://www.w3.org/2000/01/rdf-schema#isDefinedBy": <Link2 className="h-4 w-4" />,
 };
 
+/** Entities by label, each linking to its own page in the editor. */
+function EntityLinkList({ items, onNavigate }: { items: { iri: string; label: string }[]; onNavigate?: (iri: string) => void }) {
+  return (
+    <ul className="space-y-0.5">
+      {items.map((item) => (
+        <li key={item.iri}>
+          <Tooltip content={item.iri}>
+            <button
+              type="button"
+              onClick={() => onNavigate?.(item.iri)}
+              className="text-sm text-primary-600 hover:underline dark:text-primary-400"
+            >
+              {item.label}
+            </button>
+          </Tooltip>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function getAnnotationIcon(propertyIri: string): React.ReactNode {
   return ANNOTATION_ICON_MAP[propertyIri] || <FileText className="h-4 w-4" />;
 }
@@ -1065,7 +1069,7 @@ interface SectionProps {
 function Section({ title, tooltip, icon, children }: SectionProps) {
   return (
     <div className="flex gap-4">
-      <Tooltip content={tooltip}>
+      <Tooltip content={sectionHelp(title, tooltip)}>
         <div className="w-40 shrink-0 flex items-start gap-1.5 pt-1">
           {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</span>
@@ -1106,20 +1110,6 @@ function IriLink({ iri, label, onClick }: IriLinkProps) {
         </button>
       </span>
     </Tooltip>
-  );
-}
-
-interface StatItemProps {
-  label: string;
-  value: number | string | null;
-}
-
-function StatItem({ label, value }: StatItemProps) {
-  return (
-    <span className="text-sm text-slate-700 dark:text-slate-300">
-      <span className="font-medium">{value}</span>{" "}
-      <span className="text-slate-500 dark:text-slate-400">{label}</span>
-    </span>
   );
 }
 

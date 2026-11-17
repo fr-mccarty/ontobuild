@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronRight, ExternalLink, Link } from "lucide-react";
+import { ExternalLink, Link } from "lucide-react";
+import { DisclosureSection } from "@/components/editor/shared/Disclosure";
 import { useCrossReferences } from "@/lib/hooks/useCrossReferences";
 import { cn, getLocalName } from "@/lib/utils";
 import type { CrossReferenceGroup, ReferenceContext } from "@/lib/ontology/qualityTypes";
 import { Tooltip } from "@/components/ui/tooltip";
+import { sectionHelp } from "@/lib/editor/sectionHelp";
 
 const CONTEXT_LABELS: Record<ReferenceContext, string> = {
   parent_iris: "As parent class",
@@ -39,7 +40,6 @@ export function CrossReferencesPanel({
   branch,
   onNavigateToClass,
 }: CrossReferencesPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const { data, isLoading } = useCrossReferences(
     projectId,
     entityIri,
@@ -50,45 +50,33 @@ export function CrossReferencesPanel({
 
   const total = data?.total ?? 0;
 
-  if (!isLoading && total === 0) return null;
-
   return (
-    <div className="flex gap-4">
-      <div className="w-40 shrink-0 flex items-start gap-1.5 pt-1">
-        <span className="text-slate-400 dark:text-slate-500">
-          <Link className="h-4 w-4" />
-        </span>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
-        >
-          {isExpanded ? (
-            <ChevronDown className="h-3 w-3" />
-          ) : (
-            <ChevronRight className="h-3 w-3" />
-          )}
-          Used By ({isLoading ? "..." : total})
-        </button>
-      </div>
-      <div className="min-w-0 flex-1">
-        {isLoading && (
+    <DisclosureSection
+      key={entityIri}
+      icon={<Link className="h-4 w-4" />}
+      title="Used By"
+      count={isLoading ? null : total}
+      tooltip={sectionHelp("Used By")}
+      defaultOpen
+      openable={!isLoading && total > 0}
+      aside={
+        isLoading && (
           <div className="py-1">
             <div className="h-4 w-24 animate-pulse rounded-sm bg-slate-200 dark:bg-slate-700" />
           </div>
-        )}
-        {isExpanded && data && (
-          <div className="space-y-2">
-            {data.groups.map((group: CrossReferenceGroup) => (
-              <ReferenceGroup
-                key={group.context}
-                group={group}
-                onNavigate={onNavigateToClass}
-              />
-            ))}
-          </div>
-        )}
+        )
+      }
+    >
+      <div className="space-y-2">
+        {data?.groups.map((group: CrossReferenceGroup) => (
+          <ReferenceGroup
+            key={group.context}
+            group={group}
+            onNavigate={onNavigateToClass}
+          />
+        ))}
       </div>
-    </div>
+    </DisclosureSection>
   );
 }
 

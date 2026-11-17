@@ -1,9 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
   History,
   Plus,
   Pencil,
@@ -13,6 +10,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useEntityHistory } from "@/lib/hooks/useEntityHistory";
+import { DisclosureSection } from "@/components/editor/shared/Disclosure";
+import { sectionHelp } from "@/lib/editor/sectionHelp";
 import { cn } from "@/lib/utils";
 import type { ChangeEventType } from "@/lib/api/analytics";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -64,7 +63,6 @@ export function EntityHistoryTab({
   entityIri,
   branch,
 }: EntityHistoryTabProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const { data, isLoading, error } = useEntityHistory(
     projectId,
     entityIri,
@@ -79,77 +77,66 @@ export function EntityHistoryTab({
   if (!isLoading && !error && data && total === 0) return null;
 
   return (
-    <div className="flex gap-4">
-      <div className="w-40 shrink-0 flex items-start gap-1.5 pt-1">
-        <span className="text-slate-400 dark:text-slate-500">
-          <History className="h-4 w-4" />
-        </span>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
-        >
-          {isExpanded ? (
-            <ChevronDown className="h-3 w-3" />
-          ) : (
-            <ChevronRight className="h-3 w-3" />
+    <DisclosureSection
+      key={entityIri}
+      icon={<History className="h-4 w-4" />}
+      title="History"
+      count={isLoading ? null : total}
+      tooltip={sectionHelp("History")}
+      defaultOpen={false}
+      aside={
+        <>
+          {isLoading && (
+            <div className="py-1">
+              <div className="h-4 w-24 animate-pulse rounded-sm bg-slate-200 dark:bg-slate-700" />
+            </div>
           )}
-          History ({isLoading ? "..." : total})
-        </button>
-      </div>
-      <div className="min-w-0 flex-1">
-        {isLoading && (
-          <div className="py-1">
-            <div className="h-4 w-24 animate-pulse rounded-sm bg-slate-200 dark:bg-slate-700" />
-          </div>
-        )}
-        {error && !isLoading && (
-          <p className="py-1 text-xs text-red-500">Failed to load history</p>
-        )}
-        {isExpanded && events.length > 0 && (
-          <div className="relative space-y-0">
-            <div className="absolute left-[7px] top-2 bottom-2 w-px bg-slate-200 dark:bg-slate-700" />
+          {error && !isLoading && (
+            <p className="py-1 text-xs text-red-500">Failed to load history</p>
+          )}
+        </>
+      }
+    >
+      <div>
+        {events.map((event) => {
+          const icon =
+            EVENT_ICONS[event.event_type as ChangeEventType] || EVENT_ICONS.update;
+          const label =
+            EVENT_LABELS[event.event_type as ChangeEventType] || event.event_type;
 
-            {events.map((event) => {
-              const icon =
-                EVENT_ICONS[event.event_type as ChangeEventType] || EVENT_ICONS.update;
-              const label =
-                EVENT_LABELS[event.event_type as ChangeEventType] || event.event_type;
-
-              return (
-                <div
-                  key={event.id}
-                  className="relative flex items-start gap-2.5 py-1.5 pl-0"
-                >
-                  <span className="relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white dark:bg-slate-900">
-                    {icon}
+          return (
+            <div
+              key={event.id}
+              className="relative flex items-start gap-2.5 py-1.5 pl-0"
+            >
+              <span className="relative z-10 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white dark:bg-slate-900">
+                {icon}
+              </span>
+              <div className="min-w-0 flex-1 text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-medium text-slate-800 dark:text-slate-200">
+                  {event.user_name || "Unknown"}
+                </span>{" "}
+                {label}
+                {event.changed_fields.length > 0 && (
+                  <span className="text-slate-400 dark:text-slate-500">
+                    {" "}
+                    ({event.changed_fields.join(", ")})
                   </span>
-                  <div className="min-w-0 flex-1 text-xs text-slate-600 dark:text-slate-400">
-                    <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {event.user_name || "Unknown"}
-                    </span>{" "}
-                    {label}
-                    {event.changed_fields.length > 0 && (
-                      <span className="text-slate-400 dark:text-slate-500">
-                        {" "}
-                        ({event.changed_fields.join(", ")})
-                      </span>
+                )}
+                <Tooltip content={new Date(event.created_at).toLocaleString()}>
+                  <span
+                    className={cn(
+                      "ml-1.5 text-[10px] text-slate-400 dark:text-slate-500"
                     )}
-                    <Tooltip content={new Date(event.created_at).toLocaleString()}>
-                      <span
-                        className={cn(
-                          "ml-1.5 text-[10px] text-slate-400 dark:text-slate-500"
-                        )}
-                      >
-                        {formatRelativeTime(event.created_at)}
-                      </span>
-                    </Tooltip>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  >
+                    {formatRelativeTime(event.created_at)}
+                  </span>
+                </Tooltip>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </div>
+    </DisclosureSection>
   );
 }

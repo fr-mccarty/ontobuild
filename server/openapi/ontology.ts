@@ -72,6 +72,7 @@ export const ontologySchemas: Record<string, Schema> = {
       "equivalent_iris",
       "disjoint_iris",
       "child_count",
+      "subclasses",
       "instance_count",
       "instances",
       "annotations",
@@ -90,6 +91,15 @@ export const ontologySchemas: Record<string, Schema> = {
       equivalent_iris: { type: "array", items: { type: "string" } },
       disjoint_iris: { type: "array", items: { type: "string" } },
       child_count: { type: "integer" },
+      subclasses: {
+        type: "array",
+        description: "The direct subclasses of this class, sorted by label.",
+        items: {
+          type: "object",
+          required: ["iri", "label"],
+          properties: { iri: { type: "string" }, label: { type: "string" } },
+        },
+      },
       instance_count: { type: "integer" },
       instances: {
         type: "array",

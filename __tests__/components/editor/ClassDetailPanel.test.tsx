@@ -248,14 +248,14 @@ describe("ClassDetailPanel", () => {
     });
   });
 
-  it("renders statistics", async () => {
+  it("shows Subclasses and Individuals as their own sections, with counts", async () => {
     render(<ClassDetailPanel {...DEFAULT_PROPS} />);
 
     await waitFor(() => {
-      expect(screen.getByText("5")).toBeDefined();
-      expect(screen.getByText("subclasses")).toBeDefined();
-      expect(screen.getByText("42")).toBeDefined();
+      expect(screen.getByText("Subclasses (5)")).toBeDefined();
+      expect(screen.getByText("Individuals (42)")).toBeDefined();
     });
+    expect(screen.queryByText("Statistics")).toBeNull();
   });
 
   it("renders equivalent classes when present", async () => {
@@ -967,25 +967,22 @@ describe("ClassDetailPanel", () => {
     );
   });
 
-  it("renders dash for null instance_count", async () => {
-    mockGetClassDetail.mockResolvedValue(
-      makeClassDetail({ instance_count: null })
-    );
-    render(<ClassDetailPanel {...DEFAULT_PROPS} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("—")).not.toBeNull();
-    });
+  it("shows zero subclasses and instances, with nothing to open", async () => {
+    mockGetClassDetail.mockResolvedValue(makeClassDetail({ child_count: 0, subclasses: [], instance_count: null, instances: [] }));
+    render(<ClassDetailPanel {...DEFAULT_PROPS} onNavigateToClass={vi.fn()} onNavigateToIndividual={vi.fn()} />);
+    expect(await screen.findByText("Subclasses (0)")).toBeDefined();
+    expect(screen.getByText("Individuals (0)")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /^Subclasses/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Individuals/ })).toBeNull();
   });
 
-  it("navigates straight to the only instance when the count is clicked", async () => {
+  it("lists a single instance from the start, and navigates to it", async () => {
     const onNavigateToIndividual = vi.fn();
     mockGetClassDetail.mockResolvedValue(
       makeClassDetail({ instance_count: 1, instances: [{ iri: "http://ex.org#rex", label: "Rex" }] })
     );
     render(<ClassDetailPanel {...DEFAULT_PROPS} onNavigateToIndividual={onNavigateToIndividual} />);
-    const btn = await screen.findByRole("button", { name: /instances/ });
-    fireEvent.click(btn);
+    fireEvent.click(await screen.findByText("Rex"));
     expect(onNavigateToIndividual).toHaveBeenCalledWith("http://ex.org#rex");
   });
 
@@ -998,16 +995,63 @@ describe("ClassDetailPanel", () => {
       })
     );
     render(<ClassDetailPanel {...DEFAULT_PROPS} onNavigateToIndividual={onNavigateToIndividual} />);
-    fireEvent.click(await screen.findByRole("button", { name: /instances/ }));
+    const toggle = await screen.findByRole("button", { name: /^Individuals/ });
+    // Open when the class is shown.
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(screen.getByText("Beta"));
     expect(onNavigateToIndividual).toHaveBeenCalledWith("http://ex.org#b");
+    // The count hides and shows the list.
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Alpha")).toBeNull();
+    fireEvent.click(toggle);
+    expect(screen.getByText("Alpha")).toBeDefined();
+  });
+
+  it("lists the subclasses from the start, and navigates to the one clicked", async () => {
+    const onNavigateToClass = vi.fn();
+    mockGetClassDetail.mockResolvedValue(
+      makeClassDetail({
+        child_count: 2,
+        subclasses: [{ iri: "http://ex.org#Cat", label: "Cat" }, { iri: "http://ex.org#Dog", label: "Dog" }],
+      })
+    );
+    render(<ClassDetailPanel {...DEFAULT_PROPS} onNavigateToClass={onNavigateToClass} />);
+    const toggle = await screen.findByRole("button", { name: /^Subclasses/ });
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(screen.getByText("Dog"));
+    expect(onNavigateToClass).toHaveBeenCalledWith("http://ex.org#Dog");
+    fireEvent.click(toggle);
+    expect(screen.queryByText("Cat")).toBeNull();
+  });
+
+  it("keeps Add individual in place whether the instances are shown or not, with a chevron showing which", async () => {
+    mockGetClassDetail.mockResolvedValue(
+      makeClassDetail({
+        instance_count: 2,
+        instances: [{ iri: "http://ex.org#a", label: "Alpha" }, { iri: "http://ex.org#b", label: "Beta" }],
+      })
+    );
+    render(<ClassDetailPanel {...DEFAULT_PROPS} canEdit={true} onUpdateClass={vi.fn()} onAddIndividual={vi.fn()} onNavigateToIndividual={vi.fn()} />);
+    const toggle = await screen.findByRole("button", { name: /^Individuals/ });
+    const add = screen.getByRole("button", { name: /Add individual/ });
+    const parent = add.parentElement!;
+    // Above the list, not in it, so opening and closing the list can't move the button.
+    expect(screen.getByTestId("disclosure-body").contains(add)).toBe(false);
+    expect(add.compareDocumentPosition(screen.getByText("Alpha")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(toggle.querySelector("[data-testid='disclosure-chevron']")!.getAttribute("data-open")).toBe("true");
+    fireEvent.click(toggle);
+    expect(add.parentElement).toBe(parent);
+    expect(add.previousElementSibling).toBeNull();
+    expect(toggle.querySelector("[data-testid='disclosure-chevron']")!.getAttribute("data-open")).toBe("false");
   });
 
   it("does not make zero instances clickable", async () => {
     mockGetClassDetail.mockResolvedValue(makeClassDetail({ instance_count: 0, instances: [] }));
-    render(<ClassDetailPanel {...DEFAULT_PROPS} onNavigateToIndividual={vi.fn()} />);
-    await screen.findByText("subclasses");
-    expect(screen.queryByRole("button", { name: /instances/ })).toBeNull();
+    render(<ClassDetailPanel {...DEFAULT_PROPS} canEdit={true} onUpdateClass={vi.fn()} onAddIndividual={vi.fn()} onNavigateToIndividual={vi.fn()} />);
+    // Shown so an individual can be added, but with nothing to open.
+    expect(await screen.findByText("Individuals (0)")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /^Individuals/ })).toBeNull();
   });
 
   it("renders error-type lint issue", async () => {
@@ -1153,6 +1197,26 @@ describe("ClassDetailPanel", () => {
     });
   });
 
+  it("asks for a definition, not another one, when the class has none", async () => {
+    capturedAnnotationRowProps = [];
+    mockGetClassDetail.mockResolvedValue(makeClassDetail({ annotations: [] }));
+    render(<ClassDetailPanel {...DEFAULT_PROPS} canEdit={true} onUpdateClass={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("auto-save-bar")).not.toBeNull());
+    const definitionRows = capturedAnnotationRowProps.filter((p) => p.propertyIri === "http://www.w3.org/2004/02/skos/core#definition");
+    expect(definitionRows.at(-1)?.placeholder).toBe("Add a definition");
+  });
+
+  it("asks for another definition below an existing one", async () => {
+    capturedAnnotationRowProps = [];
+    mockGetClassDetail.mockResolvedValue(
+      makeClassDetail({ annotations: [{ property_iri: "http://www.w3.org/2004/02/skos/core#definition", values: [{ value: "A thing." }] }] })
+    );
+    render(<ClassDetailPanel {...DEFAULT_PROPS} canEdit={true} onUpdateClass={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("auto-save-bar")).not.toBeNull());
+    const definitionRows = capturedAnnotationRowProps.filter((p) => p.propertyIri === "http://www.w3.org/2004/02/skos/core#definition");
+    expect(definitionRows.at(-1)?.placeholder).toBe("Add another definition");
+  });
+
   it("adds empty Definition section in edit mode when not in server data", async () => {
     const onUpdateClass = vi.fn();
     mockGetClassDetail.mockResolvedValue(
@@ -1224,7 +1288,7 @@ describe("ClassDetailPanel", () => {
     await waitFor(() => {
       expect(screen.getAllByText("Person").length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText("5")).not.toBeNull();
+    expect(screen.getByText("Subclasses (5)")).not.toBeNull();
   });
 
   it("resolves relationship target labels from class detail and search", async () => {

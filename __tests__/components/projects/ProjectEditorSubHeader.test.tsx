@@ -75,6 +75,7 @@ const ontologyFilesApi = vi.hoisted(() => ({
   listOntologyFiles: vi.fn(),
   switchOntologyFile: vi.fn(),
   createOntologyFile: vi.fn(),
+  getOntologyLocalChanges: vi.fn(async () => ({ branch: "main", path: "src/newman.ttl", changed: false, problem: null })),
 }));
 vi.mock("@/lib/api/projects", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/projects")>();
@@ -281,6 +282,22 @@ describe("Project editor sub header on one line", () => {
   });
 });
 
+describe("In place of the main header", () => {
+  it("leaves out the main header and puts the OntoBuilder icon, linking home, at the far left", () => {
+    renderPage();
+    expect(document.querySelector("header")).toBeNull();
+    const bar = screen.getByTestId("editor-sub-header");
+    const home = within(bar).getByRole("link", { name: "OntoBuilder home" });
+    expect(home.getAttribute("href")).toBe("/");
+    expect(bar.querySelector("a, button")).toBe(home);
+  });
+
+  it("has no user settings gear in the row: it is in the More menu", () => {
+    renderPage();
+    expect(within(subHeader()).queryByRole("link", { name: "User settings" })).toBeNull();
+  });
+});
+
 describe("More menu", () => {
   const openMenu = () => {
     fireEvent.click(within(subHeader()).getByRole("button", { name: "More" }));
@@ -295,13 +312,20 @@ describe("More menu", () => {
     expect(more.querySelector("svg")!.getAttribute("class")).toContain("lucide-ellipsis-vertical");
     const menu = openMenu();
     const items = within(menu).getAllByRole("menuitem");
-    expect(items).toHaveLength(3);
+    expect(items).toHaveLength(4);
     expect(items[0]).toBe(within(menu).getByRole("menuitem", { name: "Keyboard shortcuts" }));
     expect(items[0].getAttribute("aria-keyshortcuts")).toBe("?");
     expect(items[1]).toBe(within(menu).getByRole("menuitem", { name: "Relationship graph" }));
     expect(items[2]).toBe(within(menu).getByRole("menuitem", { name: /Project settings/ }));
     // Settings is inline from sm up, so its menu item hides there.
     expect(cls(within(menu).getByRole("menuitem", { name: /Project settings/ }))).toContain("sm:hidden");
+  });
+
+  it("links to user settings at every width", () => {
+    renderPage();
+    const item = within(openMenu()).getByRole("menuitem", { name: "User settings" });
+    expect(item.getAttribute("href")).toBe("/settings");
+    expect(cls(item).filter((c) => c === "hidden" || c.endsWith(":hidden"))).toEqual([]);
   });
 
   it("disables the relationship graph until a class is selected", () => {

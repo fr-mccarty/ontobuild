@@ -409,10 +409,20 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
     name: "get_project",
     kind: "read",
     description:
-      "Get the current project's metadata: name, description, ontology IRI, ontology file (the one Turtle file the project edits) and label preferences.",
+      "Get the current project's metadata: name, description, ontology IRI, ontology file (the one Turtle file the project edits) and label preferences. " +
+      "`uncommitted_ontology_changes` describes the ontology file in the project folder when it has changes that aren't committed (null when it has none); see commit_ontology_folder_changes.",
     parameters: { type: "object", properties: {} },
     async run(_input, ctx) {
       const { data } = await call<Record<string, unknown>>(ctx, "GET", projectPath(ctx), { branch: false });
+      const local = await call<{ branch: string | null; path: string | null; changed: boolean; problem: string | null }>(
+        ctx,
+        "GET",
+        projectPath(ctx, "/ontology-file/local-changes"),
+        { branch: false },
+      ).then(
+        (r) => r.data,
+        () => null,
+      );
       const result = {
         id: data.id,
         name: data.name,
@@ -423,6 +433,9 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
         created_at: data.created_at,
         updated_at: data.updated_at,
         branch: ctx.branch,
+        uncommitted_ontology_changes: local?.changed
+          ? { path: local.path, folder_branch: local.branch, can_commit: !local.problem && !!local.branch, problem: local.problem }
+          : null,
       };
       return { result, summary: `Loaded project ${String(data.name)}`, mutated: false };
     },
@@ -1262,6 +1275,32 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
     async run(_input, ctx) {
       const { data } = await call<Record<string, unknown> & { files: unknown[] }>(ctx, "GET", projectPath(ctx, "/ontology-files"));
       return { result: data, summary: `Listed ${data.files.length} RDF file(s)`, mutated: false };
+    },
+  },
+  {
+    name: "commit_ontology_folder_changes",
+    kind: "ontology",
+    description:
+      "Commit the ontology file as it is in the project folder, with changes made outside the ontology tools (by another agent, a terminal, a text editor or a script), " +
+      "to the branch checked out in the folder. The editor shows only committed content, so until then the user doesn't see those changes, and the ontology tools fail " +
+      "because the folder has uncommitted changes. get_project says whether there are any (`uncommitted_ontology_changes`). Fails when the file is missing or doesn't parse. " +
+      "Commits only the ontology file, nothing else in the folder.",
+    parameters: {
+      type: "object",
+      properties: {
+        commit_message: str(
+          "What the changes are, in the imperative mood, for example \"Add the service and server classes\". Defaults to \"Commit changes to <file> made outside OntoBuilder\".",
+        ),
+      },
+    },
+    async run(input, ctx) {
+      const { data } = await call<{ branch: string; path: string; commit_hash: string }>(
+        ctx,
+        "POST",
+        projectPath(ctx, "/ontology-file/local-changes/commit"),
+        { body: { commit_message: opt<string>(input, "commit_message") ?? null }, branch: false },
+      );
+      return { result: data, summary: `Committed the changes to ${data.path} on ${data.branch}`, mutated: true };
     },
   },
   {

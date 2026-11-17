@@ -318,6 +318,8 @@ export interface OWLClassDetail {
   equivalent_iris: string[] | null;
   disjoint_iris: string[] | null;
   child_count: number;
+  /** Direct subclasses, sorted by label. */
+  subclasses?: { iri: string; label: string }[];
   instance_count: number | null;
   instances?: { iri: string; label: string }[];
   annotations: AnnotationProperty[];

@@ -20,6 +20,8 @@ import {
 import type { LocalizedString, AnnotationUpdate } from "@/lib/api/client";
 import { cn, getLocalName } from "@/lib/utils";
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
+import { COMMENT_ROWS } from "@/components/editor/standard/commentRows";
+import { sectionHelp } from "@/lib/editor/sectionHelp";
 import { InlineAnnotationAdder } from "@/components/editor/standard/InlineAnnotationAdder";
 import { RelationshipSection, type RelationshipGroup, type RelationshipTarget } from "@/components/editor/standard/RelationshipSection";
 import { PropertyAssertionSection } from "@/components/editor/standard/PropertyAssertionSection";
@@ -459,7 +461,7 @@ export function IndividualDetailPanel({
             <Section title="Definition" icon={<Lightbulb className="h-4 w-4" />}>
               <div className="space-y-2">
                 {editDefinitions.map((def, index) => (
-                  <AnnotationRow key={index} propertyIri={DEFINITION_IRI} subjectIri={individualIri ?? undefined} value={def.value}
+                  <AnnotationRow key={index} propertyIri={DEFINITION_IRI} value={def.value}
                     onValueChange={(v) => updateDefinition(index, v)}
                     onRemove={editDefinitions.filter((d) => d.value.trim()).length > 0 && index < editDefinitions.length - 1 ? () => removeDefinition(index) : undefined}
                     onBlur={() => triggerSave()} showPropertyLabel={false} placeholder="Add a definition..." />
@@ -480,10 +482,11 @@ export function IndividualDetailPanel({
             <Section title="Comment(s)" icon={<MessageSquare className="h-4 w-4" />}>
               <div className="space-y-2">
                 {editComments.map((c, index) => (
-                  <AnnotationRow key={index} propertyIri={COMMENT_IRI} subjectIri={individualIri ?? undefined} value={c.value}
+                  <AnnotationRow key={index} propertyIri={COMMENT_IRI} value={c.value}
                     onValueChange={(v) => updateComment(index, v)}
                     onRemove={editComments.filter((x) => x.value.trim()).length > 0 && index < editComments.length - 1 ? () => removeComment(index) : undefined}
-                    onBlur={() => triggerSave()} showPropertyLabel={false} placeholder="Add a comment..." />
+                    onBlur={() => triggerSave()} showPropertyLabel={false} placeholder="Add a comment..."
+                    rows={index === editComments.length - 1 && !c.value.trim() && editComments.length > 1 ? undefined : COMMENT_ROWS} />
                 ))}
               </div>
             </Section>
@@ -651,7 +654,7 @@ export function IndividualDetailPanel({
                 {editAnnotations.map((ann) => (
                   <div key={ann.property_iri} className="space-y-2">
                     {ann.values.map((v, vi) => (
-                      <AnnotationRow key={`${ann.property_iri}-${vi}`} propertyIri={ann.property_iri} subjectIri={individualIri ?? undefined} value={v.value}
+                      <AnnotationRow key={`${ann.property_iri}-${vi}`} propertyIri={ann.property_iri} value={v.value}
                         onValueChange={(val) => updateAnnotationValue(ann.property_iri, vi, val)}
                         onRemove={ann.values.filter((x) => x.value.trim()).length > 0 && vi < ann.values.length - 1 ? () => removeAnnotationValue(ann.property_iri, vi) : undefined}
                         onBlur={() => triggerSave()} />
@@ -727,7 +730,7 @@ export function IndividualDetailPanel({
 function Section({ title, tooltip, icon, children }: { title: string; tooltip?: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex gap-4">
-      <Tooltip content={tooltip}>
+      <Tooltip content={sectionHelp(title, tooltip)}>
         <div className="w-40 shrink-0 flex items-start gap-1.5 pt-1">
           {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</span>

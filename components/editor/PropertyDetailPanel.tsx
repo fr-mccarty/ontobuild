@@ -21,6 +21,8 @@ import {
 import type { LocalizedString, AnnotationUpdate } from "@/lib/api/client";
 import { cn, getLocalName } from "@/lib/utils";
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
+import { COMMENT_ROWS } from "@/components/editor/standard/commentRows";
+import { sectionHelp } from "@/lib/editor/sectionHelp";
 import { InlineAnnotationAdder } from "@/components/editor/standard/InlineAnnotationAdder";
 import { RelationshipSection, type RelationshipGroup, type RelationshipTarget } from "@/components/editor/standard/RelationshipSection";
 import { LABEL_IRI, COMMENT_IRI, DEFINITION_IRI, SEE_ALSO_IRI, getAnnotationPropertyInfo } from "@/lib/ontology/annotationProperties";
@@ -501,7 +503,6 @@ export function PropertyDetailPanel({
                   <AnnotationRow
                     key={index}
                     propertyIri={DEFINITION_IRI}
-                    subjectIri={propertyIri ?? undefined}
                     value={def.value}
                     onValueChange={(v) => updateDefinition(index, v)}
                     onRemove={editDefinitions.filter((d) => d.value.trim()).length > 0 && index < editDefinitions.length - 1 ? () => removeDefinition(index) : undefined}
@@ -531,13 +532,13 @@ export function PropertyDetailPanel({
                   <AnnotationRow
                     key={index}
                     propertyIri={COMMENT_IRI}
-                    subjectIri={propertyIri ?? undefined}
                     value={comment.value}
                     onValueChange={(v) => updateComment(index, v)}
                     onRemove={editComments.filter((c) => c.value.trim()).length > 0 && index < editComments.length - 1 ? () => removeComment(index) : undefined}
                     onBlur={() => triggerSave()}
                     showPropertyLabel={false}
                     placeholder="Add a comment..."
+                    rows={index === editComments.length - 1 && !comment.value.trim() && editComments.length > 1 ? undefined : COMMENT_ROWS}
                   />
                 ))}
               </div>
@@ -675,7 +676,6 @@ export function PropertyDetailPanel({
                       <AnnotationRow
                         key={`${ann.property_iri}-${vi}`}
                         propertyIri={ann.property_iri}
-                        subjectIri={propertyIri ?? undefined}
                         value={v.value}
                         onValueChange={(val) => updateAnnotationValue(ann.property_iri, vi, val)}
                         onRemove={ann.values.filter((x) => x.value.trim()).length > 0 && vi < ann.values.length - 1 ? () => removeAnnotationValue(ann.property_iri, vi) : undefined}
@@ -770,7 +770,7 @@ export function PropertyDetailPanel({
 function Section({ title, tooltip, icon, children }: { title: string; tooltip?: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex gap-4">
-      <Tooltip content={tooltip}>
+      <Tooltip content={sectionHelp(title, tooltip)}>
         <div className="w-40 shrink-0 flex items-start gap-1.5 pt-1">
           {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{title}</span>

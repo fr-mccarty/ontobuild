@@ -430,3 +430,13 @@ describe("projects", () => {
     expect(detail).not.toContain(".owx,");
   });
 });
+
+describe("class detail subclasses", () => {
+  it("lists a class's direct subclasses with their labels, alongside the count", async () => {
+    const detail = await getJson<{ child_count: number; subclasses: { iri: string; label: string }[] }>(
+      `${base(projectId)}/ontology/classes/${enc(`${NS}Food`)}`,
+    );
+    expect(detail.child_count).toBe(1);
+    expect(detail.subclasses).toEqual([{ iri: `${NS}Pizza`, label: "Pizza" }]);
+  });
+});

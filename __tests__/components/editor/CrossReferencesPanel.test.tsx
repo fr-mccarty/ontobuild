@@ -25,15 +25,14 @@ describe("CrossReferencesPanel", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("returns null when not loading and total is 0", () => {
+  it("shows Used By (0) with nothing to open when nothing refers to the entity", () => {
     mockUseCrossReferences.mockReturnValue({
       data: { target_iri: "http://example.org/A", total: 0, groups: [] },
       isLoading: false,
     } as unknown as ReturnType<typeof useCrossReferences>);
-    const { container } = render(
-      <CrossReferencesPanel projectId="p1" entityIri="http://example.org/A" />
-    );
-    expect(container.innerHTML).toBe("");
+    render(<CrossReferencesPanel projectId="p1" entityIri="http://example.org/A" />);
+    expect(screen.getByText("Used By (0)")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /^Used By/ })).toBeNull();
   });
 
   it("shows loading indicator", () => {
@@ -90,9 +89,11 @@ describe("CrossReferencesPanel", () => {
     render(
       <CrossReferencesPanel projectId="p1" entityIri="http://example.org/A" />
     );
-    await userEvent.click(screen.getByText("Used By (1)"));
+    // Open from the start; the label closes it.
     expect(screen.getByText("As parent class (1)")).toBeDefined();
     expect(screen.getByText("ClassB")).toBeDefined();
+    await userEvent.click(screen.getByText("Used By (1)"));
+    expect(screen.queryByText("As parent class (1)")).toBeNull();
   });
 
   it("calls onNavigateToClass when a reference is clicked", async () => {
@@ -119,7 +120,6 @@ describe("CrossReferencesPanel", () => {
         onNavigateToClass={onNavigate}
       />
     );
-    await userEvent.click(screen.getByText("Used By (1)"));
     await userEvent.click(screen.getByText("ClassB"));
     expect(onNavigate).toHaveBeenCalledWith("http://example.org/B");
   });

@@ -5,6 +5,7 @@ import { CODE_DIR, allocateFolder } from "../workspace";
 import { killProjectTerminals } from "../terminals";
 import { importFromGit, type GitImportRequest } from "../gitImport";
 import { createOntologyFile, listOntologyFiles, starterTurtle, switchOntologyFile } from "../ontologyFiles";
+import { commitOntologyLocalChanges, getOntologyLocalChanges } from "../ontologyLocalChanges";
 import { all, get, insert, newId, nowIso, run, toJson, transaction, update } from "../db";
 import { ApiError, httpError, noContent, queryBool, queryInt, readJson } from "../http";
 import { LOCAL_USER } from "../user";
@@ -309,6 +310,15 @@ r.put("/projects/:id/ontology-file", async (c) => {
 r.post("/projects/:id/ontology-file", async (c) => {
   const body = await readJson<{ file_name?: unknown; ontology_iri?: unknown; title?: unknown; branch?: unknown }>(c);
   return c.json(await createOntologyFile(c.req.param("id"), body), 201);
+});
+
+r.get("/projects/:id/ontology-file/local-changes", async (c) => {
+  return c.json(await getOntologyLocalChanges(c.req.param("id")));
+});
+
+r.post("/projects/:id/ontology-file/local-changes/commit", async (c) => {
+  const body = await readJson<{ commit_message?: unknown }>(c);
+  return c.json(await commitOntologyLocalChanges(c.req.param("id"), body.commit_message));
 });
 
 r.get("/projects/:id", (c) => {
