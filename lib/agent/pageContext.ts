@@ -1,3 +1,5 @@
+import { formatHealthContext, type AgentHealthSummary } from "./healthSummary";
+
 export const PAGE_TEXT_LIMIT = 30000;
 export const PAGE_TEXT_TRUNCATED_MARKER = "[page text truncated]";
 export const PAGE_TEXT_UNCHANGED = "Visible page text unchanged since the previous message.";
@@ -12,8 +14,15 @@ export interface AgentPageInfo {
   projectId: string;
   projectName?: string;
   branch?: string;
+  /**
+   * The project's ontology file (repository-relative). Undefined when unknown; null when the
+   * project has no ontology file yet.
+   */
+  ontologyFile?: string | null;
   leftTab?: string;
   selectedEntity?: AgentSelectedEntity | null;
+  /** The Health tab's latest results, when loaded. */
+  health?: AgentHealthSummary | null;
 }
 
 function elementText(el: Element): string {
@@ -66,6 +75,13 @@ export function buildPageContext(
     `Project: ${info.projectName ? `${info.projectName} ` : ""}(id: ${info.projectId})`,
     `Branch: ${info.branch ?? "default"}`,
   ];
+  if (info.ontologyFile !== undefined) {
+    lines.push(
+      info.ontologyFile
+        ? `Ontology file: ${info.ontologyFile} (the project's one active ontology; the project folder may hold other RDF files)`
+        : "Ontology file: none (the project has no ontology file yet)",
+    );
+  }
   if (info.leftTab) lines.push(`Left sidebar tab: ${capitalize(info.leftTab)}`);
   const sel = info.selectedEntity;
   if (sel) {
@@ -73,6 +89,7 @@ export function buildPageContext(
   } else {
     lines.push("Selected entity: none");
   }
+  if (info.health) lines.push(formatHealthContext(info.health));
   if (lastPageText !== null && lastPageText === pageText) {
     lines.push(PAGE_TEXT_UNCHANGED);
   } else {

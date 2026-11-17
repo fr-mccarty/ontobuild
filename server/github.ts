@@ -51,7 +51,7 @@ export function parseRemoteUrl(raw: unknown): ParsedRemote {
   if (/\s/.test(url) || url.startsWith("-")) httpError(400, "The remote URL must not contain spaces");
 
   // git@github.com:owner/repo(.git)
-  const scp = url.match(/^([A-Za-z0-9._-]+)@([A-Za-z0-9.-]+):([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+?)(\.git)?\/?$/);
+  const scp = url.match(/^([A-Za-z0-9._-]+)@([A-Za-z0-9][A-Za-z0-9.-]*):([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+?)(\.git)?\/?$/);
   if (scp) {
     const host = scp[2].toLowerCase();
     return {
@@ -123,7 +123,12 @@ function sshCommand(): Record<string, string> {
 }
 
 /** Runs git (or gh) with a timeout, collecting stdout and stderr; never rejects on a non-zero exit. */
-function run(cmd: string, args: string[], opts: { env?: Record<string, string>; cwd?: string } = {}): Promise<RunResult> {
+function run(
+  cmd: string,
+  args: string[],
+  opts: { env?: Record<string, string | undefined>; cwd?: string; timeoutMs?: number } = {},
+): Promise<RunResult> {
+  const timeoutMs = opts.timeoutMs ?? TIMEOUT_MS;
   return new Promise((resolve, reject) => {
     const child = execFile(
       cmd,
@@ -138,7 +143,7 @@ function run(cmd: string, args: string[], opts: { env?: Record<string, string>; 
           ...sshCommand(),
           ...opts.env,
         },
-        timeout: TIMEOUT_MS,
+        timeout: timeoutMs,
         killSignal: "SIGKILL",
         maxBuffer: 64 * 1024 * 1024,
         encoding: "utf8",
@@ -148,7 +153,7 @@ function run(cmd: string, args: string[], opts: { env?: Record<string, string>; 
           const e = err as NodeJS.ErrnoException & { killed?: boolean; code?: number | string };
           if (e.code === "ENOENT") return reject(e);
           if (e.killed) {
-            return reject(new ApiError(504, `${cmd} ${args[0]} timed out after ${TIMEOUT_MS / 1000} seconds`));
+            return reject(new ApiError(504, `${cmd} ${args[0]} timed out after ${timeoutMs / 1000} seconds`));
           }
           return resolve({ stdout, stderr, code: typeof e.code === "number" ? e.code : 1 });
         }
@@ -448,4 +453,105 @@ export async function createGitHubRepo(
     return outputOf(res);
   });
   return { output };
+}
+
+/** How long a clone may take. Big repositories need longer than the other remote commands. */
+function cloneTimeoutMs(): number {
+  const fromEnv = Number(process.env.ONTOBUILDER_CLONE_TIMEOUT_MS);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 5 * 60_000;
+}
+
+/** The repository's name from its URL, for a default project name: `.../pizza-ontology.git` → `pizza-ontology`. */
+export function repoNameFromUrl(url: string): string {
+  const last = url.replace(/[/\\]+$/, "").split(/[/:\\]/).pop() ?? "";
+  return last.replace(/\.git$/, "") || "repository";
+}
+
+/** Turns a failed `git clone` into an ApiError: bad branch, unknown repository, sign-in problem or network error. */
+function cloneFailure(res: RunResult, opts: { branch?: string | null; host: string }): never {
+  const output = (res.stderr || res.stdout).trim();
+  const tail = output
+    .split("\n")
+    .filter((l) => l && !/^Cloning into/.test(l))
+    .slice(-3)
+    .join(" ");
+  if (opts.branch && /Remote branch .* not found/i.test(output)) {
+    httpError(404, `The repository has no branch '${opts.branch}'. Leave the branch empty to use its default branch.`);
+  }
+  if (/could not resolve host|could not resolve hostname|network is unreachable|connection refused|connection timed out|failed to connect|operation timed out/i.test(output)) {
+    httpError(502, `Couldn't reach ${opts.host}. Check the URL and your network connection. Git said: ${tail}`);
+  }
+  if (/repository not found|repository '.*' not found|does not appear to be a git repository|not found\s*$|\b404\b/im.test(output)) {
+    httpError(
+      404,
+      "Repository not found. Check the URL; if the repository is private, make sure you're signed in to the host " +
+        "(`gh auth login` and `gh auth setup-git`, a git credential helper, or an SSH key loaded with `ssh-add`). " +
+        `Git said: ${tail}`,
+    );
+  }
+  if (AUTH_PATTERNS.some((p) => p.test(output))) {
+    httpError(
+      403,
+      "Couldn't clone: git could not sign in to the host, or the repository doesn't exist. " +
+        "For HTTPS URLs run `gh auth login` (and `gh auth setup-git`) or set up a git credential helper; " +
+        "for SSH URLs make sure your SSH key is loaded (`ssh-add`) and added to your account on the host. " +
+        `Git said: ${tail}`,
+    );
+  }
+  httpError(400, `Couldn't clone the repository: ${tail || `git exited with code ${res.code}`}`);
+}
+
+/**
+ * Clone a repository (full history) into `dir`, which must not exist yet. The remote is
+ * named `origin`, so fetch, pull and push work on the new project straight away.
+ * Git runs without a shell, with `--` before the URL, terminal prompts off and a timeout.
+ * The caller removes `dir` if this throws.
+ */
+export async function cloneRepository(
+  rawUrl: unknown,
+  dir: string,
+  opts: { branch?: string | null } = {},
+): Promise<{ remote: ParsedRemote; output: string }> {
+  const remote = parseRemoteUrl(rawUrl);
+  const args = [
+    // Only the protocols parseRemoteUrl accepts; ext:: (runs commands) and local files are refused.
+    "-c",
+    "protocol.ext.allow=never",
+    "-c",
+    `protocol.file.allow=${fileRemotesAllowed() ? "always" : "never"}`,
+    "clone",
+    "--origin",
+    REMOTE,
+    "--no-recurse-submodules",
+  ];
+  if (opts.branch) args.push("--branch", opts.branch);
+  args.push("--", remote.url, dir);
+  const timeoutMs = cloneTimeoutMs();
+  let res: RunResult;
+  try {
+    res = await run("git", args, {
+      // A clone must not inherit another repository from the environment.
+      env: {
+        GIT_DIR: undefined,
+        GIT_WORK_TREE: undefined,
+        GIT_INDEX_FILE: undefined,
+        GIT_COMMITTER_NAME: git.COMMITTER_NAME,
+        GIT_COMMITTER_EMAIL: git.COMMITTER_EMAIL,
+      },
+      cwd: path.dirname(dir),
+      timeoutMs,
+    });
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 504) {
+      const limit = timeoutMs >= 60_000 ? `${Math.round(timeoutMs / 60_000)} minutes` : `${timeoutMs / 1000} seconds`;
+      httpError(
+        504,
+        `Cloning took longer than ${limit} and was stopped. The repository may be very large or the host slow; ` +
+          "clone it in a terminal instead, or try again later.",
+      );
+    }
+    throw e;
+  }
+  if (res.code !== 0) cloneFailure(res, { branch: opts.branch, host: remote.host });
+  return { remote, output: outputOf(res) };
 }

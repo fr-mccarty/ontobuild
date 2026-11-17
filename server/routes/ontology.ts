@@ -30,6 +30,7 @@ import {
   listClasses,
   listIndividuals,
   loadOntology,
+  onOntologyEvent,
   projectLabelPreferences,
   requireProject,
   requireBranch,
@@ -435,7 +436,10 @@ r.get("/projects/:id/ontology/search", async (c) => {
     return pa - pb || (la < lb ? -1 : la > lb ? 1 : 0);
   });
   // "*" lists every entity (the property tree and individual list rely on this); text queries return the top 50.
-  const page = needle === "*" ? results : results.slice(0, 50);
+  const limitParam = c.req.query("limit");
+  const limit = limitParam === undefined ? null : Number(limitParam);
+  if (limit !== null && (!Number.isInteger(limit) || limit < 0)) httpError(422, "Query parameter 'limit' must be a non-negative integer");
+  const page = limit !== null ? results.slice(0, limit) : needle === "*" ? results : results.slice(0, 50);
   return c.json({ results: page, total: results.length });
 });
 
@@ -443,20 +447,32 @@ const INDEX_JOB = "ontology_index";
 
 interface IndexMemo {
   commit_hash: string;
+  /** The ontology file indexed: the project can switch to another file at the same commit. */
+  file_path: string;
   entity_count: number;
   indexed_at: string;
 }
 const memoG = globalThis as typeof globalThis & { __ontobuilderIndexMemo?: Map<string, IndexMemo> };
 const indexMemo: Map<string, IndexMemo> = (memoG.__ontobuilderIndexMemo ??= new Map());
 
-function indexEntities(onto: LoadedOntology): IndexMemo {
+onOntologyEvent("ontology:index-memo", (e) => {
+  if (e.type !== "ontology-file-changed" && e.type !== "project-deleted") return;
+  for (const k of [...indexMemo.keys()]) if (k.startsWith(e.projectId + ":")) indexMemo.delete(k);
+});
+
+function indexEntities(onto: LoadedOntology): Omit<IndexMemo, "file_path"> {
   const memo = {
     commit_hash: onto.commitHash,
+    file_path: onto.filePath,
     entity_count: allEntities(onto.store).size,
     indexed_at: nowIso(),
   };
   indexMemo.set(`${onto.projectId}:${onto.ref}`, memo);
-  return memo;
+  return publicMemo(memo);
+}
+
+function publicMemo(memo: IndexMemo): Omit<IndexMemo, "file_path"> {
+  return { commit_hash: memo.commit_hash, entity_count: memo.entity_count, indexed_at: memo.indexed_at };
 }
 
 r.get("/projects/:id/ontology/index-status", async (c) => {
@@ -494,7 +510,8 @@ r.get("/projects/:id/ontology/index-status", async (c) => {
       error_message: (e as { detail?: string }).detail ?? (e as Error).message,
     });
   }
-  const current = memo && memo.commit_hash === onto.commitHash ? memo : indexEntities(onto);
+  const current =
+    memo && memo.commit_hash === onto.commitHash && memo.file_path === onto.filePath ? publicMemo(memo) : indexEntities(onto);
   return c.json({ ...base, status: "ready", ...current, error_message: null });
 });
 

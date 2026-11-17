@@ -95,6 +95,18 @@ export async function requireBranch(projectId: string, branch?: string | null): 
   return name;
 }
 
+/**
+ * The project's ontology file is one path for the whole project, so a branch (or an old commit)
+ * may not have it. Says so, and how to get out of it.
+ */
+export function missingOntologyFileMessage(filePath: string, ref: string): string {
+  const where = /^[0-9a-f]{40}$/.test(ref) ? `at commit ${ref.slice(0, 8)}` : `on branch '${ref}'`;
+  return (
+    `Ontology file not found in repository: ${filePath} doesn't exist ${where}. ` +
+    "Switch to a branch that has it, or choose another ontology file for the project."
+  );
+}
+
 export interface LoadedOntology {
   projectId: string;
   ref: string;
@@ -129,7 +141,7 @@ export async function loadOntology(projectId: string, ref?: string | null): Prom
     return { ...hit, ref: wanted };
   }
   const content = await git.readFileOrNull(projectId, sha, filePath);
-  if (content === null) httpError(404, "Ontology file not found in repository");
+  if (content === null) httpError(404, missingOntologyFileMessage(filePath, wanted));
   let parsed;
   try {
     parsed = parseTurtle(content);
@@ -166,7 +178,9 @@ export type OntologyEvent =
     }
   | { type: "branch-created"; projectId: string; branch: string; commitHash: string | null }
   | { type: "branch-deleted"; projectId: string; branch: string }
-  | { type: "project-deleted"; projectId: string };
+  | { type: "project-deleted"; projectId: string }
+  /** The project now edits another ontology file: drop everything worked out from the old one. */
+  | { type: "ontology-file-changed"; projectId: string; path: string; previousPath: string | null };
 
 type Listener = (e: OntologyEvent) => void | Promise<void>;
 const listenersG = globalThis as typeof globalThis & { __ontobuilderListeners?: Map<string, Listener> };

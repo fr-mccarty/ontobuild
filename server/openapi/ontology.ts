@@ -255,6 +255,11 @@ export const ontologyDocs: DocMap = {
         description: "Comma-separated entity types to include: `class`, `property`, `individual`. Defaults to all. Unknown types are rejected with 422.",
         schema: { type: "string", examples: ["class,property"] },
       },
+      {
+        name: "limit",
+        description: "Return at most this many results (overrides the defaults above). `total` still counts every match, so `limit=0` returns only the count.",
+        schema: { type: "integer", minimum: 0 },
+      },
       branchQuery,
     ],
     responses: {

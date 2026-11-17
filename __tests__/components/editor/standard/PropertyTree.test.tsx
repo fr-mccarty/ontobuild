@@ -104,6 +104,17 @@ describe("PropertyTree", () => {
     });
   });
 
+  it("shows an API error's detail text, not its JSON body, and uses renderError when given", async () => {
+    const body = JSON.stringify({ detail: "Ontology file not found in repository: x.ttl doesn't exist on branch 'main'." });
+    mockSearchEntities.mockRejectedValue(Object.assign(new Error(body), { name: "ApiError", status: 404 }));
+    const { unmount } = render(<PropertyTree {...defaultProps} />);
+    expect(await screen.findByText("Ontology file not found in repository: x.ttl doesn't exist on branch 'main'.")).toBeDefined();
+    expect(screen.queryByText(/"detail"/)).toBeNull();
+    unmount();
+    render(<PropertyTree {...defaultProps} renderError={(m) => <p data-testid="custom">{m.slice(0, 14)}</p>} />);
+    expect((await screen.findByTestId("custom")).textContent).toBe("Ontology file ");
+  });
+
   it("shows generic error for non-Error rejections", async () => {
     mockSearchEntities.mockRejectedValue("fail");
     render(<PropertyTree {...defaultProps} />);

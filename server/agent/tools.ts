@@ -408,7 +408,8 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
   {
     name: "get_project",
     kind: "read",
-    description: "Get the current project's metadata: name, description, ontology IRI and label preferences.",
+    description:
+      "Get the current project's metadata: name, description, ontology IRI, ontology file (the one Turtle file the project edits) and label preferences.",
     parameters: { type: "object", properties: {} },
     async run(_input, ctx) {
       const { data } = await call<Record<string, unknown>>(ctx, "GET", projectPath(ctx), { branch: false });
@@ -417,6 +418,7 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
         name: data.name,
         description: data.description,
         ontology_iri: data.ontology_iri,
+        ontology_file: data.source_file_path ? data.git_ontology_path : null,
         label_preferences: data.label_preferences,
         created_at: data.created_at,
         updated_at: data.updated_at,
@@ -961,6 +963,7 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
         info_count: status.info_count,
         total_issues: status.total_issues,
         issues: issues.items.map(lintIssue),
+        has_more: issues.total > issues.items.length,
       };
       return {
         result,
@@ -972,24 +975,114 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
   {
     name: "get_lint_issues",
     kind: "read",
-    description: "List open issues from the most recent completed lint run.",
+    description:
+      "List open issues from the most recent completed lint run (the Lint list in the Health tab), without running the linter again. Filter by severity, rule or subject, and page with skip/limit when has_more is true.",
     parameters: {
       type: "object",
       properties: {
         issue_type: { type: "string", enum: ["error", "warning", "info"], description: "Filter by severity" },
+        rule_id: { type: "string", description: "Only issues from this rule (see list_lint_rules)" },
+        subject_iri: { type: "string", description: "Only issues about this entity (full IRI or prefixed name)" },
+        skip: { type: "integer", minimum: 0, description: "Issues to skip, for paging (default 0)" },
         limit: { type: "integer", minimum: 1, maximum: 500, description: "Maximum issues (default 100)" },
       },
     },
     async run(input, ctx) {
+      const skip = opt<number>(input, "skip") ?? 0;
       const { data } = await call<{ items: Record<string, unknown>[]; total: number }>(
         ctx,
         "GET",
         projectPath(ctx, "/lint/issues"),
-        { query: { issue_type: opt<string>(input, "issue_type"), limit: opt<number>(input, "limit") } },
+        {
+          query: {
+            issue_type: opt<string>(input, "issue_type"),
+            rule_id: opt<string>(input, "rule_id"),
+            subject_iri: opt<string>(input, "subject_iri"),
+            skip,
+            limit: opt<number>(input, "limit"),
+          },
+        },
       );
       return {
-        result: { total: data.total, issues: data.items.map(lintIssue) },
+        result: {
+          total: data.total,
+          skip,
+          issues: data.items.map(lintIssue),
+          has_more: skip + data.items.length < data.total,
+        },
         summary: `Found ${data.total} lint issues`,
+        mutated: false,
+      };
+    },
+  },
+  {
+    name: "get_health_report",
+    kind: "read",
+    description:
+      "Read every issue currently shown in the Health tab, without re-running anything: the latest lint results (counts and open issues, default branch), the latest consistency check issues and the latest duplicate clusters (current branch). Call this first when the user asks to fix health issues. A section whose checked_at is null has never been run; run it with run_lint, run_consistency_check or find_duplicates.",
+    parameters: {
+      type: "object",
+      properties: {
+        lint_limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: 500,
+          description: "Maximum lint issues to include (default 200); page the rest with get_lint_issues",
+        },
+      },
+    },
+    async run(input, ctx) {
+      const lintLimit = opt<number>(input, "lint_limit") ?? 200;
+      const [status, lintIssues, consistency, duplicates] = await Promise.all([
+        call<{
+          last_run: { status: string; completed_at?: string | null; error_message?: string | null } | null;
+          error_count: number;
+          warning_count: number;
+          info_count: number;
+          total_issues: number;
+        }>(ctx, "GET", projectPath(ctx, "/lint/status")),
+        call<{ items: Record<string, unknown>[]; total: number }>(ctx, "GET", projectPath(ctx, "/lint/issues"), {
+          query: { limit: lintLimit },
+        }),
+        call<{ issues?: unknown[]; checked_at: string | null }>(ctx, "GET", projectPath(ctx, "/quality/issues")),
+        call<{ clusters?: unknown[]; threshold: number | null; checked_at: string | null }>(
+          ctx,
+          "GET",
+          projectPath(ctx, "/quality/duplicates/latest"),
+        ),
+      ]);
+      const lintStatus = status.data;
+      const consistencyIssues = consistency.data.issues ?? [];
+      const clusters = duplicates.data.clusters ?? [];
+      const result = {
+        lint: {
+          last_run_status: lintStatus.last_run?.status ?? null,
+          checked_at: lintStatus.last_run?.completed_at ?? null,
+          error_message: lintStatus.last_run?.error_message ?? null,
+          error_count: lintStatus.error_count,
+          warning_count: lintStatus.warning_count,
+          info_count: lintStatus.info_count,
+          total_issues: lintStatus.total_issues,
+          issues: lintIssues.data.items.map(lintIssue),
+          has_more: lintIssues.data.total > lintIssues.data.items.length,
+        },
+        consistency: {
+          branch: ctx.branch,
+          checked_at: consistency.data.checked_at,
+          issue_count: consistencyIssues.length,
+          issues: consistencyIssues,
+        },
+        duplicates: {
+          branch: ctx.branch,
+          checked_at: duplicates.data.checked_at,
+          threshold: duplicates.data.threshold,
+          cluster_count: clusters.length,
+          clusters,
+        },
+      };
+      return {
+        result,
+        summary: `Health: ${lintStatus.total_issues} lint issues, ${consistencyIssues.length} consistency issues, ${clusters.length} duplicate clusters`,
         mutated: false,
       };
     },
@@ -1157,6 +1250,73 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
         summary: `Updated project ${String(data.name)}`,
         mutated: true,
       };
+    },
+  },
+  {
+    name: "list_ontology_files",
+    kind: "read",
+    description:
+      "List the RDF files committed in the project folder on the current branch, best ontology candidate first, and which one is the project's ontology file. " +
+      "The project edits exactly one ontology file at a time (one setting for every branch); `active_exists` is false when it is missing on this branch.",
+    parameters: { type: "object", properties: {} },
+    async run(_input, ctx) {
+      const { data } = await call<Record<string, unknown> & { files: unknown[] }>(ctx, "GET", projectPath(ctx, "/ontology-files"));
+      return { result: data, summary: `Listed ${data.files.length} RDF file(s)`, mutated: false };
+    },
+  },
+  {
+    name: "set_ontology_file",
+    kind: "ontology",
+    description:
+      "Make another RDF file in the project folder the project's ontology file, replacing the current one (which stays in the folder unchanged, so it can be chosen again). " +
+      "A Turtle file is edited in place. A file in another format is converted to Turtle and committed on the current branch as <name>.ttl next to it (or an existing converted .ttl is reused); the original is never changed. " +
+      "Lint, consistency and duplicate results of the old file are cleared. Only do this when the user asks to switch the ontology file.",
+    parameters: {
+      type: "object",
+      properties: { path: str("Repository-relative path of the file, from list_ontology_files", { minLength: 1 }) },
+      required: ["path"],
+    },
+    async run(input, ctx) {
+      if (inImportedProject(ctx)) throw new ToolError("The ontology file can only be changed in the user's own project.");
+      const { data } = await call<Record<string, unknown>>(ctx, "PUT", projectPath(ctx, "/ontology-file"), {
+        body: { path: s(input, "path"), branch: ctx.branch },
+        branch: false,
+      });
+      const rest = { ...data };
+      delete rest.project;
+      return {
+        result: rest,
+        summary: data.converted
+          ? `Converted ${String(data.source_path)} to ${String(data.path)} and made it the ontology file`
+          : `Switched the ontology file to ${String(data.path)}`,
+        mutated: true,
+      };
+    },
+  },
+  {
+    name: "create_ontology_file",
+    kind: "ontology",
+    description:
+      "Create a new, empty ontology file (an owl:Ontology declaration with a title), commit it on the current branch and make it the project's ontology file. " +
+      "If the project already has an ontology file, the new one replaces it as the active ontology (the old file stays in the folder unchanged); tell the user so, and only do it when they ask for a new ontology.",
+    parameters: {
+      type: "object",
+      properties: {
+        file_name: str("Repository-relative path of the new file, ending in .ttl, that doesn't exist yet (e.g. ontology.ttl)", { minLength: 1 }),
+        ontology_iri: str("The new ontology's IRI, e.g. http://example.org/ontologies/pizza", { minLength: 1 }),
+        title: str("The ontology's title", { minLength: 1 }),
+      },
+      required: ["file_name", "ontology_iri", "title"],
+    },
+    async run(input, ctx) {
+      if (inImportedProject(ctx)) throw new ToolError("An ontology file can only be created in the user's own project.");
+      const { data } = await call<Record<string, unknown>>(ctx, "POST", projectPath(ctx, "/ontology-file"), {
+        body: { file_name: s(input, "file_name"), ontology_iri: s(input, "ontology_iri"), title: s(input, "title"), branch: ctx.branch },
+        branch: false,
+      });
+      const rest = { ...data };
+      delete rest.project;
+      return { result: rest, summary: `Created ${String(data.path)} and made it the ontology file`, mutated: true };
     },
   },
   {

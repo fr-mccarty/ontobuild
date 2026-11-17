@@ -11,7 +11,7 @@ export const REPOS_DIR = path.join(/*turbopackIgnore: true*/ DATA_DIR, "repos");
 export const PROJECTS_DIR = path.join(/*turbopackIgnore: true*/ DATA_DIR, "projects");
 const SCHEMA_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), "server", "schema");
 
-type GlobalWithDb = typeof globalThis & { __ontobuilderDb?: DatabaseSync };
+type GlobalWithDb = typeof globalThis & { __ontobuilderDb?: DatabaseSync; __ontobuilderSchema?: string };
 const g = globalThis as GlobalWithDb;
 
 function open(): DatabaseSync {
@@ -40,12 +40,18 @@ function applySchema(db: DatabaseSync) {
     db.exec(fs.readFileSync(path.join(SCHEMA_DIR, file), "utf8"));
   }
   for (const [table, column, type] of ADDED_COLUMNS) ensureColumn(db, table, column, type);
+  g.__ontobuilderSchema = schemaKey();
+  // Indexes on added columns: they can only be made once the column exists.
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS ux_projects_folder ON projects(folder)");
+  db.exec("CREATE INDEX IF NOT EXISTS ix_normalization_runs_file ON normalization_runs(project_id, ontology_path, created_at)");
 }
 
 /** Columns added after a table was first created (CREATE TABLE IF NOT EXISTS won't add them). */
 const ADDED_COLUMNS: [table: string, column: string, type: string][] = [
   ["projects", "folder", "TEXT"],
+  // The ontology file a normalization run was about. Rows from before the column existed are NULL:
+  // they count as the project's current file until it switches files (see server/routes/normalization.ts).
+  ["normalization_runs", "ontology_path", "TEXT"],
 ];
 
 function ensureColumn(db: DatabaseSync, table: string, column: string, type: string) {
@@ -53,8 +59,16 @@ function ensureColumn(db: DatabaseSync, table: string, column: string, type: str
   if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
 }
 
+/** Identifies the schema this code expects; see getDb. */
+function schemaKey(): string {
+  return JSON.stringify(ADDED_COLUMNS);
+}
+
 export function getDb(): DatabaseSync {
   if (!g.__ontobuilderDb) g.__ontobuilderDb = open();
+  // The connection outlives a code reload in development (it is kept on globalThis), so apply
+  // schema changes made since it was opened. Everything in applySchema is idempotent.
+  else if (g.__ontobuilderSchema !== schemaKey()) applySchema(g.__ontobuilderDb);
   return g.__ontobuilderDb;
 }
 

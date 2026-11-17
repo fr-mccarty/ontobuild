@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Settings } from "lucide-react";
-import { ThemeToggle } from "@/components/editor/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 
@@ -49,7 +48,6 @@ export function Header() {
           </nav>
         </div>
         <div className="flex items-center gap-4">
-          <ThemeToggle />
           <Tooltip side="bottom" content="User settings: your preferences across all projects (theme, Save button, AI agent key, effort and instructions)">
             <Link
               href="/settings"

@@ -12,6 +12,7 @@ import { workspaceDocs, workspaceSchemas } from "./workspace";
 import { importsDocs, importsSchemas } from "./imports";
 import { githubDocs, githubSchemas } from "./github";
 import { promptsDocs, promptsSchemas } from "./prompts";
+import { toolsDocs, toolsSchemas } from "./tools";
 
 export const API_PREFIX = "/api/v1";
 
@@ -29,6 +30,7 @@ export const operationDocs: DocMap = {
   ...importsDocs,
   ...githubDocs,
   ...promptsDocs,
+  ...toolsDocs,
 };
 
 const sharedSchemas: Record<string, Schema> = {
@@ -54,6 +56,7 @@ export const schemaSources: Record<string, Schema>[] = [
   importsSchemas,
   githubSchemas,
   promptsSchemas,
+  toolsSchemas,
 ];
 
 export const componentSchemas: Record<string, Schema> = Object.assign({}, ...schemaSources);
@@ -71,7 +74,7 @@ const sharedPathParams: Record<string, string> = {
 
 /** Tag order in the sidebar, and a one-line description for each group. */
 export const tags: { name: string; description: string }[] = [
-  { name: "Projects", description: "Create, import and manage projects and their Turtle source." },
+  { name: "Projects", description: "Create, import and manage projects, their Turtle source and which file is the ontology." },
   { name: "Ontology", description: "Browse the class tree, read entities and search the ontology." },
   { name: "Branches", description: "Git branches of a project's repository." },
   { name: "Revisions", description: "Commit history, file contents at a revision and diffs." },
@@ -86,6 +89,7 @@ export const tags: { name: string; description: string }[] = [
   { name: "Files", description: "Read, write and download files in a project's folder." },
   { name: "Terminals", description: "Shell and run-file terminal sessions in a project's folder." },
   { name: "Dev Server", description: "Configure, start and stop a project's dev server." },
+  { name: "Tools", description: "Meta tools that analyze the code in a project's `code/` folder." },
   { name: "Imports", description: "Other ontologies a project imports (owl:imports), resolved from local projects or the web." },
   { name: "GitHub", description: "Link a project to a GitHub repository and push and pull." },
   { name: "Provenance", description: "Where a text value came from and whether a reviewed pull request approved it." },
@@ -112,7 +116,10 @@ export function tagFor(path: string): string {
     entities: "ontology",
     "branch-preference": "branches",
     import: "projects",
+    clone: "projects",
     source: "projects",
+    "ontology-files": "projects",
+    "ontology-file": "projects",
     "import-candidates": "imports",
   };
   const name = aliases[seg] ?? seg;

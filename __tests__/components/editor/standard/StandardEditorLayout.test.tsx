@@ -47,7 +47,7 @@ vi.mock("@/components/editor/ClassDetailPanel", () => ({
 
 vi.mock("@/components/editor/standard/EntityTabBar", () => ({
   EntityTabBar: (props: Record<string, unknown>) => (
-    <div data-testid="entity-tab-bar">
+    <div data-testid="entity-tab-bar" data-counts={JSON.stringify(props.counts ?? null)}>
       <button onClick={() => (props.onTabChange as (id: string) => void)?.("classes")}>Classes</button>
       <button onClick={() => (props.onTabChange as (id: string) => void)?.("properties")}>Properties</button>
       <button onClick={() => (props.onTabChange as (id: string) => void)?.("individuals")}>Individuals</button>
@@ -248,6 +248,11 @@ describe("StandardEditorLayout", () => {
     expect(screen.getByTestId("entity-tab-bar")).toBeDefined();
   });
 
+  it("passes entity counts to the tab bar", () => {
+    render(<StandardEditorLayout {...defaultProps({ entityCounts: { classes: 3, individuals: 0 } })} />);
+    expect(JSON.parse(screen.getByTestId("entity-tab-bar").getAttribute("data-counts")!)).toEqual({ classes: 3, individuals: 0 });
+  });
+
   it("renders entity tree toolbar", () => {
     render(<StandardEditorLayout {...defaultProps()} />);
     expect(screen.getByTestId("entity-tree-toolbar")).toBeDefined();
@@ -287,6 +292,13 @@ describe("StandardEditorLayout", () => {
   it("shows error message when treeError is set", () => {
     render(<StandardEditorLayout {...defaultProps({ treeError: "Something went wrong" })} />);
     expect(screen.getByText("Something went wrong")).toBeDefined();
+  });
+
+  it("renders the tree error with renderTreeError when given", () => {
+    const renderTreeError = vi.fn((message: string) => <div data-testid="custom-tree-error">{`custom: ${message}`}</div>);
+    render(<StandardEditorLayout {...defaultProps({ treeError: "File missing", renderTreeError })} />);
+    expect(screen.getByTestId("custom-tree-error").textContent).toBe("custom: File missing");
+    expect(renderTreeError).toHaveBeenCalledWith("File missing");
   });
 
   it("shows empty message when no classes found", () => {

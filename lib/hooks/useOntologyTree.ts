@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { projectOntologyApi, type OWLClassTreeNode as ApiTreeNode } from "@/lib/api/client";
+import { apiErrorMessage } from "@/lib/api/errors";
 import type { ClassTreeNode, ImportedMarker } from "@/lib/ontology/types";
 
 /** Fired (on window) after something outside the editor's own forms changes the ontology's imports. */
@@ -137,8 +138,8 @@ export function useOntologyTree({
       setNodes(response.nodes.map(apiNodeToTreeNode));
       setTotalClasses(response.total_classes);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load ontology tree";
-      setError(message);
+      // The API's `detail` text, not the raw JSON body.
+      setError(apiErrorMessage(err, "Failed to load ontology tree"));
     } finally {
       setIsLoading(false);
     }

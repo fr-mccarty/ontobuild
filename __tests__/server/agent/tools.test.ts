@@ -261,6 +261,25 @@ describe("agent tools against a real project", () => {
     expect(dups.is_error).toBe(false);
     expect(Array.isArray(dups.data.clusters)).toBe(true);
 
+    const report = await run("get_health_report");
+    expect(report.is_error).toBe(false);
+    expect(report.mutated).toBe(false);
+    expect(report.data.lint.total_issues).toBe(lint.data.total_issues);
+    expect(report.data.lint.issues.length).toBe(Math.min(lint.data.total_issues, 200));
+    expect(report.data.consistency.checked_at).not.toBeNull();
+    expect(report.data.consistency.issue_count).toBe(consistency.data.issues.length);
+    expect(report.data.duplicates.checked_at).not.toBeNull();
+    expect(report.data.duplicates.cluster_count).toBe(dups.data.clusters.length);
+
+    if (lint.data.total_issues > 0) {
+      const first = lint.data.issues[0];
+      const byRule = await run("get_lint_issues", { rule_id: first.rule_id });
+      expect(byRule.data.issues.every((i: { rule_id: string }) => i.rule_id === first.rule_id)).toBe(true);
+      const paged = await run("get_lint_issues", { skip: lint.data.total_issues, limit: 5 });
+      expect(paged.data.issues).toEqual([]);
+      expect(paged.data.has_more).toBe(false);
+    }
+
     const status = await run("get_normalization_status");
     expect(status.is_error).toBe(false);
     const preview = await run("normalize", { dry_run: true });
@@ -418,6 +437,7 @@ describe("ontology change reporting", () => {
       ["get_source", {}],
       ["list_revisions", {}],
       ["list_branches", {}],
+      ["list_ontology_files", {}],
       ["get_lint_config", {}],
       ["list_lint_rules", {}],
       ["get_normalization_status", {}],
@@ -453,5 +473,41 @@ describe("ontology change reporting", () => {
     expect(merged.is_error).toBe(false);
     expect(merged.ontology_changes.map((c) => c.branch)).toContain("main");
     expect(merged.ontology_changes.find((c) => c.branch === "main")?.commit_hash).toBe(await head());
+  }, 30_000);
+
+  it("lists, creates and switches the ontology file, as ontology changes", async () => {
+    const projectId = await createPizzaProject(app);
+    const own: ToolContext = { ...ctx, projectId, branch: "main" };
+    const call = async (name: string, input: Record<string, unknown> = {}, c = own) => {
+      const out = await executeTool(name, input, c);
+      return { ...out, data: JSON.parse(out.content) };
+    };
+
+    const listed = await call("list_ontology_files");
+    expect(listed.is_error, listed.summary).toBe(false);
+    expect(listed.data).toMatchObject({ active_path: "ontology.ttl", suggested_file_name: "ontology-2.ttl" });
+    expect((await call("get_project")).data.ontology_file).toBe("ontology.ttl");
+
+    const created = await call("create_ontology_file", {
+      file_name: "drinks.ttl",
+      ontology_iri: "http://example.org/drinks",
+      title: "Drinks",
+    });
+    expect(created.is_error, created.summary).toBe(false);
+    expect(created.mutated).toBe(true);
+    expect(created.ontology_changes.map((c) => c.branch)).toEqual(["main"]);
+    expect(created.data).toMatchObject({ path: "drinks.ttl", previous_path: "ontology.ttl" });
+    expect(created.data.project).toBeUndefined();
+
+    const switched = await call("set_ontology_file", { path: "ontology.ttl" });
+    expect(switched.is_error, switched.summary).toBe(false);
+    expect(switched.mutated).toBe(true);
+    expect(switched.ontology_changes).toEqual([]);
+    expect(switched.summary).toBe("Switched the ontology file to ontology.ttl");
+
+    // They change the project, so Edit Ontology must be on.
+    const readOnly = { ...own, permissions: { edit_code: false, edit_ontology: false, edit_imports: false } };
+    expect((await call("set_ontology_file", { path: "drinks.ttl" }, readOnly)).is_error).toBe(true);
+    expect((await call("list_ontology_files", {}, readOnly)).is_error).toBe(false);
   }, 30_000);
 });

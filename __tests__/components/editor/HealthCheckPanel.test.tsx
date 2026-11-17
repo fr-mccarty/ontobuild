@@ -237,6 +237,17 @@ describe("HealthCheckPanel", () => {
     });
   });
 
+  it("reports a results change after clearing so shared health counts refresh", async () => {
+    mockLintApi.clearResults.mockResolvedValue(undefined);
+    const onResultsChanged = vi.fn();
+    setup({ onResultsChanged });
+    await waitFor(() => {
+      expect(screen.getByText("Clear")).toBeDefined();
+    });
+    await userEvent.click(screen.getByText("Clear"));
+    await waitFor(() => expect(onResultsChanged).toHaveBeenCalledTimes(1));
+  });
+
   it("keeps summary counters at zero after clearing", async () => {
     mockLintApi.clearResults.mockResolvedValue(undefined);
     setup();

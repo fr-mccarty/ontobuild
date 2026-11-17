@@ -1,8 +1,10 @@
 import { Hono } from "hono";
-import { DataFactory, Store } from "n3";
+import { DataFactory } from "n3";
 import * as git from "../git";
 import { CODE_DIR, allocateFolder } from "../workspace";
 import { killProjectTerminals } from "../terminals";
+import { importFromGit, type GitImportRequest } from "../gitImport";
+import { createOntologyFile, listOntologyFiles, starterTurtle, switchOntologyFile } from "../ontologyFiles";
 import { all, get, insert, newId, nowIso, run, toJson, transaction, update } from "../db";
 import { ApiError, httpError, noContent, queryBool, queryInt, readJson } from "../http";
 import { LOCAL_USER } from "../user";
@@ -11,6 +13,7 @@ import {
   commitOntology,
   emitOntologyEvent,
   invalidateOntologyCache,
+  missingOntologyFileMessage,
   normalizeLabelPreferences,
   ontologyFilePath,
   openPullRequestBranches,
@@ -20,14 +23,15 @@ import {
   type ProjectRow,
 } from "../ontology";
 import {
-  FORMAT_NAMES,
   NS,
   RdfParseError,
   SUPPORTED_EXTENSIONS,
   findOntologyIri,
   formatFromFilename,
   extensionOf,
+  importNormalizationReport,
   normalizeToTurtle,
+  ontologyMetadata,
   stripLanguageTagsFromTurtle,
   parseTurtle,
   serializeTurtle,
@@ -40,10 +44,6 @@ const MAX_IMPORT_FILE_SIZE = 50 * 1024 * 1024;
 const MAX_IMPORT_BODY_OVERHEAD = 1024 * 1024;
 const AUTHOR = { name: LOCAL_USER.name, email: LOCAL_USER.email };
 
-function validIri(iri: string | null): string | null {
-  return iri && /^(https?:\/\/|urn:)\S+$/.test(iri) ? iri : null;
-}
-
 const TITLE_PROPS: [string, string][] = [
   [NS.dc + "title", "dc:title"],
   [NS.dcterms + "title", "dcterms:title"],
@@ -55,18 +55,6 @@ const DESC_PROPS: [string, string][] = [
   [NS.rdfs + "comment", "rdfs:comment"],
 ];
 
-function firstLiteral(store: Store, props: [string, string][]): string | null {
-  const ontologies = store
-    .getSubjects(NS.rdf + "type", NS.owl + "Ontology", null)
-    .filter((s) => s.termType === "NamedNode");
-  for (const s of ontologies) {
-    for (const [p] of props) {
-      for (const o of store.getObjects(s, p, null)) if (o.value) return o.value;
-    }
-  }
-  return null;
-}
-
 function slugify(name: string): string {
   return (
     name
@@ -76,20 +64,6 @@ function slugify(name: string): string {
       .replace(/^-+|-+$/g, "")
       .slice(0, 60) || "ontology"
   );
-}
-
-function starterTurtle(iri: string, name: string, description?: string | null): string {
-  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
-  return [
-    "@prefix dc: <http://purl.org/dc/elements/1.1/> .",
-    "@prefix owl: <http://www.w3.org/2002/07/owl#> .",
-    "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .",
-    "",
-    `<${iri}> a owl:Ontology ;`,
-    description ? `    dc:title "${esc(name)}" ;` : `    dc:title "${esc(name)}" .`,
-    ...(description ? [`    dc:description "${esc(description)}" .`] : []),
-    "",
-  ].join("\n");
 }
 
 async function updateMetadataTurtle(
@@ -300,40 +274,8 @@ r.post("/projects/import", async (c) => {
     if (e instanceof RdfParseError) httpError(422, `Failed to parse ontology: ${e.message}`);
     throw e;
   }
-  const store = normalized.store;
-  const ontologyIri = validIri(findOntologyIri(store));
-  const title = firstLiteral(store, TITLE_PROPS);
-  const description = firstLiteral(store, DESC_PROPS);
-
-  const before = new Set(normalized.prefixesBefore);
-  const after = new Set(normalized.prefixesAfter);
-  const removed = normalized.prefixesBefore.filter((p) => !after.has(p));
-  const added = normalized.prefixesAfter.filter((p) => !before.has(p));
-  const originalSize = Buffer.byteLength(original);
-  const normalizedSize = Buffer.byteLength(normalized.turtle);
-  const notes: string[] = [];
-  if (format !== "turtle") notes.push(`Converted from ${FORMAT_NAMES[format]} to Turtle format`);
-  if (removed.length) notes.push(`Removed ${removed.length} unused prefix(es): ${removed.join(", ")}`);
-  if (added.length) notes.push(`Added ${added.length} prefix(es): ${added.join(", ")}`);
-  if (normalized.languageTagsRemoved > 0) notes.push(`Removed language tags from ${normalized.languageTagsRemoved} literal(s)`);
-  const diff = normalizedSize - originalSize;
-  if (diff < 0) notes.push(`File size reduced by ${Math.abs(diff).toLocaleString("en-US")} bytes`);
-  else if (diff > 0) notes.push(`File size increased by ${diff.toLocaleString("en-US")} bytes`);
-  notes.push("Triples reordered into canonical sequence");
-  notes.push("Whitespace and formatting standardized");
-  const report = {
-    original_format: FORMAT_NAMES[format],
-    original_filename: filename,
-    original_size_bytes: originalSize,
-    normalized_size_bytes: normalizedSize,
-    triple_count: store.size,
-    prefixes_before: normalized.prefixesBefore,
-    prefixes_after: normalized.prefixesAfter,
-    prefixes_removed: removed,
-    prefixes_added: added,
-    format_converted: format !== "turtle",
-    notes,
-  };
+  const { iri: ontologyIri, title, description } = ontologyMetadata(normalized.store);
+  const report = importNormalizationReport(original, filename, normalized);
 
   const projectName = (nameOverride || title || filename.replace(/\.[^.]+$/, "")).slice(0, 255);
   const project = await createProjectWithContent({
@@ -347,6 +289,26 @@ r.post("/projects/import", async (c) => {
     origin: "import",
   });
   return c.json({ ...projectToResponse(project), file_path: project.source_file_path }, 201);
+});
+
+r.post("/projects/clone", async (c) => {
+  const body = await readJson<GitImportRequest>(c);
+  const { project, summary } = await importFromGit(body);
+  return c.json({ ...projectToResponse(project), file_path: project.source_file_path, git_import: summary }, 201);
+});
+
+r.get("/projects/:id/ontology-files", async (c) => {
+  return c.json(await listOntologyFiles(c.req.param("id"), c.req.query("branch")));
+});
+
+r.put("/projects/:id/ontology-file", async (c) => {
+  const body = await readJson<{ path?: unknown; branch?: unknown; reconvert?: unknown }>(c);
+  return c.json(await switchOntologyFile(c.req.param("id"), body));
+});
+
+r.post("/projects/:id/ontology-file", async (c) => {
+  const body = await readJson<{ file_name?: unknown; ontology_iri?: unknown; title?: unknown; branch?: unknown }>(c);
+  return c.json(await createOntologyFile(c.req.param("id"), body), 201);
 });
 
 r.get("/projects/:id", (c) => {
@@ -439,7 +401,7 @@ r.get("/projects/:id/source", async (c) => {
   }
   const filename = ontologyFilePath(project);
   const content = await git.readFileOrNull(id, sha, filename);
-  if (content === null) httpError(404, "Ontology file not found");
+  if (content === null) httpError(404, missingOntologyFileMessage(filename, branch));
   if ((c.req.header("accept") || "").includes("text/turtle")) {
     return c.body(content, 200, { "Content-Type": "text/turtle; charset=utf-8" });
   }

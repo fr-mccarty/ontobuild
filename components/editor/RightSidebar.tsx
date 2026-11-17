@@ -67,18 +67,20 @@ interface RightSidebarProps {
   agent: ReactNode;
   health: (isActive: boolean) => ReactNode;
   files?: (isActive: boolean) => ReactNode;
+  tools?: (isActive: boolean) => ReactNode;
 }
 
 const TABS: { id: RightSidebarTab; label: string }[] = [
   { id: "agent", label: "Agent" },
   { id: "health", label: "Health" },
   { id: "files", label: "Files" },
+  { id: "tools", label: "Tools" },
 ];
 
-export function RightSidebar({ onClose, lintSummary, agent, health, files }: RightSidebarProps) {
+export function RightSidebar({ onClose, lintSummary, agent, health, files, tools }: RightSidebarProps) {
   const activeTab = useWorkspaceStore((s) => s.rightTab);
   const setActiveTab = useWorkspaceStore((s) => s.setRightTab);
-  const tabs = files ? TABS : TABS.filter((t) => t.id !== "files");
+  const tabs = TABS.filter((t) => (t.id === "files" ? !!files : t.id === "tools" ? !!tools : true));
   // Opens on the Agent tab each time, unless an action (Run as prompt, Files) asked for a tab.
   const resetRightTabOnOpen = useWorkspaceStore((s) => s.resetRightTabOnOpen);
   useEffect(() => resetRightTabOnOpen(), [resetRightTabOnOpen]);
@@ -119,7 +121,7 @@ export function RightSidebar({ onClose, lintSummary, agent, health, files }: Rig
       </div>
       <aside
         data-agent-exclude
-        aria-label="Agent and health panel"
+        aria-label="Project side panel"
         style={{ width }}
         className={cn(
           "flex h-full min-w-0 flex-shrink-0 flex-col border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900",
@@ -184,6 +186,17 @@ export function RightSidebar({ onClose, lintSummary, agent, health, files }: Rig
             className={cn("min-h-0 flex-1 flex-col", activeTab === "files" ? "flex" : "hidden")}
           >
             {files(activeTab === "files")}
+          </div>
+        )}
+        {tools && (
+          <div
+            role="tabpanel"
+            id="right-sidebar-panel-tools"
+            aria-labelledby="right-sidebar-tab-tools"
+            hidden={activeTab !== "tools"}
+            className={cn("min-h-0 flex-1 flex-col", activeTab === "tools" ? "flex" : "hidden")}
+          >
+            {tools(activeTab === "tools")}
           </div>
         )}
       </aside>

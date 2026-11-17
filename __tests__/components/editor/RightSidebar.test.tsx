@@ -52,7 +52,7 @@ describe("RightSidebar", () => {
 
   it("floats over the editor below lg and sits beside it from lg up", () => {
     setup();
-    const classes = screen.getByRole("complementary", { name: "Agent and health panel" }).className.split(/\s+/);
+    const classes = screen.getByRole("complementary", { name: "Project side panel" }).className.split(/\s+/);
     expect(classes).toEqual(expect.arrayContaining(["absolute", "right-0", "z-30", "shadow-xl"]));
     expect(classes).toEqual(expect.arrayContaining(["lg:static", "lg:z-auto", "lg:shadow-none"]));
     expect(screen.getByTestId("right-sidebar-backdrop").className).toContain("lg:hidden");
@@ -75,6 +75,23 @@ describe("RightSidebar", () => {
     unmount();
     setup();
     expect(screen.getByRole("tab", { name: /Agent/ }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("shows Files and Tools tabs only when their panels are given", () => {
+    const { unmount } = setup();
+    expect(screen.queryByRole("tab", { name: "Tools" })).toBeNull();
+    unmount();
+    render(
+      <RightSidebar
+        onClose={vi.fn()}
+        agent={<div>Agent content</div>}
+        health={() => null}
+        tools={(active) => <div>Tools content {active ? "active" : "inactive"}</div>}
+      />,
+    );
+    expect(screen.queryByRole("tab", { name: "Files" })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Tools" }));
+    expect(screen.getByText("Tools content active")).toBeDefined();
   });
 
   it("computes lint severity", () => {

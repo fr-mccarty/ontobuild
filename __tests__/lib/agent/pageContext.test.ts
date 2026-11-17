@@ -33,6 +33,14 @@ describe("pageContext", () => {
     expect(pageText).toBe("Dog\nAnimal");
   });
 
+  it("names the project's ontology file, or says there is none", () => {
+    expect(buildPageContext({ ...info, ontologyFile: "src/zoo.ttl" }, null, env).context).toContain(
+      "Ontology file: src/zoo.ttl (the project's one active ontology",
+    );
+    expect(buildPageContext({ ...info, ontologyFile: null }, null, env).context).toContain("Ontology file: none");
+    expect(buildPageContext(info, null, env).context).not.toContain("Ontology file:");
+  });
+
   it("says the text is unchanged when it matches the last context", () => {
     const { context } = buildPageContext(info, "Dog\nAnimal", env);
     expect(context).toContain(PAGE_TEXT_UNCHANGED);

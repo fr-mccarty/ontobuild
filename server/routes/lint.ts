@@ -3,7 +3,7 @@ import * as git from "../git";
 import { all, fromJson, get, getDb, insert, newId, nowIso, run, toJson, transaction, update } from "../db";
 import { httpError, noContent, queryBool, queryInt, readJson } from "../http";
 import { startJob } from "../jobs";
-import { loadOntology, requireProject, requireBranch } from "../ontology";
+import { loadOntology, onOntologyEvent, requireProject, requireBranch } from "../ontology";
 import {
   ALL_RULE_IDS,
   REMOVED_RULE_IDS,
@@ -14,6 +14,14 @@ import {
 } from "../linter";
 
 const r = new Hono();
+
+// Lint results describe one ontology file. When the project switches files they no longer apply,
+// so the runs and their issues go (a run still in progress fails instead of saving them).
+// The lint configuration is a project setting and is kept.
+onOntologyEvent("lint:ontology-file-changed", (e) => {
+  if (e.type !== "ontology-file-changed") return;
+  run("DELETE FROM lint_runs WHERE project_id = ?", e.projectId);
+});
 
 interface LintRunRow {
   id: string;

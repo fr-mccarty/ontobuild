@@ -60,7 +60,10 @@ CREATE TABLE IF NOT EXISTS normalization_runs (
   prefixes_added_count INTEGER NOT NULL DEFAULT 0,
   format_converted INTEGER NOT NULL DEFAULT 0,
   is_dry_run INTEGER NOT NULL DEFAULT 0,
-  commit_hash TEXT
+  commit_hash TEXT,
+  -- The ontology file (repository-relative path) the run normalized. Added later: databases from
+  -- before get it from ADDED_COLUMNS in server/db.ts, and their old rows have NULL here.
+  ontology_path TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_normalization_runs_project ON normalization_runs(project_id, created_at);
 

@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -48,7 +49,7 @@ export function ConfirmDialog({
       await onConfirm();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(apiErrorMessage(err, "An error occurred"));
     } finally {
       setIsSubmitting(false);
     }

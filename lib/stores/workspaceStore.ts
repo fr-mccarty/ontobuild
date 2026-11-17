@@ -7,7 +7,10 @@ export interface TerminalTab {
   kind: "shell" | "run" | "devserver";
 }
 
-export type RightSidebarTab = "agent" | "health" | "files";
+export type RightSidebarTab = "agent" | "health" | "files" | "tools";
+
+/** Meta tools in the right sidebar's Tools tab. */
+export type ToolId = "component-tree" | "orphans";
 
 interface WorkspaceState {
   /** Bottom terminal panel. */
@@ -32,6 +35,9 @@ interface WorkspaceState {
   resetRightTabOnOpen: () => void;
   setRightTab: (tab: RightSidebarTab) => void;
   showRightTab: (tab: RightSidebarTab) => void;
+  /** Tool shown in the Tools tab. */
+  activeTool: ToolId;
+  setActiveTool: (tool: ToolId) => void;
 
   /** Text queued for the agent composer by "Run as prompt"; the agent panel consumes it. */
   pendingPrompt: { text: string; source?: string } | null;
@@ -80,6 +86,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setRightTab: (tab) => set({ rightTab: tab }),
   showRightTab: (tab) =>
     set((s) => ({ rightTab: tab, rightTabRequested: true, rightOpenRequest: s.rightOpenRequest + 1 })),
+  activeTool: "component-tree",
+  setActiveTool: (tool) => set({ activeTool: tool }),
 
   pendingPrompt: null,
   queuePrompt: (text, source) =>

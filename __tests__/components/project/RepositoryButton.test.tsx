@@ -120,7 +120,7 @@ describe("RepositoryButton", () => {
     api.get.mockResolvedValue(base);
     renderButton();
     openPopover();
-    expect(await screen.findByText("gh auth login")).toBeTruthy();
+    expect(await screen.findByTestId("github-not-linked")).toBeTruthy();
     expect(screen.queryByTestId("github-ahead-behind")).toBeNull();
   });
 
@@ -132,9 +132,20 @@ describe("RepositoryButton", () => {
     expect(within(branch).getByRole("option", { name: /feature\/x/ })).toBeDefined();
     expect(within(branch).getByText("Create new branch")).toBeDefined();
     expect(within(within(popover).getByRole("region", { name: "History" })).getByRole("button", { name: "Revision history" })).toBeDefined();
+    // Linking a remote lives in project settings; the popover only points there.
     const github = within(popover).getByRole("region", { name: "GitHub" });
-    expect(await within(github).findByRole("button", { name: "Create on GitHub" })).toBeDefined();
-    expect(within(github).getByLabelText("Link an existing repository")).toBeDefined();
+    expect(await within(github).findByRole("link", { name: "Link one in project settings" })).toBeDefined();
+    expect(within(github).queryByLabelText("Link an existing repository")).toBeNull();
+  });
+
+  it("links local pull requests with the open count", async () => {
+    api.get.mockResolvedValue(base);
+    renderButton({ openPRCount: 3 });
+    const prs = within(openPopover()).getByRole("region", { name: "Pull requests" });
+    const link = within(prs).getByRole("link", { name: /Pull requests/ });
+    expect(link.getAttribute("href")).toBe("/projects/p1/pull-requests");
+    expect(link.textContent).toContain("not GitHub");
+    expect(within(prs).getByTestId("repository-open-prs").textContent).toBe("3");
   });
 
   it("switches and creates branches, closing the popover", async () => {

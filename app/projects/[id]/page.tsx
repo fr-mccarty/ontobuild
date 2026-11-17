@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from "react";
+import { useParams, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Settings, FileCode, RefreshCw, Keyboard, LayoutDashboard, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { ArrowLeft, ChevronRight, Settings, FileCode, Keyboard, PanelLeftOpen, PanelLeftClose, Sparkles } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -13,18 +13,22 @@ import { readSelectionFromSearchParams } from "@/lib/utils/selectionUrl";
 import { StandardEditorLayout } from "@/components/editor/standard/StandardEditorLayout";
 import { RevisionHistoryPanel } from "@/components/revision";
 import { HealthCheckPanel } from "@/components/editor/HealthCheckPanel";
-import { RightSidebar, lintSeverity, LINT_DOT_CLASSES } from "@/components/editor/RightSidebar";
+import { RightSidebar, lintSeverity, LINT_DOT_CLASSES, type LintSeverity } from "@/components/editor/RightSidebar";
+import { ToolsPanel } from "@/components/tools/ToolsPanel";
 import { AgentPanel } from "@/components/editor/agent/AgentPanel";
 import { useAgentEditorSync } from "@/components/editor/agent/useAgentEditorSync";
+import { healthQueryKeys, useHealthSummary } from "@/lib/hooks/useHealthSummary";
+import { lintQueryKeys } from "@/lib/hooks/useLintSummary";
 import type { EntityTab } from "@/components/editor/standard/EntityTabBar";
 import type { AgentPageInfo } from "@/lib/agent/pageContext";
+import { totalHealthIssues, type AgentHealthSummary } from "@/lib/agent/healthSummary";
+import { useEntityCounts } from "@/lib/hooks/useEntityCounts";
 import { useSelectionStore } from "@/lib/stores/selectionStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { BranchProvider, branchQueryKeys } from "@/lib/context/BranchContext";
 import { useProjectViewer } from "@/lib/hooks/useProjectViewer";
 import { useEditorSidebars } from "@/lib/hooks/useEditorSidebars";
 import { useWorkspaceStore } from "@/lib/stores/workspaceStore";
-import { ImportsButton } from "@/components/project/ImportsButton";
 import { RepositoryButton } from "@/components/project/RepositoryButton";
 import { RunMenu } from "@/components/workspace/RunMenu";
 import { FilesPanel } from "@/components/workspace/FilesPanel";
@@ -43,10 +47,56 @@ import { commonPrefixes } from "@/lib/editor/languages/turtle";
 import { useKeyboardShortcuts, type ShortcutDefinition } from "@/lib/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutDialog } from "@/components/editor/KeyboardShortcutDialog";
 import { DeleteImpactAnalysis } from "@/components/editor/DeleteImpactAnalysis";
-import { ShareButton, SHARE_MENU_ITEM_CLASSES } from "@/components/editor/ShareButton";
+import { MoreMenu, MORE_MENU_ITEM_CLASSES } from "@/components/editor/MoreMenu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { OntologyFileMenu, OntologyFilePanel, OntologyLoadError } from "@/components/project/OntologyFile";
 
-const BACK_TOOLTIP = "Back to projects: return to the list of all projects";
+const PROJECTS_TOOLTIP = "Projects: return to the list of all projects";
+
+/**
+ * "Projects › name › file.ttl ▾": the way back to the project list, the project's title and its
+ * ontology file (a menu to switch to another RDF file in the folder or create one).
+ */
+function ProjectBreadcrumb({
+  project,
+  ontologyFile,
+}: {
+  project: { name: string; description?: string | null };
+  ontologyFile?: ReactNode;
+}) {
+  return (
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm">
+      <Tooltip side="bottom" content={PROJECTS_TOOLTIP}>
+        <Link
+          href="/"
+          className="flex-shrink-0 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+        >
+          Projects
+        </Link>
+      </Tooltip>
+      <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+      <Tooltip side="bottom" content={projectNameTooltip(project)}>
+        <h1 aria-current="page" className="min-w-0 truncate text-base font-semibold text-slate-900 dark:text-white">
+          {project.name}
+        </h1>
+      </Tooltip>
+      {ontologyFile && (
+        <>
+          <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+          {ontologyFile}
+        </>
+      )}
+    </nav>
+  );
+}
+
+/** The Agent button's dot: the worst issue in the Health tab, or null when there's nothing to fix. */
+function healthDotSeverity(h: AgentHealthSummary): LintSeverity | null {
+  if (h.lint?.errors) return "error";
+  if (h.lint?.warnings || h.consistency?.count || h.duplicates?.count) return "warning";
+  if (h.lint?.info) return "info";
+  return null;
+}
 
 function projectNameTooltip(project: { name: string; description?: string | null }): string {
   return project.description
@@ -94,7 +144,6 @@ function detectIriSettings(
 export default function ProjectEditorPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const projectId = params.id as string;
   const resumeBranchParam = searchParams.get("branch") || undefined;
@@ -503,11 +552,15 @@ export default function ProjectEditorPage() {
   const handleBranchChange = useCallback((branchName: string) => {
     setActiveBranch(branchName);
     resetSourceState();
-    const next = new URLSearchParams(searchParamsString);
+    // The branch notifier also calls this with the initial branch on every mount, so leave
+    // the URL alone when it already names the branch. Otherwise update it in place: a
+    // router.replace() would fetch the page from the server, and when that fetch fails Next
+    // falls back to a full reload, which remounts the page and loops.
+    const next = new URLSearchParams(window.location.search);
+    if (next.get("branch") === branchName) return;
     next.set("branch", branchName);
-    const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname);
-  }, [pathname, router, resetSourceState, searchParamsString]);
+    window.history.replaceState(null, "", `${pathname}?${next.toString()}`);
+  }, [pathname, resetSourceState]);
 
   // Keep the editor in step with the agent: refresh after its changes, select on request.
   // (useAgentEditorSync reads these callbacks through a ref, so they need no memoization.)
@@ -550,10 +603,43 @@ export default function ProjectEditorPage() {
     navigateToNode,
   });
 
+  const { data: healthSummary = null } = useHealthSummary(projectId, activeBranch);
+  const refreshHealthSummaries = () => {
+    void queryClient.invalidateQueries({ queryKey: healthQueryKeys.all });
+    void queryClient.invalidateQueries({ queryKey: lintQueryKeys.summary(projectId) });
+  };
+
+  // The project switched to another ontology file (here, in settings or by the agent): what the
+  // editor holds belongs to the old file. Drop the source, selection and tree, and refetch the
+  // project's queries. The entity panels remount through their key.
+  const ontologyPath = project ? (project.source_file_path ? (project.git_ontology_path ?? null) : null) : undefined;
+  const [shownOntologyPath, setShownOntologyPath] = useState(ontologyPath);
+  if (ontologyPath !== undefined && ontologyPath !== shownOntologyPath) {
+    setShownOntologyPath(ontologyPath);
+    if (shownOntologyPath !== undefined) {
+      setIriDetectionPending(true);
+      setDetailRefreshKey((k) => k + 1);
+    }
+  }
+  const shownOntologyPathRef = useRef(ontologyPath);
+  useEffect(() => {
+    const previous = shownOntologyPathRef.current;
+    if (ontologyPath === undefined) return;
+    shownOntologyPathRef.current = ontologyPath;
+    if (previous === undefined || previous === ontologyPath) return;
+    useSelectionStore.getState().clear();
+    resetSourceState();
+    void loadRootClasses();
+    void queryClient.invalidateQueries({ predicate: (q) => q.queryKey.includes(projectId) });
+    void queryClient.invalidateQueries({ queryKey: healthQueryKeys.all });
+  }, [ontologyPath, projectId, queryClient, resetSourceState, loadRootClasses]);
+
   const agentPageInfo = useMemo((): AgentPageInfo => ({
     projectId,
+    health: healthSummary,
     projectName: project?.name,
     branch: activeBranch,
+    ontologyFile: ontologyPath,
     leftTab,
     selectedEntity: selectionIri && selectionType
       ? {
@@ -562,10 +648,26 @@ export default function ProjectEditorPage() {
           label: selectionType === "class" && selectedNodeFallback?.iri === selectionIri ? selectedNodeFallback.label : null,
         }
       : null,
-  }), [projectId, project?.name, activeBranch, leftTab, selectionIri, selectionType, selectedNodeFallback]);
+  }), [projectId, project?.name, activeBranch, ontologyPath, leftTab, selectionIri, selectionType, selectedNodeFallback, healthSummary]);
 
-  const lintDotSeverity = lintSeverity(lintSummary);
+  // Until the health summary loads, fall back to the lint counts the sidebar already has.
+  const healthIssueCount = healthSummary ? totalHealthIssues(healthSummary) : (lintSummary?.total_issues ?? 0);
+  const agentDotSeverity = healthSummary ? healthDotSeverity(healthSummary) : lintSeverity(lintSummary);
+  const { data: entityCountsData } = useEntityCounts(projectId, activeBranch, agentSync.entityListRefreshKey);
+  const entityCounts = useMemo(() => {
+    const counts: Partial<Record<EntityTab, number>> = {};
+    if (!isTreeLoading) counts.classes = totalClasses;
+    if (entityCountsData) {
+      counts.properties = entityCountsData.properties;
+      counts.individuals = entityCountsData.individuals;
+    }
+    return counts;
+  }, [isTreeLoading, totalClasses, entityCountsData]);
   const showNormalize = !!normalizationStatus?.needs_normalization;
+  // With normalization recommended, land on the Normalization card, where the warning and its action are.
+  const settingsHref = `/projects/${projectId}/settings${activeBranch ? `?branch=${encodeURIComponent(activeBranch)}` : ""}${
+    showNormalize ? "#normalization" : ""
+  }`;
 
   const keyboardShortcuts = useMemo((): ShortcutDefinition[] => [
     {
@@ -669,21 +771,9 @@ export default function ProjectEditorPage() {
           <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Tooltip side="bottom" content={BACK_TOOLTIP}>
-                  <Link
-                    href="/"
-                    className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                  </Link>
-                </Tooltip>
-                <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-                <Tooltip side="bottom" content={projectNameTooltip(project)}>
-                  <h1 className="font-semibold text-slate-900 dark:text-white">{project.name}</h1>
-                </Tooltip>
+                <ProjectBreadcrumb project={project} />
               </div>
-              <Tooltip side="bottom" content="Project settings: settings for this project only (ontology import, normalization, lint rules)">
+              <Tooltip side="bottom" content="Project settings: settings for this project only (ontology file, imports, GitHub, normalization, lint rules)">
                 <Link href={`/projects/${projectId}/settings`} aria-label="Project settings">
                   <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
                     <Settings className="h-4 w-4" />
@@ -692,19 +782,29 @@ export default function ProjectEditorPage() {
               </Tooltip>
             </div>
           </div>
-          <div className="flex h-[calc(100vh-4rem-3.5rem)] items-center justify-center">
-            <div className="text-center">
-              <FileCode className="mx-auto h-16 w-16 text-slate-400" />
-              <h2 className="mt-4 text-xl font-semibold text-slate-900 dark:text-white">No Ontology File</h2>
-              <p className="mt-2 text-slate-600 dark:text-slate-400">
-                This project doesn&apos;t have an ontology file yet.
-              </p>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
-                Import an ontology file from the project settings.
-              </p>
-              <Link href={`/projects/${projectId}/settings`} className="mt-6 inline-block">
-                <Button variant="outline">Go to Settings</Button>
-              </Link>
+          <div className="flex min-h-[calc(100vh-4rem-3.5rem)] justify-center overflow-y-auto px-4 py-12">
+            <div className="w-full max-w-xl">
+              <div className="text-center">
+                <FileCode className="mx-auto h-16 w-16 text-slate-400" />
+                <h2 className="mt-4 text-xl font-semibold text-slate-900 dark:text-white">No Ontology File</h2>
+                <p className="mt-2 text-slate-600 dark:text-slate-400">
+                  This project doesn&apos;t have an ontology file yet.
+                </p>
+              </div>
+              <OntologyFilePanel
+                className="mt-6 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+                projectId={projectId}
+                branch={resumeBranchParam}
+                projectName={project.name}
+                currentIri={project.ontology_iri}
+                intro={
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Choose an RDF file from the project folder to use as the project&apos;s ontology, or create a new, empty
+                    ontology. The project edits one ontology file at a time; you can switch later from the menu next to the
+                    project name.
+                  </p>
+                }
+              />
             </div>
           </div>
         </main>
@@ -717,7 +817,7 @@ export default function ProjectEditorPage() {
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-100 dark:bg-slate-900">
         <div className="border-b border-slate-200 bg-white px-2 py-3 sm:px-4 dark:border-slate-700 dark:bg-slate-800">
-          {/* One line at every width: controls that don't fit move into the Share menu (see moreItems). */}
+          {/* One line at every width: rarely used controls live in the ⋮ More menu. */}
           <div data-testid="editor-sub-header" className="flex flex-nowrap items-center justify-between gap-2 sm:gap-4">
             <div className="flex min-w-0 flex-nowrap items-center gap-2 sm:gap-4">
               <Tooltip
@@ -739,27 +839,19 @@ export default function ProjectEditorPage() {
                   {leftOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
                 </Button>
               </Tooltip>
-              <Tooltip side="bottom" content={BACK_TOOLTIP}>
-                <Link
-                  href="/"
-                  aria-label="Back"
-                  className="flex flex-shrink-0 items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline">Back</span>
-                </Link>
-              </Tooltip>
-              <div className="hidden h-5 w-px flex-shrink-0 bg-slate-200 sm:block dark:bg-slate-700" />
-              <Tooltip side="bottom" content={projectNameTooltip(project)}>
-                <h1 className="min-w-0 truncate font-semibold text-slate-900 dark:text-white">{project.name}</h1>
-              </Tooltip>
-              <Tooltip
-                side="bottom"
-                content={`Class count: the number of classes in the ontology on ${activeBranch ? `the ${activeBranch} branch` : "this branch"}`}
-              >
-                <span className="flex-shrink-0 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{totalClasses} classes</span>
-              </Tooltip>
-              <ImportsButton projectId={projectId} branch={activeBranch} onChanged={reloadOntologyFromServer} />
+              <ProjectBreadcrumb
+                project={project}
+                ontologyFile={
+                  <OntologyFileMenu
+                    projectId={projectId}
+                    branch={activeBranch}
+                    enabled={!!activeBranch}
+                    activePath={ontologyPath}
+                    projectName={project.name}
+                    currentIri={project.ontology_iri}
+                  />
+                }
+              />
             </div>
             <div className="ml-auto flex flex-shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2">
               <RunMenu projectId={projectId} />
@@ -769,112 +861,16 @@ export default function ProjectEditorPage() {
                 onPulled={reloadOntologyFromServer}
                 historyOpen={showHistory}
                 onToggleHistory={() => setShowHistory(!showHistory)}
-              />
-
-              <ShareButton
-                projectId={projectId}
-                selectedIri={selectedIri}
-                selectedLabel={selectedNodeFallback?.label}
                 openPRCount={openPRCount}
-                moreHiddenClass={showNormalize ? "xl:hidden" : "lg:hidden"}
-                moreItems={(closeMenu) => (
-                  <>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className={`${SHARE_MENU_ITEM_CLASSES} lg:hidden`}
-                      onClick={() => {
-                        setShortcutDialogOpen(true);
-                        closeMenu();
-                      }}
-                    >
-                      <Keyboard className="h-3.5 w-3.5 flex-shrink-0" />
-                      Keyboard shortcuts
-                    </button>
-                    {showNormalize && (
-                      <Link
-                        href={`/projects/${projectId}/settings#normalization`}
-                        role="menuitem"
-                        className={`${SHARE_MENU_ITEM_CLASSES} text-amber-700 xl:hidden dark:text-amber-400`}
-                        onClick={closeMenu}
-                      >
-                        <RefreshCw className="h-3.5 w-3.5 flex-shrink-0" />
-                        Normalize ontology
-                      </Link>
-                    )}
-                    <Link
-                      href={`/projects/${projectId}/dashboard`}
-                      role="menuitem"
-                      className={`${SHARE_MENU_ITEM_CLASSES} sm:hidden`}
-                      onClick={closeMenu}
-                    >
-                      <LayoutDashboard className="h-3.5 w-3.5 flex-shrink-0" />
-                      Project dashboard
-                    </Link>
-                    <Link
-                      href={`/projects/${projectId}/settings`}
-                      role="menuitem"
-                      className={`${SHARE_MENU_ITEM_CLASSES} sm:hidden`}
-                      onClick={closeMenu}
-                    >
-                      <Settings className="h-3.5 w-3.5 flex-shrink-0" />
-                      Project settings
-                    </Link>
-                  </>
-                )}
               />
-
-              {showNormalize && (
-                <Tooltip side="bottom" content="Normalization recommended: the ontology file isn't in canonical Turtle format. Opens project settings to normalize it">
-                  <Link href={`/projects/${projectId}/settings#normalization`} aria-label="Normalize ontology" className="hidden xl:inline-flex">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      tabIndex={-1}
-                      className="gap-2 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      <span>Normalize</span>
-                    </Button>
-                  </Link>
-                </Tooltip>
-              )}
-
-              <Tooltip side="bottom" content="Project dashboard: overview of this project with its description and links to the editor and settings">
-                <Link href={`/projects/${projectId}/dashboard`} aria-label="Project dashboard" className="hidden sm:inline-flex">
-                  <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
-                    <LayoutDashboard className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </Tooltip>
-
-              <Tooltip side="bottom" content="Keyboard shortcuts: list the shortcuts available in the editor (shortcut: ?)">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShortcutDialogOpen(true)}
-                  aria-label="Keyboard shortcuts"
-                  className="hidden lg:inline-flex"
-                >
-                  <Keyboard className="h-4 w-4" />
-                </Button>
-              </Tooltip>
-
-              <Tooltip side="bottom" content="Project settings: settings for this project only (ontology import, normalization, lint rules)">
-                <Link href={`/projects/${projectId}/settings`} aria-label="Project settings" className="hidden sm:inline-flex">
-                  <Button variant="ghost" size="sm" tabIndex={-1} className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </Tooltip>
 
               <Tooltip
                 side="bottom"
                 content={
                   showRightSidebar
-                    ? "Hide the agent and health panel (shortcut: Esc)"
-                    : `Show the agent and health panel: chat with the ontology agent and review lint health checks${
-                        lintSummary && lintSummary.total_issues > 0 ? ` (${lintSummary.total_issues} lint issues)` : ""
+                    ? "Hide the agent panel (shortcut: Esc)"
+                    : `Agent: chat with the ontology agent and review the Health tab${
+                        healthIssueCount > 0 ? ` (${healthIssueCount} health issue${healthIssueCount === 1 ? "" : "s"})` : ""
                       }`
                 }
               >
@@ -883,22 +879,71 @@ export default function ProjectEditorPage() {
                   size="sm"
                   onClick={toggleRight}
                   aria-label={
-                    !showRightSidebar && lintSummary && lintSummary.total_issues > 0
-                      ? `Agent and health panel (${lintSummary.total_issues} lint issues)`
-                      : "Agent and health panel"
+                    !showRightSidebar && healthIssueCount > 0 ? `Agent (${healthIssueCount} health issues)` : "Agent"
                   }
                   aria-pressed={showRightSidebar}
-                  className="relative text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  className="relative gap-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                 >
-                  {showRightSidebar ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-                  {!showRightSidebar && lintDotSeverity && (
+                  <Sparkles className="h-4 w-4" />
+                  <span className="hidden sm:inline">Agent</span>
+                  {!showRightSidebar && agentDotSeverity && (
                     <span
                       data-testid="right-sidebar-lint-dot"
-                      className={`absolute right-1.5 top-1 h-2 w-2 rounded-full ring-2 ring-white dark:ring-slate-800 ${LINT_DOT_CLASSES[lintDotSeverity]}`}
+                      className={`absolute right-1 top-1 h-2 w-2 rounded-full ring-2 ring-white dark:ring-slate-800 ${LINT_DOT_CLASSES[agentDotSeverity]}`}
                     />
                   )}
                 </Button>
               </Tooltip>
+
+              <Tooltip
+                side="bottom"
+                content={`Project settings: project details, imports, GitHub, normalization, lint rules and pull requests${
+                  showNormalize ? ". Normalization recommended: the ontology file isn't in canonical Turtle format" : ""
+                }`}
+              >
+                <Link href={settingsHref} aria-label="Project settings" className="hidden sm:inline-flex">
+                  <Button variant="ghost" size="sm" tabIndex={-1} className="relative text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                    <Settings className="h-4 w-4" />
+                    {showNormalize && (
+                      <span
+                        data-testid="settings-normalize-dot"
+                        className="absolute right-1.5 top-1 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-800"
+                      />
+                    )}
+                  </Button>
+                </Link>
+              </Tooltip>
+
+              <MoreMenu>
+                {(closeMenu) => (
+                  <>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      aria-keyshortcuts="?"
+                      className={MORE_MENU_ITEM_CLASSES}
+                      onClick={() => {
+                        setShortcutDialogOpen(true);
+                        closeMenu();
+                      }}
+                    >
+                      <Keyboard className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="flex-1">Keyboard shortcuts</span>
+                      <kbd className="text-xs text-slate-400" aria-hidden>?</kbd>
+                    </button>
+                    <Link
+                      href={settingsHref}
+                      role="menuitem"
+                      className={`${MORE_MENU_ITEM_CLASSES} sm:hidden`}
+                      onClick={closeMenu}
+                    >
+                      <Settings className="h-3.5 w-3.5 flex-shrink-0" />
+                      Project settings
+                      {showNormalize && <span className="ml-auto h-2 w-2 rounded-full bg-amber-500" aria-label="normalization recommended" role="img" />}
+                    </Link>
+                  </>
+                )}
+              </MoreMenu>
             </div>
           </div>
         </div>
@@ -907,16 +952,28 @@ export default function ProjectEditorPage() {
         <div className="relative flex min-h-0 flex-1">
           <div className="flex-1 flex overflow-hidden">
             <StandardEditorLayout
+              key={ontologyPath ?? ""}
               projectId={projectId}
               activeBranch={activeBranch}
               canEdit
               entityNavigationRef={entityNavigationRef}
               entityRemovalRef={entityRemovalRef}
               entityListRefreshKey={agentSync.entityListRefreshKey}
+              entityCounts={entityCounts}
               detailEpoch={agentSync.detailEpoch}
               nodes={nodes}
               isTreeLoading={isTreeLoading}
               treeError={treeError}
+              renderTreeError={(message) => (
+                <OntologyLoadError
+                  message={message}
+                  projectId={projectId}
+                  branch={activeBranch}
+                  enabled={!!activeBranch}
+                  projectName={project.name}
+                  currentIri={project.ontology_iri}
+                />
+              )}
               selectedIri={selectedIri}
               selectNode={selectNode}
               expandNode={expandNode}
@@ -959,10 +1016,11 @@ export default function ProjectEditorPage() {
                 />
               }
               files={(isActive) => <FilesPanel projectId={projectId} isActive={isActive} />}
+              tools={(isActive) => <ToolsPanel projectId={projectId} isActive={isActive} />}
               health={(isActive) => (
                 <div className="min-h-0 flex-1">
                   <HealthCheckPanel
-                    key={agentSync.sidePanelsRefreshKey}
+                    key={`${agentSync.sidePanelsRefreshKey}:${ontologyPath ?? ""}`}
                     projectId={projectId}
                     branch={activeBranch}
                     isOpen={isActive}
@@ -976,6 +1034,7 @@ export default function ProjectEditorPage() {
                       }
                     }}
                     canRunLint
+                    onResultsChanged={refreshHealthSummaries}
                   />
                 </div>
               )}

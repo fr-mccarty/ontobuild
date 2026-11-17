@@ -1,4 +1,4 @@
-import { DataFactory, Parser, Store, type Quad, type Term } from "n3";
+import { DataFactory, Parser, Store, Writer, type Quad, type Term } from "n3";
 import { Readable } from "node:stream";
 import { RDF_EXTENSION_FORMATS, RDF_FILE_EXTENSIONS, type RdfFormat } from "@/lib/ontology/rdfFormats";
 
@@ -401,5 +401,117 @@ export async function normalizeToTurtle(
     prefixesBefore: Object.keys(parsed.prefixes).filter(Boolean).sort(),
     prefixesAfter: Object.keys(after).filter(Boolean).sort(),
     languageTagsRemoved,
+  };
+}
+
+function hasBlankNode(q: Quad): boolean {
+  return q.subject.termType === "BlankNode" || q.object.termType === "BlankNode" || q.graph.termType === "BlankNode";
+}
+
+/**
+ * Whether two graphs hold the same triples: RDF graph isomorphism, so blank nodes match by
+ * structure rather than by label. Triples without blank nodes are compared directly; the rest
+ * are put in canonical form (URDNA2015, through jsonld) and compared.
+ */
+export async function sameGraph(a: Store, b: Store): Promise<boolean> {
+  if (a.size !== b.size) return false;
+  const writer = new Writer({ format: "N-Quads" });
+  const split = (s: Store) => {
+    const ground: string[] = [];
+    const blank: Quad[] = [];
+    for (const q of s.getQuads(null, null, null, null)) {
+      if (hasBlankNode(q)) blank.push(q);
+      else ground.push(writer.quadToString(q.subject, q.predicate, q.object, q.graph));
+    }
+    return { ground: ground.sort(), blank };
+  };
+  const x = split(a);
+  const y = split(b);
+  if (x.blank.length !== y.blank.length) return false;
+  for (let i = 0; i < x.ground.length; i++) if (x.ground[i] !== y.ground[i]) return false;
+  if (!x.blank.length) return true;
+  const jsonld = (await import("jsonld")).default;
+  const canonical = (quads: Quad[]) =>
+    jsonld.canonize(writer.quadsToString(quads) as never, {
+      algorithm: "URDNA2015",
+      inputFormat: "application/n-quads",
+      format: "application/n-quads",
+    });
+  return (await canonical(x.blank)) === (await canonical(y.blank));
+}
+
+/** What changed when a file was normalized to Turtle (stored as `projects.normalization_report`). */
+export interface ImportNormalizationReport {
+  original_format: string;
+  original_filename: string;
+  original_size_bytes: number;
+  normalized_size_bytes: number;
+  triple_count: number;
+  prefixes_before: string[];
+  prefixes_after: string[];
+  prefixes_removed: string[];
+  prefixes_added: string[];
+  format_converted: boolean;
+  notes: string[];
+}
+
+/** Describes a normalizeToTurtle result, for imports (uploaded files and files cloned from a repository). */
+export function importNormalizationReport(
+  original: string,
+  filename: string,
+  normalized: Awaited<ReturnType<typeof normalizeToTurtle>>,
+): ImportNormalizationReport {
+  const format = normalized.format;
+  const before = new Set(normalized.prefixesBefore);
+  const after = new Set(normalized.prefixesAfter);
+  const removed = normalized.prefixesBefore.filter((p) => !after.has(p));
+  const added = normalized.prefixesAfter.filter((p) => !before.has(p));
+  const originalSize = Buffer.byteLength(original);
+  const normalizedSize = Buffer.byteLength(normalized.turtle);
+  const notes: string[] = [];
+  if (format !== "turtle") notes.push(`Converted from ${FORMAT_NAMES[format]} to Turtle format`);
+  if (removed.length) notes.push(`Removed ${removed.length} unused prefix(es): ${removed.join(", ")}`);
+  if (added.length) notes.push(`Added ${added.length} prefix(es): ${added.join(", ")}`);
+  if (normalized.languageTagsRemoved > 0) notes.push(`Removed language tags from ${normalized.languageTagsRemoved} literal(s)`);
+  const diff = normalizedSize - originalSize;
+  if (diff < 0) notes.push(`File size reduced by ${Math.abs(diff).toLocaleString("en-US")} bytes`);
+  else if (diff > 0) notes.push(`File size increased by ${diff.toLocaleString("en-US")} bytes`);
+  notes.push("Triples reordered into canonical sequence");
+  notes.push("Whitespace and formatting standardized");
+  return {
+    original_format: FORMAT_NAMES[format],
+    original_filename: filename,
+    original_size_bytes: originalSize,
+    normalized_size_bytes: normalizedSize,
+    triple_count: normalized.store.size,
+    prefixes_before: normalized.prefixesBefore,
+    prefixes_after: normalized.prefixesAfter,
+    prefixes_removed: removed,
+    prefixes_added: added,
+    format_converted: format !== "turtle",
+    notes,
+  };
+}
+
+const TITLE_PROPS = [NS.dc + "title", NS.dcterms + "title", NS.rdfs + "label"];
+const DESC_PROPS = [NS.dc + "description", NS.dcterms + "description", NS.rdfs + "comment"];
+
+function firstOntologyLiteral(store: Store, props: string[]): string | null {
+  const ontologies = store.getSubjects(RDF_TYPE, OWL_ONTOLOGY, null).filter((s) => s.termType === "NamedNode");
+  for (const s of ontologies) {
+    for (const p of props) {
+      for (const o of store.getObjects(s, p, null)) if (o.value) return o.value;
+    }
+  }
+  return null;
+}
+
+/** The ontology's IRI (when it is an http(s) or urn IRI), title and description, for a new project. */
+export function ontologyMetadata(store: Store): { iri: string | null; title: string | null; description: string | null } {
+  const iri = findOntologyIri(store);
+  return {
+    iri: iri && /^(https?:\/\/|urn:)\S+$/.test(iri) ? iri : null,
+    title: firstOntologyLiteral(store, TITLE_PROPS),
+    description: firstOntologyLiteral(store, DESC_PROPS),
   };
 }

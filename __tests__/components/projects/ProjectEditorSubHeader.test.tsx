@@ -3,6 +3,7 @@ import { render, screen, fireEvent, within, act } from "@testing-library/react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import type { AgentHealthSummary } from "@/lib/agent/healthSummary";
 
 // The project editor page's sub header (the bar under the main header): every
 // control in it should explain itself in a tooltip on hover or keyboard focus.
@@ -22,9 +23,20 @@ vi.mock("@/lib/context/ToastContext", () => ({
 
 vi.mock("@/components/layout/header", () => ({ Header: () => <header /> }));
 vi.mock("@/components/editor/standard/StandardEditorLayout", () => ({
-  StandardEditorLayout: ({ treePanelOpen }: { treePanelOpen?: boolean }) => (
-    <div data-testid="editor-layout" data-tree-open={String(treePanelOpen)} />
+  StandardEditorLayout: ({ treePanelOpen, entityCounts }: { treePanelOpen?: boolean; entityCounts?: unknown }) => (
+    <div data-testid="editor-layout" data-tree-open={String(treePanelOpen)} data-entity-counts={JSON.stringify(entityCounts)} />
   ),
+}));
+
+let mockHealthSummary: AgentHealthSummary | null;
+vi.mock("@/lib/hooks/useHealthSummary", () => ({
+  healthQueryKeys: { all: ["health"] },
+  useHealthSummary: () => ({ data: mockHealthSummary }),
+}));
+
+let mockEntityCounts: { properties: number; individuals: number } | undefined;
+vi.mock("@/lib/hooks/useEntityCounts", () => ({
+  useEntityCounts: () => ({ data: mockEntityCounts }),
 }));
 vi.mock("@/components/editor/agent/AgentPanel", () => ({ AgentPanel: () => <div /> }));
 vi.mock("@/components/editor/HealthCheckPanel", () => ({ HealthCheckPanel: () => <div /> }));
@@ -45,6 +57,16 @@ vi.mock("@/lib/context/BranchContext", () => ({
   useBranch: () => mockBranchState,
   branchQueryKeys: { list: (...args: unknown[]) => ["branches", ...args] },
 }));
+
+const ontologyFilesApi = vi.hoisted(() => ({
+  listOntologyFiles: vi.fn(),
+  switchOntologyFile: vi.fn(),
+  createOntologyFile: vi.fn(),
+}));
+vi.mock("@/lib/api/projects", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/projects")>();
+  return { ...actual, projectApi: { ...actual.projectApi, ...ontologyFilesApi } };
+});
 
 let mockViewer: Record<string, unknown>;
 vi.mock("@/lib/hooks/useProjectViewer", () => ({
@@ -115,9 +137,22 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  ontologyFilesApi.listOntologyFiles.mockResolvedValue({
+    project_id: PROJECT_ID,
+    branch: "main",
+    active_path: "src/newman.ttl",
+    active_exists: true,
+    suggested_file_name: "ontology.ttl",
+    files: [
+      { path: "src/newman.ttl", format: "turtle", size_bytes: 10, declares_ontology: true, active: true, turtle_path: null, turtle_exists: false },
+      { path: "legacy/newman.owl", format: "rdfxml", size_bytes: 20, declares_ontology: true, active: false, turtle_path: "legacy/newman.ttl", turtle_exists: false },
+    ],
+  });
   localStorage.clear();
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   mockViewer = makeViewer();
+  mockHealthSummary = null;
+  mockEntityCounts = { properties: 5, individuals: 7 };
   mockBranchState = {
     branches: [
       {
@@ -142,48 +177,50 @@ beforeEach(() => {
 });
 
 describe("Project editor sub header tooltips", () => {
-  it("explains the Back link, project name and class count", async () => {
+  it("shows a Projects › name breadcrumb in place of the Back link and class count", async () => {
     renderPage();
     const bar = subHeader();
-    expect(await tooltipFor(within(bar).getByRole("link", { name: "Back" }))).toBe(
-      "Back to projects: return to the list of all projects",
-    );
-    expect(await tooltipFor(within(bar).getByRole("heading", { level: 1 }))).toBe(
-      "Project: Newman Center. Campus ministry ontology",
-    );
-    expect(await tooltipFor(within(bar).getByText("14 classes"))).toBe(
-      "Class count: the number of classes in the ontology on the main branch",
-    );
+    expect(within(bar).queryByRole("link", { name: "Back" })).toBeNull();
+    const crumbs = within(bar).getByRole("navigation", { name: "Breadcrumb" });
+    const projects = within(crumbs).getByRole("link", { name: "Projects" });
+    expect(projects.getAttribute("href")).toBe("/");
+    expect(await tooltipFor(projects)).toBe("Projects: return to the list of all projects");
+    const heading = within(crumbs).getByRole("heading", { level: 1 });
+    expect(heading.getAttribute("aria-current")).toBe("page");
+    expect(await tooltipFor(heading)).toBe("Project: Newman Center. Campus ministry ontology");
+    // The class count moved to the entity tree's tabs.
+    expect(within(bar).queryByText(/\bclasses\b/)).toBeNull();
   });
 
   it("explains the Repository button with the current branch, commit and GitHub link", async () => {
     renderPage();
     const button = within(subHeader()).getByRole("button", { name: "Repository" });
     expect(await tooltipFor(button)).toBe(
-      "Repository: on branch main at commit a47aeb0. GitHub: link this project to a repository. Click to switch branches, view history or push and pull.",
+      "Repository: on branch main at commit a47aeb0. GitHub: link this project to a repository. 2 open pull requests. Click to switch branches, view history and pull requests, or push and pull.",
     );
   });
 
-  it("explains Share, Normalize, dashboard, shortcuts, settings and the panel toggles", async () => {
+  it("explains More, shortcuts, settings and the panel toggles", async () => {
     renderPage();
     const bar = subHeader();
-    expect(await tooltipFor(within(bar).getByRole("button", { name: /^Share options/ }))).toBe(
-      "Share: copy a link to this project, or open pull requests (2 open). Also holds the editor controls that don't fit in the bar at this width",
+    // Share was removed: its links only opened on this machine, and pull requests moved to Repository.
+    expect(within(bar).queryByRole("button", { name: /^Share/ })).toBeNull();
+    expect(await tooltipFor(within(bar).getByRole("button", { name: "More" }))).toBe(
+      "More: keyboard shortcuts and other editor controls",
     );
-    expect(await tooltipFor(within(bar).getByRole("link", { name: "Normalize ontology" }))).toBe(
-      "Normalization recommended: the ontology file isn't in canonical Turtle format. Opens project settings to normalize it",
-    );
-    expect(await tooltipFor(within(bar).getByRole("link", { name: "Project dashboard" }))).toBe(
-      "Project dashboard: overview of this project with its description and links to the editor and settings",
-    );
-    expect(await tooltipFor(within(bar).getByRole("button", { name: "Keyboard shortcuts" }))).toBe(
-      "Keyboard shortcuts: list the shortcuts available in the editor (shortcut: ?)",
-    );
+    // Imports, Normalize and the project dashboard moved into project settings.
+    expect(within(bar).queryByRole("link", { name: "Normalize ontology" })).toBeNull();
+    expect(within(bar).queryByRole("link", { name: "Project dashboard" })).toBeNull();
+    expect(within(bar).queryByRole("button", { name: /^Imports/ })).toBeNull();
+    // Keyboard shortcuts live in the More menu only.
+    expect(within(bar).queryByRole("button", { name: "Keyboard shortcuts" })).toBeNull();
+    // Normalization is recommended in this fixture, so the settings button says so and shows a dot.
     expect(await tooltipFor(within(bar).getByRole("link", { name: "Project settings" }))).toBe(
-      "Project settings: settings for this project only (ontology import, normalization, lint rules)",
+      "Project settings: project details, imports, GitHub, normalization, lint rules and pull requests. Normalization recommended: the ontology file isn't in canonical Turtle format",
     );
-    expect(await tooltipFor(within(bar).getByRole("button", { name: /Agent and health panel/ }))).toBe(
-      "Hide the agent and health panel (shortcut: Esc)",
+    expect(within(bar).getByTestId("settings-normalize-dot")).toBeDefined();
+    expect(await tooltipFor(within(bar).getByRole("button", { name: "Agent" }))).toBe(
+      "Hide the agent panel (shortcut: Esc)",
     );
     expect(await tooltipFor(within(bar).getByRole("button", { name: "Entity tree" }))).toBe(
       "Hide the entity tree: the classes, properties and individuals list",
@@ -193,10 +230,11 @@ describe("Project editor sub header tooltips", () => {
   it("describes the toggles as 'show' once the panels are closed", async () => {
     renderPage();
     const bar = subHeader();
-    fireEvent.click(within(bar).getByRole("button", { name: /Agent and health panel/ }));
+    fireEvent.click(within(bar).getByRole("button", { name: "Agent" }));
     fireEvent.click(within(bar).getByRole("button", { name: "Entity tree" }));
-    expect(await tooltipFor(within(bar).getByRole("button", { name: /Agent and health panel/ }))).toBe(
-      "Show the agent and health panel: chat with the ontology agent and review lint health checks (3 lint issues)",
+    // Until the health summary loads, the count comes from the lint summary.
+    expect(await tooltipFor(within(bar).getByRole("button", { name: "Agent (3 health issues)" }))).toBe(
+      "Agent: chat with the ontology agent and review the Health tab (3 health issues)",
     );
     expect(await tooltipFor(within(bar).getByRole("button", { name: "Entity tree" }))).toBe(
       "Show the entity tree: browse classes, properties and individuals",
@@ -222,66 +260,50 @@ describe("Project editor sub header on one line", () => {
     renderPage();
     const bar = subHeader();
     const cls = (el: Element) => el.className.split(/\s+/);
-    expect(cls(within(bar).getByRole("link", { name: "Normalize ontology" }))).toEqual(
-      expect.arrayContaining(["hidden", "xl:inline-flex"]),
-    );
-    expect(cls(within(bar).getByRole("button", { name: "Keyboard shortcuts" }))).toEqual(
-      expect.arrayContaining(["hidden", "lg:inline-flex"]),
-    );
     // The Repository button shows at every width (its branch name hides below sm).
     expect(cls(within(bar).getByRole("button", { name: "Repository" }))).not.toContain("hidden");
-    expect(cls(within(bar).getByRole("link", { name: "Project dashboard" }))).toEqual(
-      expect.arrayContaining(["hidden", "sm:inline-flex"]),
-    );
     expect(cls(within(bar).getByRole("link", { name: "Project settings" }))).toEqual(
       expect.arrayContaining(["hidden", "sm:inline-flex"]),
     );
   });
 });
 
-describe("Share overflow menu", () => {
+describe("More menu", () => {
   const openMenu = () => {
-    fireEvent.click(within(subHeader()).getByRole("button", { name: /^Share options/ }));
+    fireEvent.click(within(subHeader()).getByRole("button", { name: "More" }));
     return screen.getByRole("menu");
   };
   const cls = (el: Element) => el.className.split(/\s+/);
 
-  it("holds each overflowed control, shown only below the width where its inline version hides", () => {
+  it("shows at every width with a vertical ⋮ icon, holding shortcuts and (below sm) settings", () => {
     renderPage();
+    const more = within(subHeader()).getByRole("button", { name: "More" });
+    expect(cls(more.closest("div.relative")!).filter((c) => c === "hidden" || c.endsWith(":hidden"))).toEqual([]);
+    expect(more.querySelector("svg")!.getAttribute("class")).toContain("lucide-ellipsis-vertical");
     const menu = openMenu();
-    // Versioning lives in the Repository popover, not the overflow menu.
-    expect(within(menu).queryByRole("group", { name: "Branch" })).toBeNull();
-    expect(within(menu).queryByRole("menuitemcheckbox", { name: /revision history/i })).toBeNull();
-    expect(cls(within(menu).getByRole("menuitem", { name: "Keyboard shortcuts" }))).toContain("lg:hidden");
-    expect(cls(within(menu).getByRole("menuitem", { name: "Normalize ontology" }))).toContain("xl:hidden");
-    expect(cls(within(menu).getByRole("menuitem", { name: "Project dashboard" }))).toContain("sm:hidden");
-    expect(cls(within(menu).getByRole("menuitem", { name: "Project settings" }))).toContain("sm:hidden");
-    // The share items themselves stay.
-    expect(within(menu).getByRole("menuitem", { name: "Copy project link" })).toBeDefined();
-    expect(within(menu).getByRole("menuitem", { name: /Pull requests/ }).textContent).toContain("2");
+    const items = within(menu).getAllByRole("menuitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toBe(within(menu).getByRole("menuitem", { name: "Keyboard shortcuts" }));
+    expect(items[0].getAttribute("aria-keyshortcuts")).toBe("?");
+    expect(items[1]).toBe(within(menu).getByRole("menuitem", { name: /Project settings/ }));
+    // Settings is inline from sm up, so its menu item hides there.
+    expect(cls(within(menu).getByRole("menuitem", { name: /Project settings/ }))).toContain("sm:hidden");
   });
 
-  it("links Normalize, dashboard and settings where the inline controls go", () => {
+  it("links settings on the editor's branch, at the Normalization card when it's recommended", () => {
     renderPage();
-    const menu = openMenu();
-    expect(within(menu).getByRole("menuitem", { name: "Normalize ontology" }).getAttribute("href")).toBe(
-      `/projects/${PROJECT_ID}/settings#normalization`,
-    );
-    expect(within(menu).getByRole("menuitem", { name: "Project dashboard" }).getAttribute("href")).toBe(
-      `/projects/${PROJECT_ID}/dashboard`,
-    );
-    expect(within(menu).getByRole("menuitem", { name: "Project settings" }).getAttribute("href")).toBe(
-      `/projects/${PROJECT_ID}/settings`,
-    );
+    const item = within(openMenu()).getByRole("menuitem", { name: /Project settings/ });
+    expect(item.getAttribute("href")).toBe(`/projects/${PROJECT_ID}/settings?branch=main#normalization`);
+    expect(within(item).getByRole("img", { name: "normalization recommended" })).toBeDefined();
   });
 
-  it("leaves out Normalize when it doesn't apply, and hides the overflow from lg up", () => {
+  it("drops the normalization dot and anchor when it doesn't apply", () => {
     mockViewer = makeViewer({ normalizationStatus: { needs_normalization: false } });
     renderPage();
-    const menu = openMenu();
-    expect(within(menu).queryByRole("menuitem", { name: "Normalize ontology" })).toBeNull();
-    expect(within(menu).getByRole("menuitem", { name: "Project settings" })).toBeDefined();
-    expect(cls(within(menu).getByRole("menuitem", { name: "Keyboard shortcuts" }).parentElement!)).toContain("lg:hidden");
+    expect(within(subHeader()).queryByTestId("settings-normalize-dot")).toBeNull();
+    const item = within(openMenu()).getByRole("menuitem", { name: /Project settings/ });
+    expect(item.getAttribute("href")).toBe(`/projects/${PROJECT_ID}/settings?branch=main`);
+    expect(within(item).queryByRole("img")).toBeNull();
   });
 
   it("opens the keyboard shortcuts dialog", async () => {
@@ -290,7 +312,95 @@ describe("Share overflow menu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
     expect(await screen.findByRole("dialog")).toBeDefined();
   });
+});
 
+describe("Agent button", () => {
+  const agentButton = () => within(subHeader()).getByRole("button", { name: /^Agent/ });
+  const health = (over: Partial<AgentHealthSummary> = {}): AgentHealthSummary => ({
+    lint: { errors: 0, warnings: 0, info: 0, total: 0, checkedAt: "now", running: false },
+    consistency: { count: 0, checkedAt: "now" },
+    duplicates: { count: 0, checkedAt: "now" },
+    ...over,
+  });
+  const lint = (errors: number, warnings: number, info: number) => ({
+    errors, warnings, info, total: errors + warnings + info, checkedAt: "now", running: false,
+  });
+  const dot = () => within(subHeader()).queryByTestId("right-sidebar-lint-dot");
+  const closePanel = () => fireEvent.click(agentButton());
+
+  it("is labelled Agent, with the label hidden below sm", () => {
+    renderPage();
+    const label = within(agentButton()).getByText("Agent");
+    expect(label.className.split(/\s+/)).toEqual(expect.arrayContaining(["hidden", "sm:inline"]));
+  });
+
+  it("sits between Repository and Project settings, with More last", () => {
+    renderPage();
+    const bar = subHeader();
+    const order = [
+      within(bar).getByRole("button", { name: "Repository" }),
+      agentButton(),
+      within(bar).getByRole("link", { name: "Project settings" }),
+      within(bar).getByRole("button", { name: "More" }),
+    ];
+    for (let i = 1; i < order.length; i++) {
+      expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it("counts every health issue and colours the dot by the worst one", () => {
+    mockHealthSummary = health({ lint: lint(0, 0, 2), consistency: { count: 1, checkedAt: "now" }, duplicates: { count: 3, checkedAt: "now" } });
+    renderPage();
+    closePanel();
+    expect(agentButton().getAttribute("aria-label")).toBe("Agent (6 health issues)");
+    expect(dot()!.className).toContain("bg-amber-500");
+  });
+
+  it("shows a red dot for lint errors", () => {
+    mockHealthSummary = health({ lint: lint(1, 2, 0) });
+    renderPage();
+    closePanel();
+    expect(dot()!.className).toContain("bg-red-500");
+  });
+
+  it("shows a blue dot when there's only lint info", () => {
+    mockHealthSummary = health({ lint: lint(0, 0, 1) });
+    renderPage();
+    closePanel();
+    expect(dot()!.className).toContain("bg-blue-500");
+  });
+
+  it("falls back to the lint summary until the health summary loads", () => {
+    renderPage();
+    closePanel();
+    // The fixture's lint summary has an error.
+    expect(dot()!.className).toContain("bg-red-500");
+  });
+
+  it("has no dot or count when the Health tab is clean, nor while the panel is open", () => {
+    mockHealthSummary = health();
+    renderPage();
+    expect(dot()).toBeNull();
+    closePanel();
+    expect(dot()).toBeNull();
+    expect(agentButton().getAttribute("aria-label")).toBe("Agent");
+  });
+});
+
+describe("Entity counts", () => {
+  const counts = () => JSON.parse(screen.getByTestId("editor-layout").getAttribute("data-entity-counts")!);
+
+  it("passes the class, property and individual counts to the entity tree's tabs", () => {
+    renderPage();
+    expect(counts()).toEqual({ classes: 14, properties: 5, individuals: 7 });
+  });
+
+  it("omits counts that haven't loaded", () => {
+    mockEntityCounts = undefined;
+    mockViewer = makeViewer({ isTreeLoading: true });
+    renderPage();
+    expect(counts()).toEqual({});
+  });
 });
 
 describe("Repository popover", () => {
@@ -305,6 +415,22 @@ describe("Repository popover", () => {
     expect(within(bar).queryByRole("button", { name: "History" })).toBeNull();
     expect(within(bar).queryByRole("button", { name: /^GitHub/ })).toBeNull();
     expect(within(bar).getByTestId("repository-branch").textContent).toBe("main");
+  });
+
+  it("writes the branch to the URL in place, and not again once it is there", () => {
+    // Regression: a router.replace() on every mount fell back to a full reload, which
+    // remounted the page and reloaded it again about once a second.
+    window.history.replaceState(null, "", `/projects/${PROJECT_ID}`);
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    const { unmount } = renderPage();
+    expect(replaceState).toHaveBeenCalledTimes(1);
+    expect(window.location.search).toBe("?branch=main");
+    unmount();
+    replaceState.mockClear();
+    renderPage();
+    expect(replaceState).not.toHaveBeenCalled();
+    replaceState.mockRestore();
+    window.history.replaceState(null, "", "/");
   });
 
   it("groups the branch, history and GitHub sections", () => {
@@ -351,7 +477,7 @@ describe("Project editor sidebars", () => {
   const treeOpen = () => screen.getByTestId("editor-layout").getAttribute("data-tree-open");
   const rightOpen = () => screen.queryByTestId("right-sidebar") !== null;
   const treeToggle = () => within(subHeader()).getByRole("button", { name: "Entity tree" });
-  const rightToggle = () => within(subHeader()).getByRole("button", { name: /Agent and health panel/ });
+  const rightToggle = () => within(subHeader()).getByRole("button", { name: /^Agent/ });
 
   let setNarrow: (narrow: boolean) => void;
   beforeEach(() => {
@@ -427,5 +553,64 @@ describe("Project editor sidebars", () => {
     renderPage();
     expect(rightOpen()).toBe(true);
     expect(treeOpen()).toBe("false");
+  });
+});
+
+describe("Ontology file in the breadcrumb", () => {
+  beforeEach(() => {
+    mockViewer = makeViewer({
+      project: {
+        id: PROJECT_ID,
+        name: "Newman Center",
+        description: "Campus ministry ontology",
+        source_file_path: `projects/${PROJECT_ID}/src/newman.ttl`,
+        git_ontology_path: "src/newman.ttl",
+      },
+    });
+  });
+
+  it("reads Projects › name › file, with a menu of the folder's RDF files and New ontology", async () => {
+    renderPage();
+    const crumbs = within(subHeader()).getByRole("navigation", { name: "Breadcrumb" });
+    const button = within(crumbs).getByTestId("ontology-file-button");
+    expect(button.textContent).toContain("newman.ttl");
+    expect(button.getAttribute("aria-label")).toBe("Ontology file: src/newman.ttl");
+    expect(await tooltipFor(button)).toMatch(/^Ontology file: src\/newman\.ttl\. The project edits one ontology file at a time/);
+    fireEvent.click(button);
+    const menu = screen.getByRole("menu", { name: "Ontology file" });
+    expect(await within(menu).findByText("legacy/newman.owl")).toBeTruthy();
+    expect(within(menu).getByRole("menuitemradio", { checked: true }).textContent).toContain("src/newman.ttl");
+    expect(within(menu).getByRole("menuitem", { name: /New ontology/ })).toBeTruthy();
+    expect(ontologyFilesApi.listOntologyFiles).toHaveBeenCalledWith(PROJECT_ID, "main");
+  });
+});
+
+describe("No Ontology File view", () => {
+  beforeEach(() => {
+    mockViewer = makeViewer({ hasOntology: false });
+    ontologyFilesApi.listOntologyFiles.mockResolvedValue({
+      project_id: PROJECT_ID,
+      branch: "main",
+      active_path: null,
+      active_exists: false,
+      suggested_file_name: "ontology.ttl",
+      files: [
+        { path: "legacy/newman.owl", format: "rdfxml", size_bytes: 20, declares_ontology: true, active: false, turtle_path: "legacy/newman.ttl", turtle_exists: false },
+      ],
+    });
+  });
+
+  it("offers the folder's RDF files and a new ontology instead of pointing to settings", async () => {
+    renderPage();
+    expect(screen.getByRole("heading", { name: "No Ontology File" })).toBeTruthy();
+    expect(screen.queryByText(/Import an ontology file from the project settings/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Go to Settings" })).toBeNull();
+    const panel = screen.getByTestId("ontology-file-panel");
+    expect(await within(panel).findByRole("button", { name: "Use legacy/newman.owl" })).toBeTruthy();
+    expect(within(panel).getByText(/Converts to legacy\/newman\.ttl/)).toBeTruthy();
+    fireEvent.click(within(panel).getByRole("button", { name: /New ontology/ }));
+    const dialog = await screen.findByTestId("new-ontology-dialog");
+    expect(within(dialog).queryByTestId("new-ontology-replace-warning")).toBeNull();
+    expect((within(dialog).getByLabelText("File name") as HTMLInputElement).value).toBe("ontology.ttl");
   });
 });

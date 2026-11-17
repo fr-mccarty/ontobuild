@@ -7,7 +7,8 @@ export type EntityTab = "classes" | "properties" | "individuals";
 interface EntityTabBarProps {
   activeTab: EntityTab;
   onTabChange: (tab: EntityTab) => void;
-  classCounts?: { total: number };
+  /** Entity counts shown after each tab's label; a missing count shows nothing. */
+  counts?: Partial<Record<EntityTab, number>>;
 }
 
 const tabs: { id: EntityTab; label: string }[] = [
@@ -16,7 +17,7 @@ const tabs: { id: EntityTab; label: string }[] = [
   { id: "individuals", label: "Individuals" },
 ];
 
-export function EntityTabBar({ activeTab, onTabChange }: EntityTabBarProps) {
+export function EntityTabBar({ activeTab, onTabChange, counts }: EntityTabBarProps) {
   return (
     <div className="flex border-b border-slate-200 dark:border-slate-700">
       {tabs.map((tab) => (
@@ -31,6 +32,11 @@ export function EntityTabBar({ activeTab, onTabChange }: EntityTabBarProps) {
           )}
         >
           {tab.label}
+          {counts?.[tab.id] !== undefined && (
+            <span data-testid={`entity-count-${tab.id}`} className="ml-1 font-normal text-slate-400 tabular-nums dark:text-slate-500">
+              {counts[tab.id]!.toLocaleString()}
+            </span>
+          )}
         </button>
       ))}
     </div>

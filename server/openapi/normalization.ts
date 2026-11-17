@@ -47,6 +47,7 @@ export const normalizationSchemas: Record<string, Schema> = {
       "report",
       "is_dry_run",
       "commit_hash",
+      "ontology_path",
       "original_content",
       "normalized_content",
     ],
@@ -64,6 +65,11 @@ export const normalizationSchemas: Record<string, Schema> = {
       commit_hash: {
         type: ["string", "null"],
         description: "Commit created by the run; null for dry runs or when the source was already normalized.",
+      },
+      ontology_path: {
+        type: ["string", "null"],
+        description:
+          "The ontology file the run normalized. Null for runs recorded before OntoBuilder stored it; those count as the project's current file until it switches files.",
       },
       original_content: {
         type: ["string", "null"],
@@ -126,7 +132,11 @@ export const normalizationDocs: DocMap = {
           required: ["needs_normalization", "last_run", "last_run_id", "last_check", "preview_report", "error"],
           properties: {
             needs_normalization: { type: ["boolean", "null"], description: "Null when `error` is set." },
-            last_run: { type: ["string", "null"], format: "date-time", description: "When the last non-dry run happened." },
+            last_run: {
+              type: ["string", "null"],
+              format: "date-time",
+              description: "When the last non-dry run of the project's current ontology file happened (runs of files the project used before don't count).",
+            },
             last_run_id: { type: ["string", "null"] },
             last_check: { type: ["string", "null"], format: "date-time" },
             preview_report: {
@@ -218,7 +228,9 @@ export const normalizationDocs: DocMap = {
   },
   "GET /projects/{id}/normalization/history": {
     summary: "List normalization runs",
-    description: "Returns recent runs, newest first. `total` is the number of matching runs, which may exceed `limit`.",
+    description:
+      "Returns recent runs of the project's current ontology file, newest first (runs of files the project used before are kept, and listed again after switching back). " +
+      "`total` is the number of matching runs, which may exceed `limit`.",
     query: [
       { name: "limit", description: "Maximum number of runs.", schema: { type: "integer", minimum: 1, maximum: 50, default: 10 } },
       { name: "include_dry_runs", description: "Include dry runs.", schema: { type: "boolean", default: false } },

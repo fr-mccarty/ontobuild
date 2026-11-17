@@ -185,7 +185,8 @@ describe("permissions decide the tool list", () => {
     expect(systemText).toContain("Edit Ontology");
     expect(systemText).toContain("Edit Code");
     expect(systemText).toContain("code/");
-    expect(systemText).toMatch(/ontology\.ttl\) and the project's code under code\//);
+    expect(systemText).toMatch(/the page context names it\) and the project's code under code\//);
+    expect(systemText).toMatch(/one ontology file at a time.*set_ontology_file and create_ontology_file/);
     expect(systemText).toMatch(/edited only through the ontology tools/);
   });
 });

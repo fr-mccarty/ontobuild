@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { ArrowLeft, Trash2, Tag, Check, GitPullRequest, AlertCircle, FileText, RefreshCw, History, Play, CheckCircle, XCircle, Database, Shield } from "lucide-react";
+import { ArrowLeft, Trash2, Tag, Check, GitPullRequest, AlertCircle, FileCode, FileText, RefreshCw, History, Play, CheckCircle, XCircle, Database, Shield, Layers } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { ProjectForm } from "@/components/projects/project-form";
@@ -29,7 +29,7 @@ import { useProject, projectQueryKeys } from "@/lib/hooks/useProject";
 import { useProjectHomeHref } from "@/lib/hooks/useProjectHomeHref";
 import { useNormalizationStatus, normalizationQueryKeys } from "@/lib/hooks/useNormalizationStatus";
 import { useIndexStatus, indexQueryKeys } from "@/lib/hooks/useIndexStatus";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import {
   lintApi,
@@ -38,6 +38,10 @@ import {
   type LintSummary,
 } from "@/lib/api/lint";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ImportsManager } from "@/components/project/ImportsManager";
+import { SettingsToc, type SettingsTocItem } from "@/components/projects/settings-toc";
+import { GitHubMark, GitHubPanel } from "@/components/project/GitHub";
+import { OntologyFilePanel } from "@/components/project/OntologyFile";
 
 const NormalizationDiffViewer = dynamic(
   () => import("@/components/editor/NormalizationDiffViewer").then((mod) => mod.NormalizationDiffViewer),
@@ -57,8 +61,13 @@ export default function ProjectSettingsPage() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.id as string;
+  // The editor passes its branch, so imports are edited on the branch the user was working on.
+  const branch = useSearchParams().get("branch") || undefined;
 
-  const projectHomeHref = useProjectHomeHref(projectId);
+  const selectionHref = useProjectHomeHref(projectId);
+  const projectHomeHref = branch
+    ? `${selectionHref}${selectionHref.includes("?") ? "&" : "?"}branch=${encodeURIComponent(branch)}`
+    : selectionHref;
 
   const queryClient = useQueryClient();
 
@@ -478,11 +487,67 @@ export default function ProjectSettingsPage() {
     );
   }
 
+  const hasSource = !!project.source_file_path;
+  const tocItems: SettingsTocItem[] = [
+    { id: "general", label: "General" },
+    { id: "ontology-file", label: "Ontology File", attention: !hasSource },
+    ...(hasSource ? [{ id: "imports", label: "Imports" }] : []),
+    { id: "github", label: "GitHub" },
+    ...(hasSource ? [{ id: "label-preferences", label: "Label Preferences" }] : []),
+    ...(project.normalization_report ? [{ id: "normalization-report", label: "Import Normalization Report" }] : []),
+    ...(hasSource
+      ? [
+          {
+            id: "normalization",
+            label: "Ontology Normalization",
+            attention: !!normalizationStatus?.needs_normalization,
+          },
+          { id: "ontology-index", label: "Ontology Search Index" },
+        ]
+      : []),
+    { id: "pull-requests", label: "Pull Request Settings" },
+    ...(hasSource ? [{ id: "lint-config", label: "Lint Rule Configuration" }] : []),
+    { id: "danger-zone", label: "Danger Zone", danger: true },
+  ];
+
+  // Shown inside the "Normalization recommended" notice when it applies, otherwise under the card text.
+  const normalizationActions = (
+    <>
+      <Button
+        onClick={() => handleRunNormalization(true)}
+        variant="outline"
+        disabled={isRunningNormalization || !!normalizationJobId}
+      >
+        Preview Changes
+      </Button>
+      <Button
+        onClick={() => handleRunNormalization(false)}
+        disabled={isRunningNormalization || !!normalizationJobId}
+        variant={normalizationStatus?.needs_normalization ? "primary" : "outline"}
+      >
+        {isRunningNormalization || normalizationJobId ? (
+          <>
+            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            {normalizationJobStatus === "running" ? "Processing..." : "Queued..."}
+          </>
+        ) : (
+          <>
+            <Play className="mr-2 h-4 w-4" />
+            {normalizationStatus?.needs_normalization
+              ? "Run Normalization"
+              : "Re-normalize"}
+          </>
+        )}
+      </Button>
+    </>
+  );
+
   return (
     <>
       <Header />
       <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900">
-        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* scroll-mt keeps a section's heading clear of the sticky header when the contents link to it. */}
+        <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8 [&>section]:scroll-mt-20">
           <Link
             href={projectHomeHref}
             className="mb-6 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
@@ -496,9 +561,15 @@ export default function ProjectSettingsPage() {
               Project Settings
             </h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Manage your project settings
+              {project.name}
+            </p>
+            <p data-testid="project-dates" className="mt-1 flex flex-wrap gap-x-4 text-xs text-slate-500 dark:text-slate-400">
+              <span>Created {formatDate(project.created_at)}</span>
+              {project.updated_at && <span>Updated {formatDate(project.updated_at)}</span>}
             </p>
           </div>
+
+          <SettingsToc items={tocItems} />
 
           {successMessage && (
             <div className="mb-6 rounded-lg bg-green-50 p-4 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
@@ -511,7 +582,7 @@ export default function ProjectSettingsPage() {
             </div>
           )}
 
-          <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+          <section id="general" className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">
               General
             </h2>
@@ -527,8 +598,79 @@ export default function ProjectSettingsPage() {
             />
           </section>
 
+          <section
+            id="ontology-file"
+            className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <FileCode className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ontology File</h2>
+              {branch && (
+                <span className="rounded-sm bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                  branch {branch}
+                </span>
+              )}
+            </div>
+            <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+              The project edits one ontology file at a time.{" "}
+              {hasSource && project.git_ontology_path ? (
+                <>
+                  Active: <code data-testid="settings-active-ontology-file" className="break-all">{project.git_ontology_path}</code>.
+                </>
+              ) : (
+                <>It has none yet.</>
+              )}{" "}
+              Switch to another RDF file in the project folder or create a new ontology; the previous file stays in the folder
+              unchanged, so you can switch back. The setting applies to every branch, and a file that is converted or
+              created is committed on {branch ? `branch ${branch}` : "the default branch"}.
+            </p>
+            <OntologyFilePanel
+              projectId={projectId}
+              branch={branch}
+              projectName={project.name}
+              currentIri={project.ontology_iri}
+            />
+          </section>
+
           {project.source_file_path && (
-            <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+            <section
+              id="imports"
+              className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
+            >
+              <div className="mb-1 flex items-center gap-2">
+                <Layers className="h-5 w-5 text-slate-500" />
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Imports</h2>
+                {branch && (
+                  <span className="rounded-sm bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    branch {branch}
+                  </span>
+                )}
+              </div>
+              <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+                Ontologies this one imports (<code>owl:imports</code>), including what they import in turn. Their classes
+                appear read-only in the class tree, and local classes can use them as parents.
+              </p>
+              <ImportsManager projectId={projectId} branch={branch} />
+            </section>
+          )}
+
+          <section
+            id="github"
+            className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <GitHubMark className="h-5 w-5 text-slate-500" />
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">GitHub</h2>
+            </div>
+            <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+              Link this project&apos;s repository to a remote. Sign-in uses your existing git setup (gh auth login, a
+              credential helper or SSH keys); OntoBuilder never stores tokens.
+            </p>
+            <GitHubPanel projectId={projectId} mode="settings" />
+          </section>
+
+          {project.source_file_path && (
+            <section id="label-preferences" className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
               <div className="mb-4 flex items-center gap-2">
                 <Tag className="h-5 w-5 text-slate-500" />
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -558,7 +700,7 @@ export default function ProjectSettingsPage() {
           )}
 
           {project.normalization_report && (
-            <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+            <section id="normalization-report" className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
               <div className="mb-4 flex items-center gap-2">
                 <FileText className="h-5 w-5 text-slate-500" />
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -708,6 +850,9 @@ export default function ProjectSettingsPage() {
                       <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                         The ontology source file can be optimized for better formatting and smaller diffs.
                       </p>
+                      <div data-testid="normalization-actions" className="mt-3 flex flex-wrap items-center gap-3">
+                        {normalizationActions}
+                      </div>
                     </div>
                   ) : (
                     <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
@@ -807,41 +952,16 @@ export default function ProjectSettingsPage() {
                 </div>
               )}
 
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3">
-                  <Button
-                    onClick={() => handleRunNormalization(true)}
-                    variant="outline"
-                    disabled={isRunningNormalization || !!normalizationJobId}
-                  >
-                    Preview Changes
-                  </Button>
-                  <Button
-                    onClick={() => handleRunNormalization(false)}
-                    disabled={isRunningNormalization || !!normalizationJobId}
-                    variant={normalizationStatus?.needs_normalization ? "primary" : "outline"}
-                  >
-                    {isRunningNormalization || normalizationJobId ? (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        {normalizationJobStatus === "running" ? "Processing..." : "Queued..."}
-                      </>
-                    ) : (
-                      <>
-                        <Play className="mr-2 h-4 w-4" />
-                        {normalizationStatus?.needs_normalization
-                          ? "Run Normalization"
-                          : "Re-normalize"}
-                      </>
-                    )}
-                  </Button>
+              {!normalizationStatus?.needs_normalization && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">{normalizationActions}</div>
+                  {!normalizationJobId && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Re-normalizing will apply canonical blank node identifiers for more stable diffs.
+                    </p>
+                  )}
                 </div>
-                {!normalizationStatus?.needs_normalization && !normalizationJobId && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Re-normalizing will apply canonical blank node identifiers for more stable diffs.
-                  </p>
-                )}
-              </div>
+              )}
 
               {showNormalizationHistory && (
                 <div className="mt-4 rounded-lg border border-slate-200 dark:border-slate-600">
@@ -987,7 +1107,7 @@ export default function ProjectSettingsPage() {
             </section>
           )}
 
-          <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+          <section id="pull-requests" className="mb-8 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-4 flex items-center gap-2">
               <GitPullRequest className="h-5 w-5 text-slate-500" />
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -1039,7 +1159,7 @@ export default function ProjectSettingsPage() {
             />
           )}
 
-          <section className="rounded-lg border border-red-200 bg-white p-6 dark:border-red-900/50 dark:bg-slate-800">
+          <section id="danger-zone" className="rounded-lg border border-red-200 bg-white p-6 dark:border-red-900/50 dark:bg-slate-800">
             <h2 className="mb-4 text-lg font-semibold text-red-600 dark:text-red-400">
               Danger Zone
             </h2>

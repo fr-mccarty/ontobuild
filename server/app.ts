@@ -17,6 +17,7 @@ import workspace from "./routes/workspace";
 import imports from "./routes/imports";
 import github from "./routes/github";
 import prompts from "./routes/prompts";
+import tools from "./routes/tools";
 import { buildOpenApiSpec } from "./openapi";
 import { localOnly } from "./localOnly";
 import { ensureMigrated } from "./workspace";
@@ -32,7 +33,7 @@ app.use("*", async (_c, next) => {
 
 app.onError((err, c) => {
   if (err instanceof ApiError) {
-    return c.json({ detail: err.detail }, err.status as ContentfulStatusCode);
+    return c.json({ ...err.extra, detail: err.detail }, err.status as ContentfulStatusCode);
   }
   if (err instanceof HTTPException) {
     return c.json({ detail: err.message }, err.status);
@@ -64,6 +65,7 @@ app.route("/", workspace);
 app.route("/", imports);
 app.route("/", github);
 app.route("/", prompts);
+app.route("/", tools);
 app.route("/", createAgentRoutes(() => app));
 
 app.get("/openapi.json", (c) => c.json(buildOpenApiSpec(app.routes)));

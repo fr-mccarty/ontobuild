@@ -43,6 +43,8 @@ interface RunRow {
   report_json: string;
   is_dry_run: number;
   commit_hash: string | null;
+  /** The ontology file the run was about; NULL for runs from before this was recorded. */
+  ontology_path: string | null;
 }
 
 async function normalize(content: string, filename: string) {
@@ -139,15 +141,29 @@ async function checkStatus(project: ProjectRow, branch?: string | null): Promise
   return row;
 }
 
-function lastRealRun(projectId: string) {
+/**
+ * Normalization history is per ontology file: a run belongs to the file it normalized, so after
+ * the project switches files the status and history describe the new file only (switching back
+ * shows the old file's runs again). Runs recorded before the file was stored have no path; they
+ * count as the project's current file until the next switch, which assigns them to the file it
+ * switches away from (see the "ontology-file-changed" listener below). Runs made before this
+ * code existed and before a switch at that time are therefore attributed to the file that was
+ * active when the database was upgraded, which is the best guess available.
+ */
+const RUN_FILE_FILTER = "(ontology_path = ? OR ontology_path IS NULL)";
+
+function lastRealRun(project: ProjectRow) {
   return get<RunRow>(
-    "SELECT * FROM normalization_runs WHERE project_id = ? AND is_dry_run = 0 ORDER BY created_at DESC LIMIT 1",
-    projectId,
+    `SELECT * FROM normalization_runs WHERE project_id = ? AND ${RUN_FILE_FILTER} AND is_dry_run = 0 ORDER BY created_at DESC LIMIT 1`,
+    project.id,
+    ontologyFilePath(project),
   );
 }
 
 function recordRun(opts: {
   projectId: string;
+  /** The ontology file normalized. */
+  ontologyPath: string;
   triggerType: string;
   report: NormalizationReport;
   dryRun: boolean;
@@ -170,6 +186,7 @@ function recordRun(opts: {
     format_converted: opts.report.format_converted,
     is_dry_run: opts.dryRun,
     commit_hash: opts.commitHash,
+    ontology_path: opts.ontologyPath,
   };
   insert("normalization_runs", row);
   return get<RunRow>("SELECT * FROM normalization_runs WHERE id = ?", row.id)!;
@@ -185,6 +202,7 @@ function runToResponse(r: RunRow, extra: { original_content?: string | null; nor
     report: fromJson<NormalizationReport | null>(r.report_json, null),
     is_dry_run: bool(r.is_dry_run),
     commit_hash: r.commit_hash,
+    ontology_path: r.ontology_path,
     original_content: extra.original_content ?? null,
     normalized_content: extra.normalized_content ?? null,
   };
@@ -209,7 +227,7 @@ async function runNormalization(projectId: string, dryRun: boolean, branch?: str
     });
     commitHash = commit.hash;
   }
-  const runRow = recordRun({ projectId, triggerType, report, dryRun, commitHash });
+  const runRow = recordRun({ projectId, ontologyPath: src.filePath, triggerType, report, dryRun, commitHash });
   return { run: runRow, original: dryRun ? src.content : null, normalized: dryRun ? normalized : null };
 }
 
@@ -226,6 +244,20 @@ function jobToStatus(job: Job) {
   };
 }
 
+// The cached "needs normalization?" check is keyed by commit, and switching files keeps the commit.
+// Runs without a file (recorded before the file was stored) belonged to the file being left.
+onOntologyEvent("normalization:ontology-file-changed", (e) => {
+  if (e.type !== "ontology-file-changed") return;
+  run("DELETE FROM normalization_checks WHERE project_id = ?", e.projectId);
+  if (e.previousPath) {
+    run(
+      "UPDATE normalization_runs SET ontology_path = ? WHERE project_id = ? AND ontology_path IS NULL",
+      e.previousPath,
+      e.projectId,
+    );
+  }
+});
+
 onOntologyEvent("normalization:import-run", (e) => {
   if (e.type !== "commit" || e.origin !== "import") return;
   const project = getProjectRow(e.projectId);
@@ -233,6 +265,8 @@ onOntologyEvent("normalization:import-run", (e) => {
   if (!project || !report || typeof report.original_format !== "string") return;
   recordRun({
     projectId: e.projectId,
+    // The project row is updated before an import commit, so this is the file the commit wrote.
+    ontologyPath: ontologyFilePath(project),
     triggerType: "import",
     report,
     dryRun: false,
@@ -243,7 +277,7 @@ onOntologyEvent("normalization:import-run", (e) => {
 r.get("/projects/:id/normalization/status", async (c) => {
   const project = requireProject(c.req.param("id"));
   const branch = await requireBranch(project.id, c.req.query("branch"));
-  const last = lastRealRun(project.id);
+  const last = lastRealRun(project);
   const base = {
     last_run: last?.created_at ?? null,
     last_run_id: last?.id ?? null,
@@ -273,7 +307,7 @@ r.post("/projects/:id/normalization/refresh", async (c) => {
   const jobId = startJob(CHECK_JOB, { projectId: project.id, branch }, async () => {
     const p = requireProject(project.id);
     const check = await checkStatus(p, branch);
-    const last = lastRealRun(project.id);
+    const last = lastRealRun(p);
     return {
       project_id: project.id,
       needs_normalization: check ? bool(check.needs_normalization) : null,
@@ -341,16 +375,17 @@ r.get("/projects/:id/normalization/history", (c) => {
   const project = requireProject(c.req.param("id"));
   const limit = queryInt(c, "limit", 10, { min: 1, max: 50 });
   const includeDry = queryBool(c, "include_dry_runs", false);
+  // The current ontology file's runs only (see RUN_FILE_FILTER).
+  const where = `project_id = ? AND ${RUN_FILE_FILTER} ${includeDry ? "" : "AND is_dry_run = 0"}`;
+  const file = ontologyFilePath(project);
   const rows = all<RunRow>(
-    `SELECT * FROM normalization_runs WHERE project_id = ? ${includeDry ? "" : "AND is_dry_run = 0"} ORDER BY created_at DESC LIMIT ?`,
+    `SELECT * FROM normalization_runs WHERE ${where} ORDER BY created_at DESC LIMIT ?`,
     project.id,
+    file,
     limit,
   );
   const items = rows.map((r) => runToResponse(r));
-  const total = get<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM normalization_runs WHERE project_id = ? ${includeDry ? "" : "AND is_dry_run = 0"}`,
-    project.id,
-  )!.n;
+  const total = get<{ n: number }>(`SELECT COUNT(*) AS n FROM normalization_runs WHERE ${where}`, project.id, file)!.n;
   return c.json({ items, total: Number(total) });
 });
 

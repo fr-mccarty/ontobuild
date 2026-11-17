@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { ClassTree } from "@/components/editor/ClassTree";
 import { ClassDetailPanel, type TreeNodeFallback } from "@/components/editor/ClassDetailPanel";
@@ -47,6 +47,11 @@ export interface StandardEditorLayoutProps {
   nodes: ClassTreeNode[];
   isTreeLoading: boolean;
   treeError: string | null;
+  /**
+   * Renders a load error in the entity tree pane (the class tree, properties and individuals),
+   * e.g. a "file isn't on this branch" notice. Defaults to the error text in a plain box.
+   */
+  renderTreeError?: (message: string) => ReactNode;
   selectedIri: string | null;
   selectNode: (iri: string) => void;
   expandNode: (iri: string) => void;
@@ -94,6 +99,8 @@ export interface StandardEditorLayoutProps {
    * panel or the agent) still updates it for when it opens again.
    */
   treePanelOpen?: boolean;
+  /** Counts shown on the Classes / Properties / Individuals tabs. */
+  entityCounts?: Partial<Record<EntityTab, number>>;
 }
 
 export function StandardEditorLayout(props: StandardEditorLayoutProps) {
@@ -104,6 +111,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     nodes,
     isTreeLoading,
     treeError,
+    renderTreeError,
     selectedIri,
     selectNode,
     expandNode,
@@ -304,7 +312,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
         className="flex-shrink-0 bg-white dark:bg-slate-800"
         style={{ width: treePanelWidth }}
       >
-        <EntityTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+        <EntityTabBar activeTab={activeTab} onTabChange={setActiveTab} counts={props.entityCounts} />
 
         <EntityTreeToolbar
           canAdd={canEdit && activeTab === "classes"}
@@ -332,11 +340,15 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" />
                 </div>
               ) : treeError ? (
-                <div className="p-4">
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center dark:border-red-900/50 dark:bg-red-900/20">
-                    <p className="text-sm text-red-700 dark:text-red-400">{treeError}</p>
+                renderTreeError ? (
+                  renderTreeError(treeError)
+                ) : (
+                  <div className="p-4">
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center dark:border-red-900/50 dark:bg-red-900/20">
+                      <p className="text-sm text-red-700 dark:text-red-400">{treeError}</p>
+                    </div>
                   </div>
-                </div>
+                )
               ) : nodes.length === 0 ? (
                 <div className="p-4 text-center">
                   <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -386,6 +398,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
               selectedIri={selectedPropertyIri}
               onSelect={setSelectedPropertyIri}
               refreshKey={entityListRefreshKey}
+              renderError={renderTreeError}
             />
           )}
 
@@ -396,6 +409,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
               selectedIri={selectedIndividualIri}
               onSelect={setSelectedIndividualIri}
               refreshKey={entityListRefreshKey}
+              renderError={renderTreeError}
             />
           )}
         </div>

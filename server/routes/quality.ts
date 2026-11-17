@@ -4,7 +4,7 @@ import * as git from "../git";
 import { get, nowIso, run, toJson, fromJson } from "../db";
 import { httpError } from "../http";
 import { getJob, startJob } from "../jobs";
-import { loadOntology, requireProject, requireBranch } from "../ontology";
+import { getProjectRow, loadOntology, onOntologyEvent, ontologyFilePath, requireProject, requireBranch } from "../ontology";
 import {
   findDuplicates,
   indexedEntities,
@@ -18,7 +18,16 @@ const r = new Hono();
 const CONSISTENCY_JOB = "quality_consistency";
 const DUPLICATES_JOB = "quality_duplicates";
 
-function saveResult(projectId: string, branch: string, kind: string, result: unknown) {
+// Consistency and duplicate results describe one ontology file; drop them when the project switches files.
+onOntologyEvent("quality:ontology-file-changed", (e) => {
+  if (e.type !== "ontology-file-changed") return;
+  run("DELETE FROM quality_results WHERE project_id = ?", e.projectId);
+});
+
+function saveResult(projectId: string, branch: string, kind: string, result: unknown, filePath: string) {
+  // A check that started before the project switched ontology files doesn't save its stale result.
+  const project = getProjectRow(projectId);
+  if (!project || ontologyFilePath(project) !== filePath) return;
   run(
     `INSERT INTO quality_results (project_id, branch, kind, result, created_at) VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(project_id, branch, kind) DO UPDATE SET result = excluded.result, created_at = excluded.created_at`,
@@ -89,7 +98,7 @@ r.post("/projects/:id/quality/check", async (c) => {
     try {
       const loaded = await loadOntology(projectId, branch);
       const result = runConsistencyCheck(loaded.store, projectId, branch);
-      saveResult(projectId, branch, "consistency", result);
+      saveResult(projectId, branch, "consistency", result, loaded.filePath);
       return result;
     } catch (e) {
       throw new Error(errorDetail(e));
@@ -117,7 +126,7 @@ r.post("/projects/:id/quality/duplicates", async (c) => {
     try {
       const loaded = await loadOntology(projectId, branch);
       const result = findDuplicates(loaded.store, indexedEntities(loaded.store), threshold);
-      saveResult(projectId, branch, "duplicates", result);
+      saveResult(projectId, branch, "duplicates", result, loaded.filePath);
       return result;
     } catch (e) {
       throw new Error(errorDetail(e));

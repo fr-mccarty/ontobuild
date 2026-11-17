@@ -36,6 +36,49 @@ export const projectSchemas: Record<string, Schema> = {
       },
     },
   },
+  GitImportSummary: {
+    type: "object",
+    description: "How a repository was imported: the remote, the branch and which file became the ontology.",
+    required: ["remote_url", "web_url", "branch", "ontology_path", "source_path", "converted", "selection", "candidates", "warnings"],
+    properties: {
+      remote_url: { type: "string", description: "The clone's `origin` remote.", examples: ["https://github.com/acme/pizza.git"] },
+      web_url: { type: ["string", "null"], examples: ["https://github.com/acme/pizza"] },
+      branch: { type: ["string", "null"], description: "The branch checked out in the project folder." },
+      ontology_path: {
+        type: ["string", "null"],
+        description: "Repository-relative path of the Turtle file the project edits (also `git_ontology_path`), or null when no ontology was found.",
+        examples: ["src/ontology/pizza.ttl"],
+      },
+      source_path: {
+        type: ["string", "null"],
+        description: "The file the ontology came from. Differs from `ontology_path` when it was converted to Turtle.",
+      },
+      converted: {
+        type: "boolean",
+        description: "True when a non-Turtle file was converted and committed (locally, not pushed) as a new Turtle file; the original is unchanged.",
+      },
+      selection: {
+        type: "string",
+        enum: ["requested", "automatic", "none"],
+        description: "`requested` when `ontology_path` was given, `automatic` when discovered, `none` when there is no ontology.",
+      },
+      candidates: {
+        type: "array",
+        description: "RDF files found in the repository, best first.",
+        items: {
+          type: "object",
+          required: ["path", "format", "size_bytes", "declares_ontology"],
+          properties: {
+            path: { type: "string" },
+            format: { type: "string", enum: ["turtle", "n3", "ntriples", "nquads", "trig", "rdfxml", "jsonld"] },
+            size_bytes: { type: "integer" },
+            declares_ontology: { type: "boolean", description: "The start of the file mentions `owl:Ontology`." },
+          },
+        },
+      },
+      warnings: { type: "array", items: { type: "string" }, description: "For example files that could not be parsed." },
+    },
+  },
   Project: {
     type: "object",
     required: [
@@ -160,6 +203,74 @@ export const projectSchemas: Record<string, Schema> = {
       has_delete_permission: { type: "boolean" },
     },
   },
+  OntologyFileList: {
+    type: "object",
+    description: "The RDF files tracked by git on a branch of the project folder, and which one is the project's ontology.",
+    required: ["project_id", "branch", "active_path", "active_exists", "files", "suggested_file_name"],
+    properties: {
+      project_id: { type: "string" },
+      branch: { type: "string", description: "The branch that was listed." },
+      active_path: {
+        type: ["string", "null"],
+        description: "Repository-relative path of the project's ontology file (the same for every branch), or null when the project has none.",
+        examples: ["src/ontology/pizza.ttl"],
+      },
+      active_exists: {
+        type: "boolean",
+        description: "Whether the active file exists on this branch. When false the editor can't open the ontology on this branch.",
+      },
+      files: {
+        type: "array",
+        description: "RDF files, best ontology candidate first (same ranking as the Git import). Symbolic links, submodules and untracked files are not listed.",
+        items: {
+          type: "object",
+          required: ["path", "format", "size_bytes", "declares_ontology", "active", "turtle_path", "turtle_exists"],
+          properties: {
+            path: { type: "string" },
+            format: { type: "string", enum: ["turtle", "n3", "ntriples", "nquads", "trig", "rdfxml", "jsonld"] },
+            size_bytes: { type: "integer" },
+            declares_ontology: { type: "boolean", description: "The start of the file mentions `owl:Ontology`." },
+            active: { type: "boolean", description: "This is the project's ontology file." },
+            turtle_path: {
+              type: ["string", "null"],
+              description: "For a file that isn't Turtle: the Turtle file that choosing it makes the ontology. Null for Turtle files.",
+            },
+            turtle_exists: {
+              type: "boolean",
+              description:
+                "For a file that isn't Turtle: `turtle_path` exists already (an earlier conversion, or a Turtle copy next to it). Choosing the file reuses it when it is up to date; " +
+                "when it isn't, `PUT /projects/{id}/ontology-file` asks what to do (see `reconvert`).",
+            },
+          },
+        },
+      },
+      suggested_file_name: {
+        type: "string",
+        description: "A free name for a new ontology file: `ontology.ttl`, else `ontology-2.ttl` and so on.",
+        examples: ["ontology.ttl"],
+      },
+    },
+  },
+  OntologyFileChange: {
+    type: "object",
+    description: "The result of switching or creating the project's ontology file.",
+    required: ["project", "branch", "path", "source_path", "converted", "reused", "replaced", "previous_path", "commit_hash", "warnings"],
+    properties: {
+      project: ref("Project"),
+      branch: { type: "string", description: "The branch the file was checked (and any commit made) on." },
+      path: { type: "string", description: "The Turtle file the project now edits (also `project.git_ontology_path`)." },
+      source_path: { type: "string", description: "The file that was chosen: `path`, or the non-Turtle file it came from." },
+      converted: { type: "boolean", description: "The chosen file was converted to Turtle and committed as `path` (locally, not pushed)." },
+      reused: { type: "boolean", description: "The chosen file isn't Turtle and `path` already existed, so it was used without converting again." },
+      replaced: {
+        type: "boolean",
+        description: "The chosen file isn't Turtle, `path` already existed and was overwritten by converting the chosen file again (`reconvert: true`); `converted` is true too.",
+      },
+      previous_path: { type: ["string", "null"], description: "The ontology file before, or null when the project had none." },
+      commit_hash: { type: ["string", "null"], description: "The commit made (a conversion or the new file), or null when nothing was committed." },
+      warnings: { type: "array", items: { type: "string" } },
+    },
+  },
 };
 
 const branchQuery = {
@@ -254,6 +365,61 @@ export const projectDocs: DocMap = {
       "422": error("The body is not multipart, a required field is missing, or the file could not be parsed."),
     },
   },
+  "POST /projects/clone": {
+    summary: "Import a project from a Git repository",
+    description:
+      "Clones a repository, with its full history, into a new project folder. The clone's `origin` remote becomes the project's linked remote, " +
+      "so fetch, pull and push work straight away. Authentication uses the machine's git setup (`gh auth login`, a credential helper or SSH keys); " +
+      "prompts are disabled and nothing is stored. Only `https://`, `ssh://` and `git@host:owner/repo` URLs are accepted, without embedded credentials.\n\n" +
+      "The ontology is the `ontology_path` given, or else the best RDF file found: `ontology.ttl` at the top first, then files declaring `owl:Ontology`, " +
+      "outside test/example folders, Turtle before other formats, shallowest first. A Turtle file is edited where it is; another format is converted " +
+      "to Turtle, normalized like an uploaded file, and committed as `ontology.ttl` (or `<name>.ttl` beside the original when that exists). " +
+      "With no readable RDF file the project is created without an ontology. The name defaults to the repository name and the description to the ontology's description.",
+    body: {
+      required: true,
+      schema: {
+        type: "object",
+        required: ["url"],
+        properties: {
+          url: { type: "string", examples: ["https://github.com/acme/pizza.git", "git@github.com:acme/pizza.git"] },
+          branch: { type: ["string", "null"], description: "Branch to check out. Defaults to the repository's default branch." },
+          name: { type: ["string", "null"], maxLength: 255, description: "Overrides the project name." },
+          description: { type: ["string", "null"], maxLength: 5000, description: "Overrides the project description." },
+          ontology_path: {
+            type: ["string", "null"],
+            description: "Repository-relative path of the ontology file to use, instead of discovering one.",
+            examples: ["src/ontology/pizza.owl"],
+          },
+          is_public: { type: "boolean", description: "Defaults to false. The UI does not use it." },
+        },
+      },
+    },
+    responses: {
+      "201": {
+        description: "The new project, with how the repository was imported.",
+        schema: {
+          allOf: [
+            ref("Project"),
+            {
+              type: "object",
+              required: ["file_path", "git_import"],
+              properties: {
+                file_path: { type: ["string", "null"], description: "Same as `source_file_path`." },
+                git_import: ref("GitImportSummary"),
+              },
+            },
+          ],
+        },
+      },
+      "400": error("The URL is not an accepted git URL, or git failed for another reason."),
+      "403": error("Git could not sign in to the host."),
+      "404": error("The repository, or the requested branch, does not exist (or is private and git could not sign in)."),
+      "409": error("A converted ontology could not be saved because both target file names already exist."),
+      "422": error("A field is missing or invalid, or the requested `ontology_path` is not an RDF file in the repository or could not be parsed."),
+      "502": error("The host could not be reached."),
+      "504": error("The clone took longer than the time limit (5 minutes) and was stopped."),
+    },
+  },
   "GET /projects/{id}": {
     summary: "Get a project",
     responses: {
@@ -296,6 +462,99 @@ export const projectDocs: DocMap = {
     responses: {
       "204": { description: "The project was deleted." },
       "404": error("Project not found."),
+    },
+  },
+  "GET /projects/{id}/ontology-files": {
+    summary: "List ontology files",
+    description:
+      "Lists the RDF files tracked by git on a branch of the project folder, best ontology candidate first, and which one is the project's ontology. " +
+      "The project edits one ontology file at a time; the path is one setting for the whole project, so it may be missing on some branches (`active_exists`).",
+    query: [branchQuery],
+    responses: {
+      "200": { description: "The files and the active one.", schema: ref("OntologyFileList") },
+      "404": error("Project or branch not found."),
+    },
+  },
+  "PUT /projects/{id}/ontology-file": {
+    summary: "Switch the ontology file",
+    description:
+      "Makes another RDF file in the project folder the project's ontology, replacing the current one (which is left as it is, so you can switch back). " +
+      "The file must be tracked by git on the branch, be a regular file (not a symbolic link) and parse. A Turtle file is edited in place. " +
+      "Another format is converted to Turtle and committed on the branch as `<name>.ttl` next to it. When that file, or the file an earlier conversion made, " +
+      "already exists it is reused if it is up to date: it has the same triples as the chosen file (blank nodes compared by structure, language tags ignored), " +
+      "or, for an earlier OntoBuilder conversion, the chosen file's triples haven't changed since that conversion. When it is out of date, `reconvert` decides; " +
+      "without it the request fails with 409 and `code: \"turtle_out_of_date\"`. The original is never changed. Derived state of the old file is dropped: the search index, lint runs, " +
+      "consistency and duplicate results, the normalization check and the import normalization report. Label preferences are kept. " +
+      "Normalization history is kept per file, so the normalization status and history then describe the new file.",
+    body: {
+      required: true,
+      schema: {
+        type: "object",
+        required: ["path"],
+        properties: {
+          path: { type: "string", description: "Repository-relative path of the file.", examples: ["src/ontology/pizza.owl"] },
+          branch: { type: ["string", "null"], description: "Branch to check the file on (and commit a conversion to). Defaults to the default branch." },
+          reconvert: {
+            type: ["boolean", "null"],
+            description:
+              "Only for a file that isn't Turtle whose Turtle file exists already. `true`: convert the file again and overwrite the Turtle file in a new commit. " +
+              "`false`: use the Turtle file as it is, even when it is out of date (a warning says so). Absent: reuse it when it is up to date, else fail with 409 `turtle_out_of_date`.",
+          },
+        },
+      },
+    },
+    responses: {
+      "200": { description: "The project now edits `path`.", schema: ref("OntologyFileChange") },
+      "404": error("Project, repository or branch not found."),
+      "409": {
+        description:
+          "The Turtle file next to the chosen file is out of date and `reconvert` wasn't given (`code: \"turtle_out_of_date\"`; send it again with `reconvert`), " +
+          "or a converted file can't be written because an uncommitted file of that name is in the project folder (no `code`).",
+        schema: {
+          type: "object",
+          required: ["detail"],
+          properties: {
+            detail: { type: "string", description: "Human-readable message." },
+            code: { type: "string", enum: ["turtle_out_of_date"], description: "Set when the Turtle file is out of date." },
+            source_path: { type: "string", description: "The chosen file." },
+            turtle_path: { type: "string", description: "The existing Turtle file that is out of date." },
+            reason: { type: "string", description: "Why it is out of date." },
+            branch: { type: "string" },
+          },
+        },
+      },
+      "422": error(
+        "The path is missing, outside the repository, a symbolic link, not committed on the branch, not an RDF file, or the file could not be parsed.",
+      ),
+    },
+  },
+  "POST /projects/{id}/ontology-file": {
+    summary: "Create an ontology file",
+    description:
+      "Creates a new, empty ontology (an `owl:Ontology` declaration with a `dc:title`), commits it on the branch and makes it the project's ontology, " +
+      "replacing the current one, which is left as it is so you can switch back.",
+    body: {
+      required: true,
+      schema: {
+        type: "object",
+        required: ["file_name", "ontology_iri", "title"],
+        properties: {
+          file_name: {
+            type: "string",
+            description: "Repository-relative path of the new file. Must end in `.ttl` and not exist yet.",
+            examples: ["ontology.ttl", "src/ontology/new.ttl"],
+          },
+          ontology_iri: { type: "string", description: "The ontology's IRI (absolute, no spaces).", examples: ["http://example.org/ontologies/pizza"] },
+          title: { type: "string", minLength: 1, maxLength: 255, description: "The ontology's title (`dc:title`)." },
+          branch: { type: ["string", "null"], description: "Branch to commit the file on. Defaults to the default branch." },
+        },
+      },
+    },
+    responses: {
+      "201": { description: "The file was created and the project now edits it.", schema: ref("OntologyFileChange") },
+      "404": error("Project or branch not found."),
+      "409": error("A file or folder of that name already exists."),
+      "422": error("A field is missing or invalid: the file name is outside the repository or doesn't end in .ttl, or the IRI is not an absolute IRI."),
     },
   },
   "GET /projects/{id}/source": {

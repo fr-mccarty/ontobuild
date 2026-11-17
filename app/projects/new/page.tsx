@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Upload, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Upload, AlertCircle, GitBranch } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { FileUpload } from "@/components/ui/file-upload";
 import { ProjectForm } from "@/components/projects/project-form";
+import { GitImportForm } from "@/components/projects/git-import-form";
 import {
   projectApi,
   type ProjectCreate,
@@ -15,7 +16,7 @@ import {
 import type { UploadProgress } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
-type TabType = "create" | "import";
+type TabType = "create" | "import" | "git";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -135,6 +136,19 @@ export default function NewProjectPage() {
               <Upload className="h-4 w-4" />
               Import from File
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("git")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors",
+                activeTab === "git"
+                  ? "bg-white text-slate-900 shadow-xs dark:bg-slate-700 dark:text-white"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              )}
+            >
+              <GitBranch className="h-4 w-4" />
+              Import from Git
+            </button>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
@@ -220,6 +234,12 @@ export default function NewProjectPage() {
               </div>
             )}
 
+            {activeTab === "git" && (
+              <GitImportForm
+                onImported={(project) => router.push(`/projects/${project.id}`)}
+                onCancel={handleCancel}
+              />
+            )}
           </div>
         </div>
       </main>

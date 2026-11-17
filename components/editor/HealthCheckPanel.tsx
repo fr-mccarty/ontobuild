@@ -38,6 +38,8 @@ interface HealthCheckPanelProps {
   onNavigateToClass?: (iri: string, subjectType?: string) => void;
   canRunLint?: boolean;
   embedded?: boolean;
+  /** Called when a check finishes or results are cleared or dismissed, so shared summaries can refresh. */
+  onResultsChanged?: () => void;
 }
 
 type HealthTab = "lint" | "consistency" | "duplicates";
@@ -63,7 +65,11 @@ export function HealthCheckPanel({
   onClose,
   onNavigateToClass,
   embedded = false,
+  onResultsChanged,
 }: HealthCheckPanelProps) {
+  const onResultsChangedRef = useRef(onResultsChanged);
+  useEffect(() => { onResultsChangedRef.current = onResultsChanged; });
+  const notifyResultsChanged = useCallback(() => onResultsChangedRef.current?.(), []);
   const [activeTab, setActiveTab] = useState<HealthTab>("lint");
   const [summary, setSummary] = useState<LintSummary | null>(null);
   const [issues, setIssues] = useState<LintIssue[]>([]);
@@ -175,6 +181,7 @@ export function HealthCheckPanel({
         setIsPollingLint(false);
         setIsRunning(false);
         fetchDataRef.current();
+        notifyResultsChanged();
       })
       .catch((err) => {
         if (controller.signal.aborted) return;
@@ -183,12 +190,13 @@ export function HealthCheckPanel({
         setError(err instanceof Error ? err.message : "Failed to check lint status");
       });
     return () => controller.abort();
-  }, [isOpen, isPollingLint, projectId]);
+  }, [isOpen, isPollingLint, projectId, notifyResultsChanged]);
 
   const handleClearResults = async () => {
     setIsClearing(true);
     try {
       await lintApi.clearResults(projectId);
+      notifyResultsChanged();
       setSummary((prev) => prev ? {
         ...prev,
         last_run: null,
@@ -258,6 +266,7 @@ export function HealthCheckPanel({
         const completed = result as ConsistencyCheckResult;
         setConsistencyIssues(completed.issues);
         setConsistencyCheckedAt(completed.checked_at);
+        notifyResultsChanged();
         return;
       }
       setConsistencyError("Consistency check timed out — try again later");
@@ -312,6 +321,7 @@ export function HealthCheckPanel({
         const completed = result as DuplicateDetectionResult;
         setDuplicateClusters(completed.clusters);
         setDuplicatesCheckedAt(completed.checked_at);
+        notifyResultsChanged();
         return;
       }
       setDuplicatesError("Duplicate detection timed out — try again later");
@@ -381,6 +391,7 @@ export function HealthCheckPanel({
 
     try {
       await lintApi.dismissIssue(projectId, issueId);
+      notifyResultsChanged();
       setIssues((prev) => prev.filter((i) => i.id !== issueId));
       if (summary) {
         const issue = issues.find((i) => i.id === issueId);

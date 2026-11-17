@@ -23,10 +23,14 @@ import { AgentTranscript } from "./AgentTranscript";
 import { AgentComposer } from "./AgentComposer";
 import { AgentModelPicker } from "./AgentModelPicker";
 import { useAgentStatus } from "./agentQueries";
+import { AgentHealthStrip } from "./AgentHealthStrip";
+import { buildHealthFixPrompt } from "@/lib/agent/healthSummary";
+import { healthQueryKeys } from "@/lib/hooks/useHealthSummary";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const AGENT_EXAMPLE_PROMPTS = [
   "Explain the selected entity",
-  "Run lint and fix the warnings",
+  "Run all the health checks and fix what they find",
   "Add a subclass under the selected class",
   "Find classes that are missing labels or definitions",
 ];
@@ -65,6 +69,17 @@ export function AgentPanel({ pageInfo, onProjectChanged, onOntologyChanged, onUi
   const [promptSource, setPromptSource] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const focusPendingRef = useRef(false);
+  const queryClient = useQueryClient();
+
+  // The agent may run health checks or fix issues during a turn (checks don't count as
+  // project changes), so refresh the health counts whenever a turn ends.
+  const wasStreamingRef = useRef(conversation.isStreaming);
+  useEffect(() => {
+    if (wasStreamingRef.current && !conversation.isStreaming) {
+      void queryClient.invalidateQueries({ queryKey: healthQueryKeys.all });
+    }
+    wasStreamingRef.current = conversation.isStreaming;
+  }, [conversation.isStreaming, queryClient]);
 
   // Restore the Edit Code / Edit Ontology choice after mount (the first render uses the defaults).
   useEffect(() => {
@@ -243,6 +258,16 @@ export function AgentPanel({ pageInfo, onProjectChanged, onOntologyChanged, onUi
             </Button>
           </div>
         )}
+        <AgentHealthStrip
+          health={pageInfo.health}
+          disabled={conversation.isStreaming}
+          onFix={() => {
+            if (!pageInfo.health) return;
+            setDraft(buildHealthFixPrompt(pageInfo.health));
+            setPromptSource("Health");
+            focusPendingRef.current = true;
+          }}
+        />
         <AgentComposer
           value={draft}
           onChange={setDraft}

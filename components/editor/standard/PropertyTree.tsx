@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { getLocalName } from "@/lib/utils";
 import { projectOntologyApi, type EntitySearchResult } from "@/lib/api/client";
+import { apiErrorMessage } from "@/lib/api/errors";
 import { EntityTree } from "@/components/editor/shared/EntityTree";
 import type { EntityTreeNode } from "@/lib/ontology/types";
 
@@ -13,6 +14,8 @@ interface PropertyTreeProps {
   onSelect: (iri: string) => void;
   /** Change to reload the list in place, keeping collapsed groups and the selection. */
   refreshKey?: number;
+  /** Renders a load error (its `detail` text); defaults to a plain error box. */
+  renderError?: (message: string) => ReactNode;
 }
 
 interface PropertyGroup {
@@ -28,6 +31,7 @@ export function PropertyTree({
   selectedIri,
   onSelect,
   refreshKey = 0,
+  renderError,
 }: PropertyTreeProps) {
   const [groups, setGroups] = useState<PropertyGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +113,7 @@ export function PropertyTree({
         setLoadedFor(`${projectId}\n${branch ?? ""}`);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load properties");
+          setError(apiErrorMessage(err, "Failed to load properties"));
         }
       } finally {
         if (!cancelled) {
@@ -168,6 +172,7 @@ export function PropertyTree({
   }
 
   if (error) {
+    if (renderError) return <>{renderError(error)}</>;
     return (
       <div className="p-4">
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-center dark:border-red-900/50 dark:bg-red-900/20">

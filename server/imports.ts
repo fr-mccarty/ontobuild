@@ -160,9 +160,11 @@ const state = ((globalThis as G).__ontobuilderImportState ??= {
   classSets: new Map(),
 });
 
-onOntologyEvent("imports:invalidate", () => {
+onOntologyEvent("imports:invalidate", (e) => {
   state.projectIndex = null;
   state.generation++;
+  // The project's ontology IRI is memoized per commit, and switching files keeps the commit.
+  if (e.type === "ontology-file-changed") iriMemo.delete(e.projectId);
 });
 
 const iriMemoG = globalThis as typeof globalThis & { __ontobuilderImportIriMemo?: Map<string, { sha: string; iri: string | null }> };

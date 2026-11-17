@@ -1,3 +1,5 @@
+import { errorBody } from "./errors";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 function buildUrl(endpoint: string): URL {
@@ -6,6 +8,7 @@ function buildUrl(endpoint: string): URL {
 }
 
 export class ApiError extends Error {
+  /** `message` is the raw response body: for this API, JSON like `{"detail": "..."}`. */
   constructor(
     public status: number,
     public statusText: string,
@@ -14,7 +17,27 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+
+  /** The response body parsed as a JSON object, or null when it isn't one. */
+  get body(): Record<string, unknown> | null {
+    return errorBody(this.message);
+  }
+
+  /** The human-readable text: the body's `detail` when it is a string, else the body, else the status. */
+  get detail(): string {
+    const detail = this.body?.detail;
+    if (typeof detail === "string") return detail;
+    return this.message || `${this.status} ${this.statusText}`.trim();
+  }
+
+  /** The body's `code`, for errors a client can act on (e.g. "turtle_out_of_date"). */
+  get code(): string | null {
+    const code = this.body?.code;
+    return typeof code === "string" ? code : null;
+  }
 }
+
+export { apiErrorMessage } from "./errors";
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -335,11 +358,12 @@ export const projectOntologyApi = {
     query: string,
     branch?: string,
     entityTypes?: string,
+    limit?: number,
   ) =>
     api.get<EntitySearchResponse>(
       `/api/v1/projects/${projectId}/ontology/search`,
       {
-        params: { q: query, branch, entity_types: entityTypes },
+        params: { q: query, branch, entity_types: entityTypes, limit },
       }
     ),
 

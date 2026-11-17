@@ -70,4 +70,21 @@ describe("EntityTabBar", () => {
     fireEvent.click(screen.getByText("Classes"));
     expect(onTabChange).toHaveBeenCalledWith("classes");
   });
+
+  it("shows no counts by default", () => {
+    render(<EntityTabBar activeTab="classes" onTabChange={onTabChange} />);
+    expect(screen.queryByTestId("entity-count-classes")).toBeNull();
+    expect(screen.queryByTestId("entity-count-properties")).toBeNull();
+    expect(screen.queryByTestId("entity-count-individuals")).toBeNull();
+  });
+
+  it("shows each tab's count after its label, including zero, and skips missing ones", () => {
+    render(
+      <EntityTabBar activeTab="classes" onTabChange={onTabChange} counts={{ classes: 1234, individuals: 0 }} />,
+    );
+    expect(screen.getByTestId("entity-count-classes").textContent).toBe((1234).toLocaleString());
+    expect(screen.getByTestId("entity-count-individuals").textContent).toBe("0");
+    expect(screen.queryByTestId("entity-count-properties")).toBeNull();
+    expect(screen.getByTestId("entity-count-classes").parentElement).toBe(screen.getByText("Classes"));
+  });
 });

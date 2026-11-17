@@ -113,7 +113,7 @@ function ConfigureDialog({
   );
 }
 
-/** Sub-heading (right): "View in Browser" and the run dropdown (dev server, terminals). */
+/** Sub-heading (right): "View in Browser" (once a dev server is set up) and the run dropdown (dev server, terminals, files). */
 export function RunMenu({ projectId }: { projectId: string }) {
   const toast = useToast();
   const { data: dev } = useDevServer(projectId);
@@ -147,6 +147,8 @@ export function RunMenu({ projectId }: { projectId: string }) {
   const url = dev?.url ?? null;
   const running = !!dev?.running;
   const command = dev?.command || null;
+  // Ontology-only projects never set up a dev server; hide "View in Browser" until there is one.
+  const hasDevServer = !!command || !!dev?.configured_url || running;
 
   const viewTooltip = url
     ? `View in Browser: open ${url} in a new tab`
@@ -187,26 +189,30 @@ export function RunMenu({ projectId }: { projectId: string }) {
 
   return (
     <div ref={menuRef} className="relative flex items-center">
-      <Tooltip side="bottom" content={viewTooltip}>
-        {/* The span keeps the tooltip working while the button is disabled. */}
-        <span tabIndex={url ? undefined : 0} className="inline-flex rounded-md">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={!url}
-            aria-label="View in Browser"
-            onClick={() => url && window.open(url, "_blank", "noopener")}
-            className="gap-1.5 rounded-r-none px-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-          >
-            <ExternalLink className="h-4 w-4" />
-            <span className="hidden xl:inline">View in Browser</span>
-          </Button>
-        </span>
-      </Tooltip>
+      {hasDevServer && (
+        <Tooltip side="bottom" content={viewTooltip}>
+          {/* The span keeps the tooltip working while the button is disabled. */}
+          <span tabIndex={url ? undefined : 0} className="inline-flex rounded-md">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!url}
+              aria-label="View in Browser"
+              onClick={() => url && window.open(url, "_blank", "noopener")}
+              className="gap-1.5 rounded-r-none px-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            >
+              <ExternalLink className="h-4 w-4" />
+              <span className="hidden xl:inline">View in Browser</span>
+            </Button>
+          </span>
+        </Tooltip>
+      )}
       <Tooltip
         side="bottom"
         disabled={menuOpen}
-        content={`Run: ${running ? "dev server running" : "start the dev server"}, open terminals, browse project files`}
+        content={`Run: ${
+          running ? "dev server running" : hasDevServer ? "start the dev server" : "set up a dev server"
+        }, open terminals, browse project files`}
       >
         <Button
           variant="ghost"
@@ -215,7 +221,7 @@ export function RunMenu({ projectId }: { projectId: string }) {
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((o) => !o)}
-          className="gap-0.5 rounded-l-none px-1.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          className={cn("gap-0.5 px-1.5 text-slate-500", hasDevServer && "rounded-l-none", " hover:text-slate-900 dark:text-slate-400 dark:hover:text-white")}
         >
           <Play className={cn("h-4 w-4", running && "fill-green-500 text-green-600 dark:text-green-400")} />
           <ChevronDown className={cn("h-3 w-3 transition-transform", menuOpen && "rotate-180")} />

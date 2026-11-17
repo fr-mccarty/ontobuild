@@ -5,6 +5,7 @@ import { useOpenPRCount } from "@/lib/hooks/useOpenPRCount";
 import { useLintSummary } from "@/lib/hooks/useLintSummary";
 import { useNormalizationStatus } from "@/lib/hooks/useNormalizationStatus";
 import { revisionsApi } from "@/lib/api/revisions";
+import { apiErrorMessage } from "@/lib/api/errors";
 import type { TreeNodeFallback } from "@/components/editor/ClassDetailPanel";
 import type { IriPosition } from "@/lib/ontology/iriGeneration";
 
@@ -84,7 +85,7 @@ export function useProjectViewer({
     } catch (err) {
       console.error("Failed to load source:", err);
       if (!isPreload) {
-        setSourceError(err instanceof Error ? err.message : "Failed to load source content");
+        setSourceError(apiErrorMessage(err, "Failed to load source content"));
       }
     } finally {
       if (isPreload) {

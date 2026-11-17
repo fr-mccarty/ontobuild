@@ -296,7 +296,7 @@ describe("ontology", () => {
     const id = await projectWithoutFile();
     const res = await app.request(`${base(id)}/ontology/index-status`);
     expect(res.status).toBe(404);
-    expect(((await res.json()) as { detail: string }).detail).toBe("Ontology file not found in repository");
+    expect(((await res.json()) as { detail: string }).detail).toMatch(/^Ontology file not found in repository: missing.ttl doesn't exist on branch 'main'/);
   });
 
   it("uses the preferred label for reference sources", async () => {
@@ -326,6 +326,18 @@ describe("ontology", () => {
   it("validates entity_types in search", async () => {
     expect((await app.request(`${base(richId)}/ontology/search?q=pizza&entity_types=class,widget`)).status).toBe(422);
     expect((await app.request(`${base(richId)}/ontology/search?q=pizza&entity_types=class`)).status).toBe(200);
+  });
+
+  it("returns only the total with limit=0 and rejects a bad limit", async () => {
+    const all = await (await app.request(`${base(richId)}/ontology/search?q=*`)).json();
+    const res = await app.request(`${base(richId)}/ontology/search?q=*&limit=0`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results).toEqual([]);
+    expect(body.total).toBe(all.total);
+    expect(all.total).toBeGreaterThan(0);
+    expect((await app.request(`${base(richId)}/ontology/search?q=*&limit=-1`)).status).toBe(422);
+    expect((await app.request(`${base(richId)}/ontology/search?q=*&limit=abc`)).status).toBe(422);
   });
 
   it("follows the parent that sorts first by label in ancestors", async () => {

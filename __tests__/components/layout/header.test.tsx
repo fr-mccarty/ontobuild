@@ -20,10 +20,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname,
 }));
 
-vi.mock("@/components/editor/ThemeToggle", () => ({
-  ThemeToggle: () => <div data-testid="theme-toggle" />,
-}));
-
 describe("Header", () => {
   beforeEach(() => {
     mockPathname = "/";
@@ -50,10 +46,10 @@ describe("Header", () => {
     }
   });
 
-  it("renders Settings link and ThemeToggle", () => {
+  it("renders the Settings link and leaves the theme to the settings page", () => {
     render(<Header />);
     expect(screen.getByLabelText("User settings").getAttribute("href")).toBe("/settings");
-    expect(screen.getByTestId("theme-toggle")).toBeDefined();
+    expect(screen.queryByRole("group", { name: "Theme" })).toBeNull();
   });
 
   it("highlights the Projects link when on /", () => {

@@ -4,14 +4,16 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     public detail: unknown,
+    /** More fields for the error body, next to `detail` (e.g. a `code` clients can act on). */
+    public extra: Record<string, unknown> = {},
   ) {
     super(typeof detail === "string" ? detail : JSON.stringify(detail));
     this.name = "ApiError";
   }
 }
 
-export function httpError(status: number, detail: unknown): never {
-  throw new ApiError(status, detail);
+export function httpError(status: number, detail: unknown, extra?: Record<string, unknown>): never {
+  throw new ApiError(status, detail, extra);
 }
 
 export async function readJson<T = Record<string, unknown>>(c: Context): Promise<T> {

@@ -97,6 +97,29 @@ describe("AgentPanel", () => {
     expect(await screen.findByText("Explain the selected entity")).toBeDefined();
   });
 
+  it("shows health issues and puts a fix request in the composer without sending", async () => {
+    const health = {
+      lint: { errors: 1, warnings: 2, info: 0, total: 3, checkedAt: "2026-11-17T10:00:00Z", running: false },
+      consistency: { count: 0, checkedAt: null },
+      duplicates: { count: 1, checkedAt: "2026-11-17T10:00:00Z" },
+    };
+    renderWithQueryClient(<AgentPanel pageInfo={{ ...pageInfo, health }} />);
+    const strip = await screen.findByTestId("agent-health-strip");
+    expect(strip.textContent).toContain("1 lint error · 2 lint warnings · 1 duplicate group");
+    fireEvent.click(screen.getByRole("button", { name: "Fix issues" }));
+    const box = screen.getByLabelText("Message the agent") as HTMLTextAreaElement;
+    expect(box.value).toContain("Fix the issues in the Health tab (1 lint error, 2 lint warnings and 1 duplicate group)");
+    expect(screen.getByTestId("agent-prompt-source").textContent).toContain("Health");
+    expect(streamAgentChat).not.toHaveBeenCalled();
+  });
+
+  it("hides the health strip when there are no issues", async () => {
+    const health = { lint: null, consistency: { count: 0, checkedAt: null }, duplicates: null };
+    renderWithQueryClient(<AgentPanel pageInfo={{ ...pageInfo, health }} />);
+    await screen.findByLabelText("Message the agent");
+    expect(screen.queryByTestId("agent-health-strip")).toBeNull();
+  });
+
   it("sends a message and renders streamed text and tool rows", async () => {
     let finish: () => void = () => {};
     vi.mocked(streamAgentChat).mockImplementation(({ onEvent, userMessage }) => {

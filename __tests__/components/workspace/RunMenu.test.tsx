@@ -40,17 +40,27 @@ describe("RunMenu", () => {
   it("disables View in Browser without a URL", async () => {
     workspaceApiMock.getDevServer.mockResolvedValue(status());
     renderWithQueryClient(<RunMenu projectId="p1" />);
-    await waitFor(() => expect(workspaceApiMock.getDevServer).toHaveBeenCalled());
-    const button = screen.getByRole("button", { name: "View in Browser" }) as HTMLButtonElement;
+    // The button appears once the dev server status says one is configured.
+    const button = (await screen.findByRole("button", { name: "View in Browser" })) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     fireEvent.click(button);
     expect(openSpy).not.toHaveBeenCalled();
   });
 
+  it("hides View in Browser until a dev server is set up, keeping the Run menu", async () => {
+    workspaceApiMock.getDevServer.mockResolvedValue(status({ command: null }));
+    renderWithQueryClient(<RunMenu projectId="p1" />);
+    await waitFor(() => expect(workspaceApiMock.getDevServer).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByRole("button", { name: "View in Browser" })).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Run menu" }));
+    expect(screen.getByRole("menuitem", { name: /New terminal/ })).toBeDefined();
+    expect(screen.getByRole("menuitem", { name: /Configure dev server/ })).toBeDefined();
+  });
+
   it("opens the dev server URL in a new tab", async () => {
     workspaceApiMock.getDevServer.mockResolvedValue(status({ url: "http://localhost:5173/", running: true, terminal_id: "t9" }));
     renderWithQueryClient(<RunMenu projectId="p1" />);
-    const button = screen.getByRole("button", { name: "View in Browser" }) as HTMLButtonElement;
+    const button = (await screen.findByRole("button", { name: "View in Browser" })) as HTMLButtonElement;
     await waitFor(() => expect(button.disabled).toBe(false));
     fireEvent.click(button);
     expect(openSpy).toHaveBeenCalledWith("http://localhost:5173/", "_blank", "noopener");
