@@ -268,7 +268,7 @@ server/localOnly.ts                           Host and Origin checks for the API
 server/workspaceFiles.ts                      safe file access inside a project folder
 server/terminals.ts  devServer.ts             terminal sessions (node-pty) and the dev server
 server/imports.ts                             owl:imports resolution (local projects, fetched IRIs, cache)
-server/github.ts  provenance.ts               git remotes (fetch, pull, push), prompt approval from PR reviews
+server/github.ts                              git remotes (fetch, pull, push)
 server/rdf.ts                                 parse Turtle, N3, N-Triples, N-Quads, TriG, RDF/XML, JSON-LD;
                                               serialize Turtle
 server/ontology.ts                            load a branch into an N3 store (cached by commit), commit edits

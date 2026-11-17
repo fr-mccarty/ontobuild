@@ -9,7 +9,6 @@ import { OntoBuilderIcon } from "@/components/layout/compact-app-links";
 
 const navLinks = [
   { href: "/", label: "Projects" },
-  { href: "/info", label: "Info" },
   { href: "/docs", label: "Documentation" },
   { href: "/api-docs", label: "API Reference" },
 ];

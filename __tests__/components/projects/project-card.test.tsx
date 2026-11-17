@@ -54,6 +54,12 @@ describe("ProjectCard", () => {
     expect(screen.queryByText("A test project for ontology editing")).toBeNull();
   });
 
+  it("links to the project activity view", () => {
+    render(<ProjectCard project={makeProject()} />);
+    const link = screen.getByRole("link", { name: "Activity for Test Ontology" });
+    expect(link.getAttribute("href")).toBe("/projects/proj-123/analytics");
+  });
+
   it("links to the project editor", () => {
     render(<ProjectCard project={makeProject()} />);
     const link = screen.getByRole("link", { name: /Open project Test Ontology/ });
@@ -87,11 +93,11 @@ describe("ProjectCard", () => {
 
   it("merges custom className onto the card", () => {
     render(<ProjectCard project={makeProject()} className="extra-class" />);
-    const link = screen.getByRole("link");
-    expect(link.className).toContain("extra-class");
+    const link = screen.getByRole("link", { name: /Open project/ });
+    expect(link.parentElement?.className).toContain("extra-class");
   });
 
-  it("lists the ontologies the project imports directly, between description and date", async () => {
+  it("lists the ontologies the project imports directly, below the date", async () => {
     vi.mocked(importsApi.list).mockResolvedValue({
       direct: ["http://x.org/food", "http://w3id.org/remote"],
       closure: [
@@ -108,8 +114,8 @@ describe("ProjectCard", () => {
     const block = screen.getByTestId("project-card-imports");
     const description = screen.getByText("A test project for ontology editing");
     const updated = screen.getByText(/Updated/);
-    expect(description.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(block.compareDocumentPosition(updated) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(description.compareDocumentPosition(updated) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(updated.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("shows no imports section when the project imports nothing", async () => {

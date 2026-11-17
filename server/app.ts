@@ -16,7 +16,6 @@ import { createAgentRoutes } from "./routes/agent";
 import workspace from "./routes/workspace";
 import imports from "./routes/imports";
 import github from "./routes/github";
-import prompts from "./routes/prompts";
 import tools from "./routes/tools";
 import { buildOpenApiSpec } from "./openapi";
 import { localOnly } from "./localOnly";
@@ -64,7 +63,6 @@ app.route("/", ontology);
 app.route("/", workspace);
 app.route("/", imports);
 app.route("/", github);
-app.route("/", prompts);
 app.route("/", tools);
 app.route("/", createAgentRoutes(() => app));
 

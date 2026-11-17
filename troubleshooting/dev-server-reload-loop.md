@@ -2,7 +2,7 @@
 
 ## Symptom
 
-With `npm run dev` running, every open page (the project editor, `/info`, the home
+With `npm run dev` running, every open page (the project editor, `/docs`, the home
 page) reloads itself about 7 to 15 times a second. The dev server log repeats this
 block over and over:
 
@@ -43,7 +43,7 @@ Then reload the browser tab once. It should load a single time and stay put.
 
 ## How to check that it's this
 
-- **Every page loops, not just one.** Open `/info` too. If that page also reloads,
+- **Every page loops, not just one.** Open `/docs` too. If that page also reloads,
   your app code is not the cause.
 - **No real files are changing.** Look for files modified in the last few seconds:
 

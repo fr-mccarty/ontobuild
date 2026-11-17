@@ -36,7 +36,6 @@ describe("Header", () => {
     render(<Header />);
     const links = [
       { label: "Projects", href: "/" },
-      { label: "Info", href: "/info" },
       { label: "Documentation", href: "/docs" },
       { label: "API Reference", href: "/api-docs" },
     ];
@@ -59,15 +58,20 @@ describe("Header", () => {
     expect(projectsLink.className).toContain("bg-blue-100");
   });
 
-  it("highlights Info link when pathname starts with /info", () => {
-    mockPathname = "/info/about";
+  it("highlights Documentation link when pathname starts with /docs", () => {
+    mockPathname = "/docs/getting-started";
     render(<Header />);
-    const infoLink = screen.getByText("Info");
-    expect(infoLink.className).toContain("bg-blue-100");
+    const docsLink = screen.getByText("Documentation");
+    expect(docsLink.className).toContain("bg-blue-100");
+  });
+
+  it("has no Info link", () => {
+    render(<Header />);
+    expect(screen.queryByText("Info")).toBeNull();
   });
 
   it("does not highlight Projects link on non-root paths", () => {
-    mockPathname = "/info";
+    mockPathname = "/docs";
     render(<Header />);
     const projectsLink = screen.getByText("Projects");
     expect(projectsLink.className).not.toContain("bg-blue-100");

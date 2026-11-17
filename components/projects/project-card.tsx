@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Import } from "lucide-react";
+import { BarChart3, Import } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import type { Project } from "@/lib/api/projects";
 import type { ImportStatus } from "@/lib/api/imports";
@@ -23,59 +23,70 @@ export function ProjectCard({ project, className }: ProjectCardProps) {
   const { data: importsData } = useImports(project.id);
   const imports = importsData?.closure.filter((i) => i.direct) ?? [];
 
+  // The activity link sits beside the card link, not inside it: links can't be nested.
   return (
-    <Link
-      href={href}
-      aria-label={`Open project ${project.name}`}
-      className={cn(
-        "block rounded-lg border border-slate-200 bg-white p-5 shadow-xs transition-all",
-        "hover:border-primary-300 hover:shadow-md",
-        "dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-600",
-        className
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
-            {project.name}
-          </h3>
-          {project.description && (
-            <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-400">
-              {project.description}
-            </p>
-          )}
+    <div className={cn("relative", className)}>
+      <Link
+        href={href}
+        aria-label={`Open project ${project.name}`}
+        className={cn(
+          "block h-full rounded-lg border border-slate-200 bg-white p-5 shadow-xs transition-all",
+          "hover:border-primary-300 hover:shadow-md",
+          "dark:border-slate-700 dark:bg-slate-800 dark:hover:border-primary-600"
+        )}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 pr-7">
+            <h3 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
+              {project.name}
+            </h3>
+            {project.description && (
+              <p className="mt-1 line-clamp-2 text-sm text-slate-600 dark:text-slate-400">
+                {project.description}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="mt-4 flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
-        <span>Updated {formatDate(project.updated_at || project.created_at)}</span>
-      </div>
-
-      {imports.length > 0 && (
-        <div className="mt-3 flex items-start gap-1.5" data-testid="project-card-imports">
-          <Import
-            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500"
-            aria-hidden="true"
-          />
-          <ul className="flex min-w-0 flex-wrap gap-1" aria-label="Imported ontologies">
-            {imports.map((i) => (
-              <Tooltip
-                key={i.iri}
-                content={
-                  <>
-                    <span className="block font-medium">Imported ontology</span>
-                    <span className="block break-all opacity-75">{i.iri}</span>
-                  </>
-                }
-              >
-                <li className="max-w-full truncate rounded-sm bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                  {importName(i)}
-                </li>
-              </Tooltip>
-            ))}
-          </ul>
+        <div className="mt-4 flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+          <span>Updated {formatDate(project.updated_at || project.created_at)}</span>
         </div>
-      )}
-    </Link>
+
+        {imports.length > 0 && (
+          <div className="mt-3 flex items-start gap-1.5" data-testid="project-card-imports">
+            <Import
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500"
+              aria-hidden="true"
+            />
+            <ul className="flex min-w-0 flex-wrap gap-1" aria-label="Imported ontologies">
+              {imports.map((i) => (
+                <Tooltip
+                  key={i.iri}
+                  content={
+                    <>
+                      <span className="block font-medium">Imported ontology</span>
+                      <span className="block break-all opacity-75">{i.iri}</span>
+                    </>
+                  }
+                >
+                  <li className="max-w-full truncate rounded-sm bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    {importName(i)}
+                  </li>
+                </Tooltip>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Link>
+      <Tooltip side="bottom" content="Project activity: recent changes, most-edited entities and contributors">
+        <Link
+          href={`${href}/analytics`}
+          aria-label={`Activity for ${project.name}`}
+          className="absolute right-3 top-3 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+        >
+          <BarChart3 className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </Tooltip>
+    </div>
   );
 }

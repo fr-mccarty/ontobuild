@@ -11,7 +11,6 @@ import { analyticsDocs, analyticsSchemas } from "./analytics";
 import { workspaceDocs, workspaceSchemas } from "./workspace";
 import { importsDocs, importsSchemas } from "./imports";
 import { githubDocs, githubSchemas } from "./github";
-import { promptsDocs, promptsSchemas } from "./prompts";
 import { toolsDocs, toolsSchemas } from "./tools";
 
 export const API_PREFIX = "/api/v1";
@@ -29,7 +28,6 @@ export const operationDocs: DocMap = {
   ...workspaceDocs,
   ...importsDocs,
   ...githubDocs,
-  ...promptsDocs,
   ...toolsDocs,
 };
 
@@ -55,7 +53,6 @@ export const schemaSources: Record<string, Schema>[] = [
   workspaceSchemas,
   importsSchemas,
   githubSchemas,
-  promptsSchemas,
   toolsSchemas,
 ];
 
@@ -92,7 +89,6 @@ export const tags: { name: string; description: string }[] = [
   { name: "Tools", description: "Meta tools that analyze the code in a project's `code/` folder." },
   { name: "Imports", description: "Other ontologies a project imports (owl:imports), resolved from local projects or the web." },
   { name: "GitHub", description: "Link a project to a GitHub repository and push and pull." },
-  { name: "Provenance", description: "Where a text value came from and whether a reviewed pull request approved it." },
 ];
 
 /** "/api/v1/projects/:id/lint/runs/:runId" → "/projects/{id}/lint/runs/{runId}" */
