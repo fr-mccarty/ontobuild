@@ -56,6 +56,15 @@ function AssistantText({ text, muted }: { text: string; muted?: boolean }) {
 
 function ThinkingSection({ text, active }: { text: string; active?: boolean }) {
   const [open, setOpen] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const stickRef = useRef(true);
+
+  // While the model is still thinking, keep the expanded box pinned to its newest line.
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (el && open && active && stickRef.current) el.scrollTop = el.scrollHeight;
+  }, [text, open, active]);
+
   return (
     <div className="text-xs text-slate-500 dark:text-slate-400">
       <button
@@ -65,12 +74,29 @@ function ThinkingSection({ text, active }: { text: string; active?: boolean }) {
         className="flex items-center gap-1 italic hover:text-slate-700 dark:hover:text-slate-300"
       >
         <ChevronRight className={cn("h-3 w-3 transition-transform", open && "rotate-90")} />
-        <Brain className="h-3 w-3" />
+        {active ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3" />}
         {active ? "Thinking…" : "Thought"}
       </button>
       {open && (
-        <div className="mt-1 border-l-2 border-slate-200 pl-2 whitespace-pre-wrap break-words dark:border-slate-700">
-          {text}
+        <div className="mt-1 border-l-2 border-slate-200 dark:border-slate-700">
+          <div
+            ref={bodyRef}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+            }}
+            className="max-h-64 overflow-y-auto overscroll-contain pl-2 whitespace-pre-wrap break-words"
+          >
+            {text}
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="mt-1 ml-2 flex items-center gap-1 italic hover:text-slate-700 dark:hover:text-slate-300"
+          >
+            <ChevronRight className="h-3 w-3 -rotate-90" />
+            Hide thinking
+          </button>
         </div>
       )}
     </div>
