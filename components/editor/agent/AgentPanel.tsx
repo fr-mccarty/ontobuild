@@ -24,6 +24,7 @@ import { AgentComposer } from "./AgentComposer";
 import { AgentModelPicker } from "./AgentModelPicker";
 import { useAgentStatus } from "./agentQueries";
 import { AgentHealthStrip } from "./AgentHealthStrip";
+import { AgentNotice, AGENT_NOTICE_ACTION_CLASSES } from "./AgentNotice";
 import { buildHealthFixPrompt } from "@/lib/agent/healthSummary";
 import { healthQueryKeys } from "@/lib/hooks/useHealthSummary";
 import { useQueryClient } from "@tanstack/react-query";
@@ -233,30 +234,24 @@ export function AgentPanel({ pageInfo, onProjectChanged, onOntologyChanged, onUi
           }
         />
         {conversation.error && !conversation.isStreaming && (
-          <div
+          <AgentNotice
+            tone="error"
             role="alert"
-            className="mx-3 mb-2 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400"
+            icon={<AlertCircle className="h-3.5 w-3.5" />}
+            onDismiss={() => dismissError(projectId)}
+            actions={
+              <button
+                type="button"
+                onClick={() => void retryAgentMessage(runOptions())}
+                className={AGENT_NOTICE_ACTION_CLASSES}
+              >
+                <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                Retry
+              </button>
+            }
           >
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span className="min-w-0 flex-1 break-words">{conversation.error}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void retryAgentMessage(runOptions())}
-              className="h-6 shrink-0 gap-1 px-2 text-xs"
-            >
-              <RotateCcw className="h-3 w-3" />
-              Retry
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => dismissError(projectId)}
-              className="h-6 shrink-0 px-2 text-xs"
-            >
-              Dismiss
-            </Button>
-          </div>
+            <span className="break-words">{conversation.error}</span>
+          </AgentNotice>
         )}
         <AgentHealthStrip
           health={pageInfo.health}
