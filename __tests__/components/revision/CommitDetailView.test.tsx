@@ -21,6 +21,12 @@ vi.mock("@/components/ui/button", () => ({
   ),
 }));
 
+const mockToastSuccess = vi.fn();
+const mockToastError = vi.fn();
+vi.mock("@/lib/context/ToastContext", () => ({
+  useToast: () => ({ success: mockToastSuccess, error: mockToastError }),
+}));
+
 vi.mock("@/lib/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
@@ -152,7 +158,7 @@ describe("CommitDetailView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("copies hash to clipboard on click", async () => {
+  it("copies hash to clipboard on click and confirms with a toast", async () => {
     await act(async () => {
       render(<CommitDetailView {...defaultProps} />);
     });
@@ -161,6 +167,7 @@ describe("CommitDetailView", () => {
       fireEvent.click(copyButton);
     });
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockCommit.hash);
+    expect(mockToastSuccess).toHaveBeenCalledWith("Copied the commit hash");
   });
 
   it("loads diff when commit has parent hashes", async () => {

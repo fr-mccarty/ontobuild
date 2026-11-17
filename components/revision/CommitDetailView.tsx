@@ -18,7 +18,6 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
-  Check,
   FileText,
   FileCode,
   Plus,
@@ -26,6 +25,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useToast } from "@/lib/context/ToastContext";
 
 interface CommitDetailViewProps {
   commit: RevisionCommit;
@@ -45,7 +45,7 @@ export function CommitDetailView({
   const [diff, setDiff] = useState<RevisionDiffResponse | null>(null);
   const [isLoadingDiff, setIsLoadingDiff] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
-  const [copiedHash, setCopiedHash] = useState(false);
+  const toast = useToast();
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
 
   const loadDiff = useCallback(async () => {
@@ -93,9 +93,12 @@ export function CommitDetailView({
   };
 
   const copyHash = async () => {
-    await navigator.clipboard.writeText(commit.hash);
-    setCopiedHash(true);
-    setTimeout(() => setCopiedHash(false), 2000);
+    try {
+      await navigator.clipboard.writeText(commit.hash);
+      toast.success("Copied the commit hash");
+    } catch {
+      toast.error("Couldn't copy the commit hash");
+    }
   };
 
   const getParentCommit = (hash: string): RevisionCommit | undefined => {
@@ -188,11 +191,7 @@ export function CommitDetailView({
                   className="rounded-sm p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-600 dark:hover:text-slate-300"
                   aria-label="Copy full hash"
                 >
-                  {copiedHash ? (
-                    <Check className="h-3.5 w-3.5 text-green-500" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
+                  <Copy className="h-3.5 w-3.5" />
                 </button>
               </Tooltip>
             </div>

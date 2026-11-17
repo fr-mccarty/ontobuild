@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useDraftStore, draftKey, type AnyDraftEntry } from "@/lib/stores/draftStore";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 export type SaveStatus = "idle" | "draft" | "saving" | "saved" | "error";
 
@@ -132,7 +133,7 @@ export function useEntityAutoSave({
       savedTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
       return true;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to save";
+      const msg = apiErrorMessage(err, "Failed to save");
       setSaveStatus("error");
       setSaveError(msg);
       onErrorRef.current?.(msg);

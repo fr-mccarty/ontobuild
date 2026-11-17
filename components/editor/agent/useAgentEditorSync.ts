@@ -114,21 +114,21 @@ export function useAgentEditorSync({
         setDetailEpoch((e) => e + 1);
         return;
       }
-      latest.current.toast.addToast({
-        type: "warning",
-        title: "The agent changed the ontology",
-        description:
-          `Your unsaved edits to "${getLocalName(shownIri)}" are kept, so its panel does not show the agent's changes yet. ` +
+      latest.current.toast.warning(
+        "The agent changed the ontology",
+        `Your unsaved edits to "${getLocalName(shownIri)}" are kept, so its panel does not show the agent's changes yet. ` +
           "Saving your edits replaces the agent's changes to this entity only.",
-        duration: 15000,
-        action: {
-          label: "Discard my edits",
-          onClick: () => {
-            useDraftStore.getState().clearDraft(key);
-            setDetailEpoch((e) => e + 1);
+        {
+          duration: 15000,
+          action: {
+            label: "Discard my edits",
+            onClick: () => {
+              useDraftStore.getState().clearDraft(key);
+              setDetailEpoch((e) => e + 1);
+            },
           },
         },
-      });
+      );
     },
     [queryClient, entityRemovalRef],
   );

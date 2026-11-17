@@ -18,6 +18,7 @@ import {
 } from "@/lib/api/agentSettings";
 import { SettingsField, SettingsSection } from "./SettingsSection";
 import { SegmentedChoice } from "./SegmentedChoice";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 export const AGENT_INSTRUCTIONS_DEBOUNCE_MS = 800;
 export const OPENROUTER_KEYS_URL = "https://openrouter.ai/keys";
@@ -83,10 +84,7 @@ export function AgentSettingsSection({ highlighted = false }: AgentSettingsSecti
         if (seq === saveSeqRef.current) setSaveState("saved");
       } catch (err) {
         if (seq === saveSeqRef.current) setSaveState("error");
-        toast.error(
-          "Failed to save agent settings",
-          err instanceof Error ? err.message : undefined,
-        );
+        toast.error("Couldn't save the agent settings", apiErrorMessage(err));
       }
     },
     [toast],
@@ -160,9 +158,9 @@ export function AgentSettingsSection({ highlighted = false }: AgentSettingsSecti
     if (!status?.secrets_file) return;
     try {
       await navigator.clipboard.writeText(status.secrets_file);
-      toast.success("Copied secrets file path");
+      toast.success("Copied the secrets file path");
     } catch {
-      toast.error("Failed to copy path");
+      toast.error("Couldn't copy the secrets file path");
     }
   };
 

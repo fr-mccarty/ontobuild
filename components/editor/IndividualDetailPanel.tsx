@@ -37,6 +37,7 @@ import {
 import { type IndividualDraftEntry } from "@/lib/stores/draftStore";
 import { useIriLabels } from "@/lib/hooks/useIriLabels";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useSaveShortcut } from "@/lib/hooks/useSaveShortcut";
 
 function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
@@ -185,7 +186,7 @@ export function IndividualDetailPanel({
           .flatMap((g) => g.targets.map((t) => t.iri)),
       });
     } : undefined,
-    onError: (msg) => toast.error(msg),
+    onError: (msg) => toast.error("Couldn't save your changes", msg),
     buildDraftEntry,
     validate,
   });
@@ -245,6 +246,7 @@ export function IndividualDetailPanel({
     triggerSave();
     await flushToGit();
   }, [triggerSave, flushToGit]);
+  useSaveShortcut(isEditing, flushDraftToGit);
 
   // Selecting a different individual without a remount drops back out of edit mode so
   // the form is re-seeded below on the next render (when useEntityAutoSave has also

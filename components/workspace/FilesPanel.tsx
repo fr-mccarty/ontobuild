@@ -31,6 +31,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { QuickView, formatSize, previewKind } from "./QuickView";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 /** Directories expanded when the panel first shows. */
 const DEFAULT_EXPANDED = ["code"];
@@ -241,7 +242,7 @@ export function FilesPanel({ projectId, isActive }: { projectId: string; isActiv
     (path: string) => {
       createTerminal.mutate(
         { kind: "run", run: path },
-        { onError: (e) => toast.error(`Couldn't run ${baseName(path)}: ${e instanceof Error ? e.message : String(e)}`) },
+        { onError: (e) => toast.error(`Couldn't run ${baseName(path)}`, apiErrorMessage(e)) },
       );
     },
     [createTerminal, toast],
@@ -251,7 +252,7 @@ export function FilesPanel({ projectId, isActive }: { projectId: string; isActiv
     (dir?: string) => {
       createTerminal.mutate(
         { kind: "shell", cwd: dir || undefined },
-        { onError: (e) => toast.error(`Couldn't open a terminal: ${e instanceof Error ? e.message : String(e)}`) },
+        { onError: (e) => toast.error("Couldn't open a terminal", apiErrorMessage(e)) },
       );
     },
     [createTerminal, toast],
@@ -265,7 +266,7 @@ export function FilesPanel({ projectId, isActive }: { projectId: string; isActiv
       toast.success(`Deleted ${baseName(path)}`);
       if (quickViewPath === path) setQuickViewPath(null);
     } catch (e) {
-      toast.error(`Couldn't delete ${baseName(path)}: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(`Couldn't delete ${baseName(path)}`, apiErrorMessage(e));
     }
     setDeleteTarget(null);
   }, [deleteTarget, deleteFile, toast, quickViewPath]);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, CheckCircle2, AlertTriangle, XCircle, Info } from "lucide-react";
 import { useToast, type Toast } from "@/lib/context/ToastContext";
 import { cn } from "@/lib/utils";
@@ -19,17 +20,26 @@ const toastStyles = {
   info: "border-blue-200 dark:border-blue-800",
 };
 
+/**
+ * Where every toast shows: the bottom-right corner of the window. Fixed on purpose; there is
+ * one container (mounted in app/providers.tsx) and no way to place toasts anywhere else.
+ * Portaled to <body> so no ancestor (a transform, an overflow, a stacking context) can move or
+ * clip it, above dialogs (z-50), and clickable while a modal dialog makes the page inert.
+ */
+export const TOAST_REGION_CLASS = "pointer-events-auto fixed bottom-4 right-4 z-100 flex w-96 max-w-[calc(100vw-2rem)] flex-col gap-2";
+
 export function ToastContainer() {
   const { toasts } = useToast();
 
-  if (toasts.length === 0) return null;
+  if (toasts.length === 0 || typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed bottom-4 right-4 z-100 flex flex-col gap-2">
+  return createPortal(
+    <div className={TOAST_REGION_CLASS} data-toast-region="" aria-live="polite">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} />
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }
 

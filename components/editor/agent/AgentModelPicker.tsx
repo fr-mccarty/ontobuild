@@ -9,6 +9,7 @@ import { useToast } from "@/lib/context/ToastContext";
 import { AGENT_EFFORTS, agentSettingsApi, type AgentEffort, type AgentModel } from "@/lib/api/agentSettings";
 import { useAgentChatStore } from "@/lib/stores/agentChatStore";
 import { useAgentModels } from "./agentQueries";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 export function shortModelName(id: string, models?: AgentModel[]): string {
   const found = models?.find((m) => m.id === id);
@@ -77,7 +78,7 @@ export function AgentModelPicker() {
     if (id === previous) return;
     agentSettingsApi.saveSettings({ model: id }).catch((err) => {
       if (useAgentChatStore.getState().model === id) setModel(previous);
-      toast.error("Could not save the agent model", err instanceof Error ? err.message : undefined);
+      toast.error("Couldn't save the agent model", apiErrorMessage(err));
     });
   };
 
@@ -87,7 +88,7 @@ export function AgentModelPicker() {
     setEffort(value);
     agentSettingsApi.saveSettings({ effort: value }).catch((err) => {
       if (useAgentChatStore.getState().effort === value) setEffort(previous);
-      toast.error("Could not save the reasoning effort", err instanceof Error ? err.message : undefined);
+      toast.error("Couldn't save the reasoning effort", apiErrorMessage(err));
     });
   };
 

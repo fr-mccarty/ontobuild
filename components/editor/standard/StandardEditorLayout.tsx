@@ -38,6 +38,7 @@ import { useDraftStore } from "@/lib/stores/draftStore";
 import { getLocalName } from "@/lib/utils";
 import { extractTreeLabelMap } from "@/lib/graph/buildGraphData";
 import { useAnnounce } from "@/components/ui/ScreenReaderAnnouncer";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 export interface StandardEditorLayoutProps {
   projectId: string;
@@ -175,10 +176,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
       await onReparentClass(classIri, oldParentIris, newParentIris, mode);
     } catch (err) {
       rollbackReparent(snapshot);
-      toast.error(
-        "Failed to reparent class",
-        err instanceof Error ? err.message : "Unknown error",
-      );
+      toast.error("Couldn't move the class", apiErrorMessage(err));
     }
   }, [onReparentClass, reparentOptimistic, rollbackReparent, toast]);
 
@@ -205,15 +203,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     if (undoAction) {
       const label = undoAction.classLabel || getLocalName(undoAction.classIri);
       const undoFn = handleUndo;
-      toast.addToast({
-        type: "success",
-        title: `Moved "${label}"`,
-        duration: 5000,
-        action: {
-          label: "Undo",
-          onClick: undoFn,
-        },
-      });
+      toast.success(`Moved "${label}"`, undefined, { action: { label: "Undo", onClick: undoFn } });
       clearUndo();
     }
   }, [undoAction, toast, handleUndo, clearUndo]);

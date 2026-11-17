@@ -117,4 +117,19 @@ describe("ToastContainer", () => {
     const alert = screen.getByRole("alert");
     expect(alert.className).toContain("border-red-200");
   });
+
+  it("always shows in the bottom-right corner of the window, outside wherever it is mounted", () => {
+    mockToasts = [{ id: "1", type: "info", title: "Hello" }];
+    const { container } = render(
+      <div style={{ transform: "translateX(10px)", overflow: "hidden" }}>
+        <ToastContainer />
+      </div>,
+    );
+    const region = document.querySelector("[data-toast-region]") as HTMLElement;
+    expect(region.parentElement).toBe(document.body);
+    expect(container.contains(region)).toBe(false);
+    for (const cls of ["fixed", "bottom-4", "right-4", "z-100", "pointer-events-auto"]) {
+      expect(region.className.split(" ")).toContain(cls);
+    }
+  });
 });

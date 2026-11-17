@@ -24,16 +24,30 @@ export interface Toast {
   action?: ToastAction;
 }
 
+/** Extras for a toast: how long it stays (ms; 0 keeps it until dismissed) and a button. */
+export interface ToastOptions {
+  duration?: number;
+  action?: ToastAction;
+}
+
+type ShowToast = (title: string, description?: string, options?: ToastOptions) => string;
+
+/**
+ * Every notification in the app goes through here and shows in the one ToastContainer.
+ * Call the typed helpers: `toast.error("Couldn't <do the thing>", apiErrorMessage(err))`,
+ * `toast.success("Copied the IRI")`. The title says what happened; the description why.
+ */
 interface ToastContextValue {
   toasts: Toast[];
+  /** Low-level; components use success / error / warning / info. */
   addToast: (toast: Omit<Toast, "id">) => string;
   removeToast: (id: string) => void;
   clearToasts: () => void;
 
-  success: (title: string, description?: string) => string;
-  error: (title: string, description?: string) => string;
-  warning: (title: string, description?: string) => string;
-  info: (title: string, description?: string) => string;
+  success: ShowToast;
+  error: ShowToast;
+  warning: ShowToast;
+  info: ShowToast;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -76,27 +90,23 @@ export function ToastProvider({ children }: ToastProviderProps) {
     setToasts([]);
   }, []);
 
-  const success = useCallback(
-    (title: string, description?: string) =>
-      addToast({ type: "success", title, description }),
+  const success = useCallback<ShowToast>(
+    (title, description, options) => addToast({ type: "success", title, description, ...options }),
     [addToast]
   );
 
-  const error = useCallback(
-    (title: string, description?: string) =>
-      addToast({ type: "error", title, description }),
+  const error = useCallback<ShowToast>(
+    (title, description, options) => addToast({ type: "error", title, description, ...options }),
     [addToast]
   );
 
-  const warning = useCallback(
-    (title: string, description?: string) =>
-      addToast({ type: "warning", title, description }),
+  const warning = useCallback<ShowToast>(
+    (title, description, options) => addToast({ type: "warning", title, description, ...options }),
     [addToast]
   );
 
-  const info = useCallback(
-    (title: string, description?: string) =>
-      addToast({ type: "info", title, description }),
+  const info = useCallback<ShowToast>(
+    (title, description, options) => addToast({ type: "info", title, description, ...options }),
     [addToast]
   );
 

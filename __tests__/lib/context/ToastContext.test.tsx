@@ -31,6 +31,21 @@ describe("ToastContext", () => {
   });
 
   describe("convenience methods", () => {
+    it("pass an action and duration through", () => {
+      const { result } = renderHook(() => useToast(), { wrapper });
+      const onClick = vi.fn();
+      act(() => {
+        result.current.warning("Heads up", "Details", { duration: 15000, action: { label: "Undo", onClick } });
+      });
+      expect(result.current.toasts[0]).toMatchObject({
+        type: "warning",
+        title: "Heads up",
+        description: "Details",
+        duration: 15000,
+        action: { label: "Undo", onClick },
+      });
+    });
+
     it("success() adds a success toast", () => {
       const { result } = renderHook(() => useToast(), { wrapper });
 

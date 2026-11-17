@@ -28,13 +28,12 @@ import { useWorkspaceStore } from "@/lib/stores/workspaceStore";
 import { useToast } from "@/lib/context/ToastContext";
 import { cn } from "@/lib/utils";
 import type { DevServerStatus } from "@/lib/api/workspace";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 const ITEM = cn(
   "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-50",
   "dark:text-slate-300 dark:hover:bg-slate-700",
 );
-
-const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 function ConfigureDialog({
   open,
@@ -166,12 +165,12 @@ export function RunMenu({ projectId }: { projectId: string }) {
       setConfigOpen(true);
       return;
     }
-    start.mutate(undefined, { onError: (e) => toast.error(`Couldn't start the dev server: ${errorText(e)}`) });
+    start.mutate(undefined, { onError: (e) => toast.error("Couldn't start the dev server", apiErrorMessage(e)) });
   };
 
   const stopServer = () => {
     close();
-    stop.mutate(undefined, { onError: (e) => toast.error(`Couldn't stop the dev server: ${errorText(e)}`) });
+    stop.mutate(undefined, { onError: (e) => toast.error("Couldn't stop the dev server", apiErrorMessage(e)) });
   };
 
   const openServerTerminal = () => {
@@ -183,7 +182,7 @@ export function RunMenu({ projectId }: { projectId: string }) {
     close();
     createTerminal.mutate(
       { kind: "shell" },
-      { onError: (e) => toast.error(`Couldn't open a terminal: ${errorText(e)}`) },
+      { onError: (e) => toast.error("Couldn't open a terminal", apiErrorMessage(e)) },
     );
   };
 
@@ -325,7 +324,7 @@ export function RunMenu({ projectId }: { projectId: string }) {
                 setConfigOpen(false);
                 toast.success("Dev server configured");
               },
-              onError: (e) => toast.error(`Couldn't save the dev server settings: ${errorText(e)}`),
+              onError: (e) => toast.error("Couldn't save the dev server settings", apiErrorMessage(e)),
             },
           )
         }

@@ -158,13 +158,12 @@ vi.mock("@/lib/hooks/useTreeDragDrop", () => ({
 }));
 
 const _toastErrorFn = vi.fn();
-const _toastAddFn = vi.fn();
+const _toastSuccessFn = vi.fn();
 vi.mock("@/lib/context/ToastContext", () => ({
   useToast: () => ({
-    success: vi.fn(),
+    success: _toastSuccessFn,
     error: _toastErrorFn,
     info: vi.fn(),
-    addToast: _toastAddFn,
   }),
 }));
 
@@ -635,7 +634,7 @@ describe("StandardEditorLayout", () => {
     expect(document.querySelector(".animate-spin")).toBeNull();
   });
 
-  it("fires addToast when undoAction is set", () => {
+  it("shows a success toast with Undo when undoAction is set", () => {
     const clearUndoFn = vi.fn();
     _useTreeDragDropOverride = {
       dragState: {
@@ -662,12 +661,9 @@ describe("StandardEditorLayout", () => {
       handleDragLeaveNode: vi.fn(),
     };
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
-    expect(_toastAddFn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "success",
-        title: 'Moved "Moved Class"',
-      })
-    );
+    expect(_toastSuccessFn).toHaveBeenCalledWith('Moved "Moved Class"', undefined, {
+      action: { label: "Undo", onClick: expect.any(Function) },
+    });
     expect(clearUndoFn).toHaveBeenCalled();
   });
 
@@ -697,11 +693,7 @@ describe("StandardEditorLayout", () => {
       handleDragLeaveNode: vi.fn(),
     };
     render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes })} />);
-    expect(_toastAddFn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'Moved "MyEntity"',
-      })
-    );
+    expect(_toastSuccessFn).toHaveBeenCalledWith('Moved "MyEntity"', undefined, expect.anything());
   });
 
   it("calls rollbackReparent and toast.error when onReparentClass rejects", async () => {
@@ -746,7 +738,7 @@ describe("StandardEditorLayout", () => {
     );
     expect(onReparentClass).toHaveBeenCalled();
     expect(rollbackReparent).toHaveBeenCalledWith({ previousNodes: sampleNodes });
-    expect(_toastErrorFn).toHaveBeenCalledWith("Failed to reparent class", "Server error");
+    expect(_toastErrorFn).toHaveBeenCalledWith("Couldn't move the class", "Server error");
   });
 
   it("does nothing in handleDndReparent when reparent callbacks are not provided", async () => {
@@ -866,7 +858,7 @@ describe("StandardEditorLayout", () => {
     expect(screen.getByTestId("entity-tab-bar")).toBeDefined();
   });
 
-  it("shows 'Unknown error' toast when reparent throws non-Error", async () => {
+  it("shows a generic reason when reparent throws a non-Error", async () => {
     const onReparentClass = vi.fn().mockRejectedValue("string error");
     const reparentOptimistic = vi.fn().mockReturnValue({ previousNodes: [] });
     const rollbackReparent = vi.fn();
@@ -897,7 +889,7 @@ describe("StandardEditorLayout", () => {
       "move",
     );
 
-    expect(_toastErrorFn).toHaveBeenCalledWith("Failed to reparent class", "Unknown error");
+    expect(_toastErrorFn).toHaveBeenCalledWith("Couldn't move the class", "Something went wrong");
   });
 
   describe("entityNavigationRef", () => {

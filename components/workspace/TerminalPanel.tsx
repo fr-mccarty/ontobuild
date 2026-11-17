@@ -12,6 +12,7 @@ import { useToast } from "@/lib/context/ToastContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useIsDarkMode } from "./QuickView";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 const XTerm = dynamic(() => import("./XTerm"), { ssr: false });
 
@@ -113,7 +114,7 @@ export function TerminalPanel({ projectId }: { projectId: string }) {
       } catch (e) {
         // Already gone on the server is fine; anything else is worth a mention.
         if (!(e instanceof ApiError && e.status === 404)) {
-          toast.error(`Couldn't close the terminal: ${e instanceof Error ? e.message : String(e)}`);
+          toast.error("Couldn't close the terminal", apiErrorMessage(e));
         }
       }
       void qc.invalidateQueries({ queryKey: workspaceQueryKeys.terminals(projectId) });
@@ -125,7 +126,7 @@ export function TerminalPanel({ projectId }: { projectId: string }) {
   const newShell = () =>
     createTerminal.mutate(
       { kind: "shell" },
-      { onError: (e) => toast.error(`Couldn't open a terminal: ${e instanceof Error ? e.message : String(e)}`) },
+      { onError: (e) => toast.error("Couldn't open a terminal", apiErrorMessage(e)) },
     );
 
   const onResizeStart = (e: ReactPointerEvent<HTMLDivElement>) => {

@@ -38,6 +38,7 @@ import {
 import { type PropertyDraftEntry } from "@/lib/stores/draftStore";
 import { useIriLabels } from "@/lib/hooks/useIriLabels";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useSaveShortcut } from "@/lib/hooks/useSaveShortcut";
 
 function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
@@ -192,7 +193,7 @@ export function PropertyDetailPanel({
         isDefinedByIris: detail?.isDefinedByIris,
       });
     } : undefined,
-    onError: (msg) => toast.error(msg),
+    onError: (msg) => toast.error("Couldn't save your changes", msg),
     buildDraftEntry,
     validate,
   });
@@ -257,6 +258,7 @@ export function PropertyDetailPanel({
     triggerSave();
     await flushToGit();
   }, [triggerSave, flushToGit]);
+  useSaveShortcut(isEditing, flushDraftToGit);
 
   // Enter edit mode as soon as the property can be edited, seeding the form from a
   // restored draft if there is one, otherwise from the parsed detail. This adjusts

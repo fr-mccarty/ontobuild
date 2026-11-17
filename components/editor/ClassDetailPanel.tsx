@@ -46,6 +46,7 @@ import { useAutoSave } from "@/lib/hooks/useAutoSave";
 import { useToast } from "@/lib/context/ToastContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { ImportedMarker } from "@/lib/ontology/types";
+import { useSaveShortcut } from "@/lib/hooks/useSaveShortcut";
 
 export function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
@@ -131,7 +132,7 @@ export function ClassDetailPanel({
     classDetail,
     canEdit: editable && !!onUpdateClass,
     onUpdateClass,
-    onError: (msg) => toast.error(msg),
+    onError: (msg) => toast.error("Couldn't save your changes", msg),
   });
 
   useEffect(() => {
@@ -222,6 +223,7 @@ export function ClassDetailPanel({
     triggerSave();
     await flushToGit();
   }, [triggerSave, flushToGit]);
+  useSaveShortcut(isEditing, flushDraftToGit);
 
   useEffect(() => {
     if (isEditing || editInitializedRef.current) return;

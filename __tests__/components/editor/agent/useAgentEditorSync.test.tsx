@@ -162,10 +162,10 @@ describe("useAgentEditorSync", () => {
 
     expect(s.refreshTree).toHaveBeenCalledTimes(1);
     expect(s.hook.result.current.detailEpoch).toBe(0);
-    expect(toast.addToast).toHaveBeenCalledTimes(1);
-    const shown = toast.addToast.mock.calls[0][0];
-    expect(shown.title).toBe("The agent changed the ontology");
-    expect(shown.description).toContain('Your unsaved edits to "Pizza" are kept');
+    expect(toast.warning).toHaveBeenCalledTimes(1);
+    const [title, description, shown] = toast.warning.mock.calls[0];
+    expect(title).toBe("The agent changed the ontology");
+    expect(description).toContain('Your unsaved edits to "Pizza" are kept');
     expect(useDraftStore.getState().hasDraft(draftKey("p1", "main", PIZZA))).toBe(true);
 
     act(() => shown.action.onClick());
@@ -186,7 +186,7 @@ describe("useAgentEditorSync", () => {
     act(() => s.hook.result.current.onOntologyChanged(change()));
     await settle();
     expect(s.hook.result.current.detailEpoch).toBe(0);
-    expect(toast.addToast).toHaveBeenCalledTimes(1);
+    expect(toast.warning).toHaveBeenCalledTimes(1);
   });
 
   it("remounts the detail panel when the shown entity has no pending edits", async () => {
@@ -204,7 +204,7 @@ describe("useAgentEditorSync", () => {
     act(() => s.hook.result.current.onOntologyChanged(change()));
     await settle();
     expect(s.hook.result.current.detailEpoch).toBe(1);
-    expect(toast.addToast).not.toHaveBeenCalled();
+    expect(toast.warning).not.toHaveBeenCalled();
   });
 
   it("selects an entity after applying pending refreshes", async () => {

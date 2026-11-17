@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AddEntityDialog, type NewEntityInfo } from "@/components/editor/AddEntityDialog";
 import { useToast } from "@/lib/context/ToastContext";
 import { readSelectionFromSearchParams } from "@/lib/utils/selectionUrl";
+import { requestSave } from "@/lib/hooks/useSaveShortcut";
 import { StandardEditorLayout } from "@/components/editor/standard/StandardEditorLayout";
 import { RevisionHistoryPanel } from "@/components/revision";
 import { HealthCheckPanel } from "@/components/editor/HealthCheckPanel";
@@ -52,6 +53,7 @@ import { MoreMenu, MORE_MENU_ITEM_CLASSES } from "@/components/editor/MoreMenu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { OntologyFileMenu, OntologyFilePanel, OntologyLoadError } from "@/components/project/OntologyFile";
 import { OntologyLocalChangesNotice } from "@/components/project/OntologyLocalChangesNotice";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 const PROJECTS_TOOLTIP = "Projects: return to the list of all projects";
 
@@ -300,7 +302,7 @@ export default function ProjectEditorPage() {
           );
           base = response.content;
         } catch {
-          toast.error("Failed to load source before adding entity");
+          toast.error("Couldn't load the ontology to add the entity");
           return;
         }
       }
@@ -330,7 +332,7 @@ export default function ProjectEditorPage() {
           activeBranch,
         );
       } catch (err) {
-        toast.error(err instanceof Error ? `Failed to save: ${err.message}` : "Failed to save new entity");
+        toast.error(`Couldn't add "${entity.label}"`, apiErrorMessage(err));
         return;
       }
 
@@ -351,9 +353,9 @@ export default function ProjectEditorPage() {
   const handleCopyIri = useCallback(async (iri: string) => {
     try {
       await navigator.clipboard.writeText(iri);
-      toast.success("IRI copied to clipboard");
+      toast.success("Copied the IRI");
     } catch {
-      toast.error("Failed to copy IRI");
+      toast.error("Couldn't copy the IRI");
     }
   }, [toast]);
 
@@ -380,10 +382,7 @@ export default function ProjectEditorPage() {
       loadRootClasses();
       queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId) });
     } catch (err) {
-      toast.error(
-        "Failed to delete class",
-        err instanceof Error ? err.message : "Unknown error"
-      );
+      toast.error(`Couldn't delete "${deleteTargetLabel}"`, apiErrorMessage(err));
       loadRootClasses();
     }
   }, [deleteTargetIri, deleteTargetLabel, projectId, activeBranch, removeOptimisticNode, toast, loadRootClasses, queryClient, setSourceContent]);
@@ -679,12 +678,14 @@ export default function ProjectEditorPage() {
       id: "save",
       key: "s",
       modifiers: { ctrl: true },
-      description: "Save / flush draft",
+      description: "Save",
       category: "Editing",
       action: () => {
+        // Blur first so the focused field records its value, then the panel being edited commits.
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
+        requestSave();
       },
       global: true,
       ignoreWhenEditorFocused: true,

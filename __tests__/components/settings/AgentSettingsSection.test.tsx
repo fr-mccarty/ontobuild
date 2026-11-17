@@ -149,7 +149,7 @@ describe("AgentSettingsSection", () => {
     await screen.findByText("Configured");
     fireEvent.click(screen.getByRole("button", { name: "High" }));
     await waitFor(() =>
-      expect(toastMock.error).toHaveBeenCalledWith("Failed to save agent settings", "Disk full"),
+      expect(toastMock.error).toHaveBeenCalledWith("Couldn't save the agent settings", "Disk full"),
     );
     expect(screen.getByText("Not saved")).toBeDefined();
   });

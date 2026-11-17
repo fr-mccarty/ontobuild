@@ -25,6 +25,7 @@ import {
 import { useOntologyFileMutations, useOntologyFiles } from "@/lib/hooks/useOntologyFiles";
 import { useToast } from "@/lib/context/ToastContext";
 import { cn } from "@/lib/utils";
+import { apiErrorMessage } from "@/lib/api/errors";
 
 /**
  * Choosing and creating the project's ontology file. A project edits one ontology file at a
@@ -425,7 +426,7 @@ function useOntologyFileController({ projectId, branch, projectName, currentIri,
         });
         return;
       }
-      toast.error(`Couldn't switch to ${file.path}`, projectErrorMessage(e));
+      toast.error(`Couldn't switch to ${file.path}`, apiErrorMessage(e));
     });
   };
 
