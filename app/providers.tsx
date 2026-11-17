@@ -30,7 +30,7 @@ export function Providers({ children }: ProvidersProps) {
     <QueryClientProvider client={queryClient}>
         <ScreenReaderAnnouncerProvider>
           <ToastProvider>
-            <TooltipPrimitive.Provider delayDuration={1500}>
+            <TooltipPrimitive.Provider delayDuration={1000}>
               {children}
               <ToastContainer />
             </TooltipPrimitive.Provider>

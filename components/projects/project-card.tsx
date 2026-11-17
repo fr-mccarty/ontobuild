@@ -6,6 +6,7 @@ import { cn, formatDate } from "@/lib/utils";
 import type { Project } from "@/lib/api/projects";
 import type { ImportStatus } from "@/lib/api/imports";
 import { useImports } from "@/lib/hooks/useImports";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface ProjectCardProps {
   project: Project;
@@ -46,6 +47,10 @@ export function ProjectCard({ project, className }: ProjectCardProps) {
         </div>
       </div>
 
+      <div className="mt-4 flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+        <span>Updated {formatDate(project.updated_at || project.created_at)}</span>
+      </div>
+
       {imports.length > 0 && (
         <div className="mt-3 flex items-start gap-1.5" data-testid="project-card-imports">
           <Import
@@ -54,22 +59,23 @@ export function ProjectCard({ project, className }: ProjectCardProps) {
           />
           <ul className="flex min-w-0 flex-wrap gap-1" aria-label="Imported ontologies">
             {imports.map((i) => (
-              <li
+              <Tooltip
                 key={i.iri}
-                title={i.iri}
-                className="max-w-full truncate rounded-sm bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                content={
+                  <>
+                    <span className="block font-medium">Imported ontology</span>
+                    <span className="block break-all opacity-75">{i.iri}</span>
+                  </>
+                }
               >
-                {importName(i)}
-              </li>
+                <li className="max-w-full truncate rounded-sm bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                  {importName(i)}
+                </li>
+              </Tooltip>
             ))}
           </ul>
         </div>
       )}
-
-      <div className="mt-4 flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
-        <span>Updated {formatDate(project.updated_at || project.created_at)}</span>
-      </div>
-
     </Link>
   );
 }
