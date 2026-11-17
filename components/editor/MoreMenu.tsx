@@ -46,7 +46,7 @@ export function MoreMenu({ children, className }: MoreMenuProps) {
 
   return (
     <div ref={ref} className={cn("relative flex items-center", className)}>
-      <Tooltip side="bottom" disabled={open} content="More: keyboard shortcuts and other editor controls">
+      <Tooltip side="bottom" disabled={open} content="More: relationship graph, keyboard shortcuts and other editor controls">
         <Button
           variant="ghost"
           size="sm"

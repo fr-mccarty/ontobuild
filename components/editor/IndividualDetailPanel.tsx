@@ -398,6 +398,18 @@ export function IndividualDetailPanel({
                   </span>
                 )}
               </h2>
+              <div className="flex shrink-0 items-center gap-2">
+                {isEditing && (
+                  <AutoSaveAffordanceBar
+                    status={saveStatus}
+                    error={saveError}
+                    validationError={validationError}
+                    onRetry={() => flushToGit()}
+                    onManualSave={flushDraftToGit}
+                    onCancel={cancelEditMode}
+                  />
+                )}
+              </div>
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="rounded-full px-2 py-0.5 text-[10px] font-medium border bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-400">Individual</span>
@@ -416,18 +428,7 @@ export function IndividualDetailPanel({
         </div>
       </div>
 
-      {isEditing && (
-        <AutoSaveAffordanceBar
-          status={saveStatus}
-          error={saveError}
-          validationError={validationError}
-          onRetry={() => flushToGit()}
-          onManualSave={flushDraftToGit}
-          onCancel={cancelEditMode}
-        />
-      )}
-
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         <div className="p-4 space-y-3">
           {isEditing ? (
             <Section title="Label(s)" icon={<Tag className="h-4 w-4" />}>

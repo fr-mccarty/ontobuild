@@ -115,9 +115,6 @@ body {
   @apply bg-slate-100 dark:bg-slate-800;
 }
 
-.tree-item.selected {
-  @apply bg-primary-100 dark:bg-primary-900/30;
-}
 
 .tree-item-root {
   @apply font-semibold border-l-2 border-transparent;
@@ -132,12 +129,22 @@ body {
   @apply border-primary-500;
 }
 
+/* After the root rules and matching .dark .tree-item-root's specificity, so a selected root row still shows its highlight. */
+.tree-item.selected,
+.dark .tree-item.selected {
+  background: rgb(14 165 233 / 0.12);
+}
+
+.dark .tree-item.selected {
+  background: rgb(56 189 248 / 0.16);
+}
+
 .tree-leaf-dot {
   @apply h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-slate-500 flex-shrink-0;
 }
 
 .tree-item.selected .tree-leaf-dot {
-  @apply bg-white dark:bg-white;
+  @apply bg-primary-500 dark:bg-primary-400;
 }
 
 .tree-search-match mark {

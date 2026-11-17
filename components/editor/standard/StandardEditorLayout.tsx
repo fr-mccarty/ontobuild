@@ -13,7 +13,7 @@ import { ResizablePanelDivider } from "@/components/editor/ResizablePanelDivider
 import { EntityTreeToolbar } from "@/components/editor/shared/EntityTreeToolbar";
 import { useTreeSearch } from "@/lib/hooks/useTreeSearch";
 import { useFilteredTree } from "@/lib/hooks/useFilteredTree";
-import { Share2, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { DraggableTreeWrapper } from "@/components/editor/shared/DraggableTreeWrapper";
 import { useTreeDragDrop, type DragMode } from "@/lib/hooks/useTreeDragDrop";
 import { useToast } from "@/lib/context/ToastContext";
@@ -99,6 +99,13 @@ export interface StandardEditorLayoutProps {
    * panel or the agent) still updates it for when it opens again.
    */
   treePanelOpen?: boolean;
+  /**
+   * Whether the centre panel shows the relationship graph for the selected class instead of
+   * its details. Controlled by the page (the graph is opened from the sub-header's More menu);
+   * left undefined, the layout keeps this state itself.
+   */
+  showGraph?: boolean;
+  onShowGraphChange?: (show: boolean) => void;
   /** Counts shown on the Classes / Properties / Individuals tabs. */
   entityCounts?: Partial<Record<EntityTab, number>>;
 }
@@ -213,7 +220,16 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
 
   const [treePanelWidth, setTreePanelWidth] = useState(320);
 
-  const [showGraph, setShowGraph] = useState(false);
+  const [ownShowGraph, setOwnShowGraph] = useState(false);
+  const { onShowGraphChange } = props;
+  const showGraph = props.showGraph ?? ownShowGraph;
+  const setShowGraph = useCallback(
+    (show: boolean) => {
+      setOwnShowGraph(show);
+      onShowGraphChange?.(show);
+    },
+    [onShowGraphChange],
+  );
 
   const [activeTab, setActiveTab] = useState<EntityTab>("classes");
 
@@ -264,7 +280,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
         entityNavigationRef.current = null;
       }
     };
-  }, [entityNavigationRef, navToNode]);
+  }, [entityNavigationRef, navToNode, setShowGraph]);
 
   const setSelection = useSelectionStore((s) => s.setSelection);
   useEffect(() => {
@@ -309,7 +325,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
       <div
         data-testid="entity-tree-panel"
         hidden={!treePanelOpen}
-        className="flex-shrink-0 bg-white dark:bg-slate-800"
+        className="flex flex-shrink-0 flex-col bg-white dark:bg-slate-800"
         style={{ width: treePanelWidth }}
       >
         <EntityTabBar activeTab={activeTab} onTabChange={setActiveTab} counts={props.entityCounts} />
@@ -332,7 +348,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
           isExpandingAll={activeTab === "classes" ? isExpandingAll : false}
         />
 
-        <div className="h-[calc(100%-5.5rem)] overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           {activeTab === "classes" && (
             <>
               {isTreeLoading && nodes.length === 0 ? (
@@ -464,16 +480,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
             onAddIndividual={canEdit ? (iri: string) => onAddEntity(iri, "individual") : undefined}
             onNavigateToIndividual={(iri: string) => { setActiveTab("individuals"); setSelectedIndividualIri(iri); }}
             refreshKey={detailRefreshKey}
-            headerActions={selectedIri ? (
-              <button
-                onClick={() => setShowGraph(true)}
-                className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
-                aria-label="Show relationship graph"
-              >
-                <Share2 className="h-3.5 w-3.5" />
-                Graph
-              </button>
-            ) : undefined}
           />
         ) : activeTab === "properties" ? (
           <PropertyDetailPanel

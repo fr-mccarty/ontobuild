@@ -431,6 +431,18 @@ export function PropertyDetailPanel({
                   </span>
                 )}
               </h2>
+              <div className="flex shrink-0 items-center gap-2">
+                {isEditing && (
+                  <AutoSaveAffordanceBar
+                    status={saveStatus}
+                    error={saveError}
+                    validationError={validationError}
+                    onRetry={() => flushToGit()}
+                    onManualSave={flushDraftToGit}
+                    onCancel={cancelEditMode}
+                  />
+                )}
+              </div>
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium border", typeInfo.color)}>
@@ -451,18 +463,7 @@ export function PropertyDetailPanel({
         </div>
       </div>
 
-      {isEditing && (
-        <AutoSaveAffordanceBar
-          status={saveStatus}
-          error={saveError}
-          validationError={validationError}
-          onRetry={() => flushToGit()}
-          onManualSave={flushDraftToGit}
-          onCancel={cancelEditMode}
-        />
-      )}
-
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         <div className="p-4 space-y-3">
           {isEditing ? (
             <Section title="Label(s)" icon={<Tag className="h-4 w-4" />}>

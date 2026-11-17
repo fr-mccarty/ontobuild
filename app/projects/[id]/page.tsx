@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from "react";
 import { useParams, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Settings, FileCode, Keyboard, PanelLeftOpen, PanelLeftClose, Sparkles } from "lucide-react";
+import { ArrowLeft, ChevronRight, Settings, FileCode, Keyboard, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Share2 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -193,6 +193,8 @@ export default function ProjectEditorPage() {
     if (!showRightSidebar) toggleRight();
   }, [rightOpenRequest, showRightSidebar, toggleRight]);
   const [leftTab, setLeftTab] = useState<EntityTab>("classes");
+  /** The centre panel shows the selected class's relationship graph (opened from the More menu). */
+  const [showGraph, setShowGraph] = useState(false);
   const selectionIri = useSelectionStore((s) => s.iri);
   const selectionType = useSelectionStore((s) => s.type);
   const entityNavigationRef = useRef<((iri: string, type?: string) => void) | null>(null);
@@ -665,6 +667,7 @@ export default function ProjectEditorPage() {
   }, [isTreeLoading, totalClasses, entityCountsData]);
   const showNormalize = !!normalizationStatus?.needs_normalization;
   // With normalization recommended, land on the Normalization card, where the warning and its action are.
+  const canShowGraph = leftTab === "classes" && !!selectedIri;
   const settingsHref = `/projects/${projectId}/settings${activeBranch ? `?branch=${encodeURIComponent(activeBranch)}` : ""}${
     showNormalize ? "#normalization" : ""
   }`;
@@ -815,8 +818,9 @@ export default function ProjectEditorPage() {
   return (
     <BranchProvider projectId={projectId} initialBranch={initialBranch}>
       <Header />
-      <main id="main-content" className="min-h-[calc(100vh-4rem)] bg-slate-100 dark:bg-slate-900">
-        <div className="border-b border-slate-200 bg-white px-2 py-3 sm:px-4 dark:border-slate-700 dark:bg-slate-800">
+      {/* Fills the window below the header (4rem plus its 1px border); the panes below share the rest so nothing spills past the bottom. */}
+      <main id="main-content" className="flex h-[calc(100dvh-4rem-1px)] flex-col overflow-hidden bg-slate-100 dark:bg-slate-900">
+        <div className="flex-shrink-0 border-b border-slate-200 bg-white px-2 py-3 sm:px-4 dark:border-slate-700 dark:bg-slate-800">
           {/* One line at every width: rarely used controls live in the ⋮ More menu. */}
           <div data-testid="editor-sub-header" className="flex flex-nowrap items-center justify-between gap-2 sm:gap-4">
             <div className="flex min-w-0 flex-nowrap items-center gap-2 sm:gap-4">
@@ -866,37 +870,6 @@ export default function ProjectEditorPage() {
 
               <Tooltip
                 side="bottom"
-                content={
-                  showRightSidebar
-                    ? "Hide the agent panel (shortcut: Esc)"
-                    : `Agent: chat with the ontology agent and review the Health tab${
-                        healthIssueCount > 0 ? ` (${healthIssueCount} health issue${healthIssueCount === 1 ? "" : "s"})` : ""
-                      }`
-                }
-              >
-                <Button
-                  variant={showRightSidebar ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={toggleRight}
-                  aria-label={
-                    !showRightSidebar && healthIssueCount > 0 ? `Agent (${healthIssueCount} health issues)` : "Agent"
-                  }
-                  aria-pressed={showRightSidebar}
-                  className="relative gap-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  <span className="hidden sm:inline">Agent</span>
-                  {!showRightSidebar && agentDotSeverity && (
-                    <span
-                      data-testid="right-sidebar-lint-dot"
-                      className={`absolute right-1 top-1 h-2 w-2 rounded-full ring-2 ring-white dark:ring-slate-800 ${LINT_DOT_CLASSES[agentDotSeverity]}`}
-                    />
-                  )}
-                </Button>
-              </Tooltip>
-
-              <Tooltip
-                side="bottom"
                 content={`Project settings: project details, imports, GitHub, normalization, lint rules and pull requests${
                   showNormalize ? ". Normalization recommended: the ontology file isn't in canonical Turtle format" : ""
                 }`}
@@ -931,6 +904,20 @@ export default function ProjectEditorPage() {
                       <span className="flex-1">Keyboard shortcuts</span>
                       <kbd className="text-xs text-slate-400" aria-hidden>?</kbd>
                     </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!canShowGraph}
+                      className={`${MORE_MENU_ITEM_CLASSES} disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent`}
+                      onClick={() => {
+                        setShowGraph(true);
+                        closeMenu();
+                      }}
+                    >
+                      <Share2 className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="flex-1">Relationship graph</span>
+                      {!canShowGraph && <span className="text-xs text-slate-400" aria-hidden>Select a class</span>}
+                    </button>
                     <Link
                       href={settingsHref}
                       role="menuitem"
@@ -944,11 +931,40 @@ export default function ProjectEditorPage() {
                   </>
                 )}
               </MoreMenu>
+              <Tooltip
+                side="bottom"
+                content={
+                  showRightSidebar
+                    ? "Hide the side panel (shortcut: Esc)"
+                    : `Show the side panel: Agent, Health, Files and Tools${
+                        healthIssueCount > 0 ? ` (${healthIssueCount} health issue${healthIssueCount === 1 ? "" : "s"})` : ""
+                      }`
+                }
+              >
+                <Button
+                  variant={showRightSidebar ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={toggleRight}
+                  aria-label={
+                    !showRightSidebar && healthIssueCount > 0 ? `Side panel (${healthIssueCount} health issues)` : "Side panel"
+                  }
+                  aria-pressed={showRightSidebar}
+                  className="relative -my-1 flex-shrink-0 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                >
+                  {showRightSidebar ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                  {!showRightSidebar && agentDotSeverity && (
+                    <span
+                      data-testid="right-sidebar-lint-dot"
+                      className={`absolute right-1 top-1 h-2 w-2 rounded-full ring-2 ring-white dark:ring-slate-800 ${LINT_DOT_CLASSES[agentDotSeverity]}`}
+                    />
+                  )}
+                </Button>
+              </Tooltip>
             </div>
           </div>
         </div>
 
-        <div className="flex h-[calc(100vh-4rem-3.5rem)] flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
         <div className="relative flex min-h-0 flex-1">
           <div className="flex-1 flex overflow-hidden">
             <StandardEditorLayout
@@ -1000,6 +1016,8 @@ export default function ProjectEditorPage() {
               rollbackReparent={rollbackReparent}
               onActiveTabChange={setLeftTab}
               treePanelOpen={leftOpen}
+              showGraph={showGraph}
+              onShowGraphChange={setShowGraph}
             />
           </div>
 

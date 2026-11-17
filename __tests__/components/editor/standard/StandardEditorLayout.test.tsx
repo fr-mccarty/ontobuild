@@ -340,41 +340,46 @@ describe("StandardEditorLayout", () => {
     expect(screen.getByTestId("class-detail-panel")).toBeDefined();
   });
 
-  it("shows Graph button when a class is selected", () => {
+  it("has no Graph button in the class header: the graph opens from the sub-header's More menu", () => {
     render(
       <StandardEditorLayout
         {...defaultProps({ nodes: sampleNodes, selectedIri: "http://example.org/ClassA" })}
       />
     );
-    expect(screen.getByText("Graph")).toBeDefined();
+    expect(screen.queryByText("Graph")).toBeNull();
+    expect(_classDetailProps.headerActions).toBeUndefined();
   });
 
-  it("toggles to graph view when Graph button clicked", () => {
+  it("shows the graph when the page asks for it", () => {
     render(
       <StandardEditorLayout
         {...defaultProps({ nodes: sampleNodes, selectedIri: "http://example.org/ClassA" })}
+        showGraph
       />
     );
-    fireEvent.click(screen.getByText("Graph"));
     expect(screen.getByTestId("ontology-graph")).toBeDefined();
     expect(screen.getByText("Back to Details")).toBeDefined();
   });
 
-  it("toggles back from graph view via Back button", () => {
-    render(
+  it("asks the page to close the graph via the Back button", () => {
+    const onShowGraphChange = vi.fn();
+    const { rerender } = render(
       <StandardEditorLayout
         {...defaultProps({ nodes: sampleNodes, selectedIri: "http://example.org/ClassA" })}
+        showGraph
+        onShowGraphChange={onShowGraphChange}
       />
     );
-    fireEvent.click(screen.getByText("Graph"));
-    expect(screen.getByTestId("ontology-graph")).toBeDefined();
     fireEvent.click(screen.getByText("Back to Details"));
+    expect(onShowGraphChange).toHaveBeenCalledWith(false);
+    rerender(
+      <StandardEditorLayout
+        {...defaultProps({ nodes: sampleNodes, selectedIri: "http://example.org/ClassA" })}
+        showGraph={false}
+        onShowGraphChange={onShowGraphChange}
+      />
+    );
     expect(screen.getByTestId("class-detail-panel")).toBeDefined();
-  });
-
-  it("renders without graph button when no class selected", () => {
-    render(<StandardEditorLayout {...defaultProps({ nodes: sampleNodes, selectedIri: null })} />);
-    expect(screen.queryByText("Graph")).toBeNull();
   });
 
   it("renders with minimal props", () => {
@@ -806,24 +811,6 @@ describe("StandardEditorLayout", () => {
     expect(rollbackReparent).not.toHaveBeenCalled();
   });
 
-  it("hides graph and navigates when OntologyGraph onNavigateToClass fires", () => {
-    const navigateToNode = vi.fn().mockResolvedValue(undefined);
-    render(
-      <StandardEditorLayout
-        {...defaultProps({
-          nodes: sampleNodes,
-          selectedIri: "http://example.org/ClassA",
-          navigateToNode,
-        })}
-      />
-    );
-    fireEvent.click(screen.getByText("Graph"));
-    expect(screen.getByTestId("ontology-graph")).toBeDefined();
-
-    fireEvent.click(screen.getByText("Back to Details"));
-    expect(screen.getByTestId("class-detail-panel")).toBeDefined();
-  });
-
   it("passes onNavigateToClass to ClassDetailPanel", () => {
     const navigateToNode = vi.fn().mockResolvedValue(undefined);
     render(
@@ -877,24 +864,6 @@ describe("StandardEditorLayout", () => {
   it("works with undefined activeBranch", () => {
     render(<StandardEditorLayout {...defaultProps({ activeBranch: undefined })} />);
     expect(screen.getByTestId("entity-tab-bar")).toBeDefined();
-  });
-
-  it("does not pass headerActions to ClassDetailPanel when selectedIri is null", () => {
-    render(
-      <StandardEditorLayout
-        {...defaultProps({ nodes: sampleNodes, selectedIri: null })}
-      />
-    );
-    expect(_classDetailProps.headerActions).toBeUndefined();
-  });
-
-  it("passes headerActions to ClassDetailPanel when selectedIri is set", () => {
-    render(
-      <StandardEditorLayout
-        {...defaultProps({ nodes: sampleNodes, selectedIri: "http://example.org/ClassA" })}
-      />
-    );
-    expect(_classDetailProps.headerActions).toBeDefined();
   });
 
   it("shows 'Unknown error' toast when reparent throws non-Error", async () => {

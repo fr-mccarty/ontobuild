@@ -23,8 +23,21 @@ vi.mock("@/lib/context/ToastContext", () => ({
 
 vi.mock("@/components/layout/header", () => ({ Header: () => <header /> }));
 vi.mock("@/components/editor/standard/StandardEditorLayout", () => ({
-  StandardEditorLayout: ({ treePanelOpen, entityCounts }: { treePanelOpen?: boolean; entityCounts?: unknown }) => (
-    <div data-testid="editor-layout" data-tree-open={String(treePanelOpen)} data-entity-counts={JSON.stringify(entityCounts)} />
+  StandardEditorLayout: ({
+    treePanelOpen,
+    entityCounts,
+    showGraph,
+  }: {
+    treePanelOpen?: boolean;
+    entityCounts?: unknown;
+    showGraph?: boolean;
+  }) => (
+    <div
+      data-testid="editor-layout"
+      data-tree-open={String(treePanelOpen)}
+      data-entity-counts={JSON.stringify(entityCounts)}
+      data-show-graph={String(showGraph)}
+    />
   ),
 }));
 
@@ -206,7 +219,7 @@ describe("Project editor sub header tooltips", () => {
     // Share was removed: its links only opened on this machine, and pull requests moved to Repository.
     expect(within(bar).queryByRole("button", { name: /^Share/ })).toBeNull();
     expect(await tooltipFor(within(bar).getByRole("button", { name: "More" }))).toBe(
-      "More: keyboard shortcuts and other editor controls",
+      "More: relationship graph, keyboard shortcuts and other editor controls",
     );
     // Imports, Normalize and the project dashboard moved into project settings.
     expect(within(bar).queryByRole("link", { name: "Normalize ontology" })).toBeNull();
@@ -219,8 +232,8 @@ describe("Project editor sub header tooltips", () => {
       "Project settings: project details, imports, GitHub, normalization, lint rules and pull requests. Normalization recommended: the ontology file isn't in canonical Turtle format",
     );
     expect(within(bar).getByTestId("settings-normalize-dot")).toBeDefined();
-    expect(await tooltipFor(within(bar).getByRole("button", { name: "Agent" }))).toBe(
-      "Hide the agent panel (shortcut: Esc)",
+    expect(await tooltipFor(within(bar).getByRole("button", { name: "Side panel" }))).toBe(
+      "Hide the side panel (shortcut: Esc)",
     );
     expect(await tooltipFor(within(bar).getByRole("button", { name: "Entity tree" }))).toBe(
       "Hide the entity tree: the classes, properties and individuals list",
@@ -230,11 +243,11 @@ describe("Project editor sub header tooltips", () => {
   it("describes the toggles as 'show' once the panels are closed", async () => {
     renderPage();
     const bar = subHeader();
-    fireEvent.click(within(bar).getByRole("button", { name: "Agent" }));
+    fireEvent.click(within(bar).getByRole("button", { name: "Side panel" }));
     fireEvent.click(within(bar).getByRole("button", { name: "Entity tree" }));
     // Until the health summary loads, the count comes from the lint summary.
-    expect(await tooltipFor(within(bar).getByRole("button", { name: "Agent (3 health issues)" }))).toBe(
-      "Agent: chat with the ontology agent and review the Health tab (3 health issues)",
+    expect(await tooltipFor(within(bar).getByRole("button", { name: "Side panel (3 health issues)" }))).toBe(
+      "Show the side panel: Agent, Health, Files and Tools (3 health issues)",
     );
     expect(await tooltipFor(within(bar).getByRole("button", { name: "Entity tree" }))).toBe(
       "Show the entity tree: browse classes, properties and individuals",
@@ -275,19 +288,35 @@ describe("More menu", () => {
   };
   const cls = (el: Element) => el.className.split(/\s+/);
 
-  it("shows at every width with a vertical ⋮ icon, holding shortcuts and (below sm) settings", () => {
+  it("shows at every width with a vertical ⋮ icon, holding the graph, shortcuts and (below sm) settings", () => {
     renderPage();
     const more = within(subHeader()).getByRole("button", { name: "More" });
     expect(cls(more.closest("div.relative")!).filter((c) => c === "hidden" || c.endsWith(":hidden"))).toEqual([]);
     expect(more.querySelector("svg")!.getAttribute("class")).toContain("lucide-ellipsis-vertical");
     const menu = openMenu();
     const items = within(menu).getAllByRole("menuitem");
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
     expect(items[0]).toBe(within(menu).getByRole("menuitem", { name: "Keyboard shortcuts" }));
     expect(items[0].getAttribute("aria-keyshortcuts")).toBe("?");
-    expect(items[1]).toBe(within(menu).getByRole("menuitem", { name: /Project settings/ }));
+    expect(items[1]).toBe(within(menu).getByRole("menuitem", { name: "Relationship graph" }));
+    expect(items[2]).toBe(within(menu).getByRole("menuitem", { name: /Project settings/ }));
     // Settings is inline from sm up, so its menu item hides there.
     expect(cls(within(menu).getByRole("menuitem", { name: /Project settings/ }))).toContain("sm:hidden");
+  });
+
+  it("disables the relationship graph until a class is selected", () => {
+    renderPage();
+    const item = within(openMenu()).getByRole("menuitem", { name: "Relationship graph" });
+    expect((item as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId("editor-layout").getAttribute("data-show-graph")).toBe("false");
+  });
+
+  it("opens the selected class's relationship graph in the centre panel and closes the menu", () => {
+    mockViewer = makeViewer({ selectedIri: "http://example.org/Event" });
+    renderPage();
+    fireEvent.click(within(openMenu()).getByRole("menuitem", { name: "Relationship graph" }));
+    expect(screen.getByTestId("editor-layout").getAttribute("data-show-graph")).toBe("true");
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 
   it("links settings on the editor's branch, at the Normalization card when it's recommended", () => {
@@ -314,8 +343,8 @@ describe("More menu", () => {
   });
 });
 
-describe("Agent button", () => {
-  const agentButton = () => within(subHeader()).getByRole("button", { name: /^Agent/ });
+describe("Side panel toggle", () => {
+  const agentButton = () => within(subHeader()).getByRole("button", { name: /^Side panel/ });
   const health = (over: Partial<AgentHealthSummary> = {}): AgentHealthSummary => ({
     lint: { errors: 0, warnings: 0, info: 0, total: 0, checkedAt: "now", running: false },
     consistency: { count: 0, checkedAt: "now" },
@@ -328,21 +357,34 @@ describe("Agent button", () => {
   const dot = () => within(subHeader()).queryByTestId("right-sidebar-lint-dot");
   const closePanel = () => fireEvent.click(agentButton());
 
-  it("is labelled Agent, with the label hidden below sm", () => {
+  it("mirrors the entity tree toggle: an icon-only panel button with no text label", () => {
     renderPage();
-    const label = within(agentButton()).getByText("Agent");
-    expect(label.className.split(/\s+/)).toEqual(expect.arrayContaining(["hidden", "sm:inline"]));
+    const tree = within(subHeader()).getByRole("button", { name: "Entity tree" });
+    expect(agentButton().textContent).toBe("");
+    expect(agentButton().getAttribute("aria-pressed")).toBe("true");
+    for (const cls of ["-my-1", "flex-shrink-0"]) {
+      expect(agentButton().className.split(/\s+/)).toContain(cls);
+      expect(tree.className.split(/\s+/)).toContain(cls);
+    }
+    expect(agentButton().querySelector("svg.lucide-panel-right-close")).not.toBeNull();
+    closePanel();
+    expect(agentButton().getAttribute("aria-pressed")).toBe("false");
+    expect(agentButton().querySelector("svg.lucide-panel-right-open")).not.toBeNull();
   });
 
-  it("sits between Repository and Project settings, with More last", () => {
+  it("sits at the far right, after Repository, Project settings and More", () => {
     renderPage();
     const bar = subHeader();
     const order = [
+      within(bar).getByRole("button", { name: "Entity tree" }),
       within(bar).getByRole("button", { name: "Repository" }),
-      agentButton(),
       within(bar).getByRole("link", { name: "Project settings" }),
       within(bar).getByRole("button", { name: "More" }),
+      agentButton(),
     ];
+    const buttons = within(bar).getAllByRole("button");
+    expect(buttons[0]).toBe(order[0]);
+    expect(buttons[buttons.length - 1]).toBe(agentButton());
     for (let i = 1; i < order.length; i++) {
       expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
@@ -352,7 +394,7 @@ describe("Agent button", () => {
     mockHealthSummary = health({ lint: lint(0, 0, 2), consistency: { count: 1, checkedAt: "now" }, duplicates: { count: 3, checkedAt: "now" } });
     renderPage();
     closePanel();
-    expect(agentButton().getAttribute("aria-label")).toBe("Agent (6 health issues)");
+    expect(agentButton().getAttribute("aria-label")).toBe("Side panel (6 health issues)");
     expect(dot()!.className).toContain("bg-amber-500");
   });
 
@@ -383,7 +425,7 @@ describe("Agent button", () => {
     expect(dot()).toBeNull();
     closePanel();
     expect(dot()).toBeNull();
-    expect(agentButton().getAttribute("aria-label")).toBe("Agent");
+    expect(agentButton().getAttribute("aria-label")).toBe("Side panel");
   });
 });
 
@@ -477,7 +519,7 @@ describe("Project editor sidebars", () => {
   const treeOpen = () => screen.getByTestId("editor-layout").getAttribute("data-tree-open");
   const rightOpen = () => screen.queryByTestId("right-sidebar") !== null;
   const treeToggle = () => within(subHeader()).getByRole("button", { name: "Entity tree" });
-  const rightToggle = () => within(subHeader()).getByRole("button", { name: /^Agent/ });
+  const rightToggle = () => within(subHeader()).getByRole("button", { name: /^Side panel/ });
 
   let setNarrow: (narrow: boolean) => void;
   beforeEach(() => {

@@ -548,7 +548,17 @@ export function ClassDetailPanel({
                   </span>
                 )}
               </h2>
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex shrink-0 items-center gap-2">
+                {isEditing && (
+                  <AutoSaveAffordanceBar
+                    status={saveStatus}
+                    error={saveError}
+                    validationError={validationError}
+                    onRetry={() => flushToGit()}
+                    onManualSave={flushDraftToGit}
+                    onCancel={cancelEditMode}
+                  />
+                )}
                 {headerActions}
               </div>
             </div>
@@ -590,18 +600,7 @@ export function ClassDetailPanel({
         </div>
       )}
 
-      {isEditing && (
-        <AutoSaveAffordanceBar
-          status={saveStatus}
-          error={saveError}
-          validationError={validationError}
-          onRetry={() => flushToGit()}
-          onManualSave={flushDraftToGit}
-          onCancel={cancelEditMode}
-        />
-      )}
-
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
 
         <div className="p-4 space-y-3">
           {classIssues.length > 0 && (

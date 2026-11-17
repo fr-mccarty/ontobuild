@@ -72,7 +72,7 @@ function EditorPreferencesSection({ highlightedSetting }: { highlightedSetting: 
       <SettingsField
         id="save-button"
         labelId="hide-save-button-label"
-        label="Hide Save Button"
+        label="Hide Save Now"
         highlighted={highlightedSetting === "save-button"}
         className="mt-6"
       >
@@ -84,7 +84,7 @@ function EditorPreferencesSection({ highlightedSetting }: { highlightedSetting: 
           selected={hideSaveButton}
           icon={Save}
           title={hideSaveButton ? "On" : "Off"}
-          description="Hide the Save button in the editor. Auto-save still works when navigating away."
+          description="Hide the Save now action in the editor's save status menu. Edits still save automatically when you select another entity or leave the page."
         />
       </SettingsField>
     </SettingsSection>
