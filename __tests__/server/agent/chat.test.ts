@@ -440,7 +440,7 @@ describe("OpenRouter client", () => {
     expect(requests[0].url).toBe("https://openrouter.ai/api/v1/chat/completions");
     expect(requests[0].headers.get("authorization")).toBe("Bearer sk-or-abc");
     expect(requests[0].headers.get("http-referer")).toBe("http://localhost:3000");
-    expect(requests[0].headers.get("x-title")).toBe("OntoKit");
+    expect(requests[0].headers.get("x-title")).toBe("OntoBuilder");
     expect(requests[0].body.reasoning).toEqual({ effort: "low" });
   });
 });

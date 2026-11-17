@@ -3,7 +3,7 @@
  * fetch, push and fast-forward pull.
  *
  * Authentication is whatever the user already has set up for git: a credential helper,
- * an SSH agent or `gh auth login`. OntoKit never stores tokens. Git runs with terminal
+ * an SSH agent or `gh auth login`. OntoBuilder never stores tokens. Git runs with terminal
  * prompts disabled so a missing credential fails fast instead of hanging the server.
  */
 import { execFile } from "node:child_process";
@@ -38,7 +38,7 @@ export interface ParsedRemote {
 }
 
 function fileRemotesAllowed(): boolean {
-  return process.env.NODE_ENV === "test" || process.env.ONTOKIT_ALLOW_FILE_REMOTES === "1";
+  return process.env.NODE_ENV === "test" || process.env.ONTOBUILDER_ALLOW_FILE_REMOTES === "1";
 }
 
 /**
@@ -223,15 +223,15 @@ interface GhStatus {
   authenticated: boolean;
   at: number;
 }
-const gs = globalThis as typeof globalThis & { __ontokitGhStatus?: GhStatus };
+const gs = globalThis as typeof globalThis & { __ontobuilderGhStatus?: GhStatus };
 
 function ghBin(): string {
-  return process.env.ONTOKIT_GH_BIN || "gh";
+  return process.env.ONTOBUILDER_GH_BIN || "gh";
 }
 
 /** Whether the GitHub CLI is installed and signed in (cached for a minute). */
 export async function ghStatus(force = false): Promise<{ available: boolean; authenticated: boolean }> {
-  const cached = gs.__ontokitGhStatus;
+  const cached = gs.__ontobuilderGhStatus;
   if (!force && cached && Date.now() - cached.at < 60_000) return cached;
   let status: GhStatus;
   try {
@@ -244,7 +244,7 @@ export async function ghStatus(force = false): Promise<{ available: boolean; aut
   } catch {
     status = { available: false, authenticated: false, at: Date.now() };
   }
-  gs.__ontokitGhStatus = status;
+  gs.__ontobuilderGhStatus = status;
   return status;
 }
 

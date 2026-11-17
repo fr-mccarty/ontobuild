@@ -398,7 +398,7 @@ r.post("/projects/:id/pull-requests/:prNumber/merge", async (c) => {
     try {
       await enforcePlainLiterals(id, pr.target_branch);
     } catch (e) {
-      console.warn("[ontokit] failed to strip language tags after merge:", e);
+      console.warn("[ontobuilder] failed to strip language tags after merge:", e);
     }
   }
 
@@ -409,7 +409,7 @@ r.post("/projects/:id/pull-requests/:prNumber/merge", async (c) => {
       if (project.preferred_branch === pr.source_branch) update("projects", { preferred_branch: null }, { id });
       await emitOntologyEvent({ type: "branch-deleted", projectId: id, branch: pr.source_branch });
     } catch (e) {
-      console.warn("[ontokit] failed to delete source branch after merge:", e);
+      console.warn("[ontobuilder] failed to delete source branch after merge:", e);
     }
   }
 

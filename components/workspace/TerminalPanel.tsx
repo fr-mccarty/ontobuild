@@ -15,7 +15,7 @@ import { useIsDarkMode } from "./QuickView";
 
 const XTerm = dynamic(() => import("./XTerm"), { ssr: false });
 
-const HEIGHT_KEY = "ontokit.terminalPanel.height";
+const HEIGHT_KEY = "ontobuilder.terminalPanel.height";
 const DEFAULT_HEIGHT = 280;
 const MIN_HEIGHT = 120;
 

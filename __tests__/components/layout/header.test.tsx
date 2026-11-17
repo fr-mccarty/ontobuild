@@ -29,10 +29,10 @@ describe("Header", () => {
     mockPathname = "/";
   });
 
-  it("renders the OntoKit brand link", () => {
+  it("renders the OntoBuilder brand link", () => {
     render(<Header />);
-    expect(screen.getByText("OntoKit")).toBeDefined();
-    const brandLink = screen.getByText("OntoKit").closest("a");
+    expect(screen.getByText("OntoBuilder")).toBeDefined();
+    const brandLink = screen.getByText("OntoBuilder").closest("a");
     expect(brandLink?.getAttribute("href")).toBe("/");
   });
 

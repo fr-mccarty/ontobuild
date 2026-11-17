@@ -48,12 +48,12 @@ export interface TerminalSession {
 
 export const BUFFER_LIMIT = 200 * 1024;
 
-type G = typeof globalThis & { __ontokitTerminals?: Map<string, TerminalSession> };
+type G = typeof globalThis & { __ontobuilderTerminals?: Map<string, TerminalSession> };
 
 function registry(): Map<string, TerminalSession> {
   const g = globalThis as G;
-  if (!g.__ontokitTerminals) g.__ontokitTerminals = new Map();
-  return g.__ontokitTerminals;
+  if (!g.__ontobuilderTerminals) g.__ontobuilderTerminals = new Map();
+  return g.__ontobuilderTerminals;
 }
 
 /** Environment for child processes: the server's, minus anything that would confuse a nested Node/Next process. */

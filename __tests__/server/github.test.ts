@@ -12,15 +12,15 @@ let app: AppLike;
 
 beforeAll(async () => {
   dataDir = useTempDataDir();
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ontokit-github-test-"));
-  process.env.ONTOKIT_GH_BIN = path.join(tmp, "no-such-gh");
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuilder-github-test-"));
+  process.env.ONTOBUILDER_GH_BIN = path.join(tmp, "no-such-gh");
   app = (await import("@/server/app")).default;
 }, 30_000);
 
 afterAll(() => {
   removeDir(dataDir);
   fs.rmSync(tmp, { recursive: true, force: true });
-  delete process.env.ONTOKIT_GH_BIN;
+  delete process.env.ONTOBUILDER_GH_BIN;
 });
 
 const GIT_ENV = {

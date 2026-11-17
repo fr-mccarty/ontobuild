@@ -407,7 +407,7 @@ r.patch("/projects/:id", async (c) => {
         });
       }
     } catch (e) {
-      console.warn(`[ontokit] failed to sync metadata to RDF for project ${id}:`, e);
+      console.warn(`[ontobuilder] failed to sync metadata to RDF for project ${id}:`, e);
     }
   }
   return c.json(projectToResponse(requireProject(id)));
@@ -418,8 +418,8 @@ r.delete("/projects/:id", async (c) => {
   requireProject(id);
   // Stop the project's terminals and dev server, then delete the folder first: its location is
   // looked up from the project row.
-  await killProjectTerminals(id).catch((e) => console.warn(`[ontokit] failed to stop terminals for ${id}:`, e));
-  await git.deleteRepo(id).catch((e) => console.warn(`[ontokit] failed to delete project folder ${id}:`, e));
+  await killProjectTerminals(id).catch((e) => console.warn(`[ontobuilder] failed to stop terminals for ${id}:`, e));
+  await git.deleteRepo(id).catch((e) => console.warn(`[ontobuilder] failed to delete project folder ${id}:`, e));
   run("DELETE FROM projects WHERE id = ?", id);
   invalidateOntologyCache(id);
   await emitOntologyEvent({ type: "project-deleted", projectId: id });

@@ -167,10 +167,10 @@ export function buildOpenApiSpec(routes: { method: string; path: string }[]) {
   return {
     openapi: "3.1.0",
     info: {
-      title: "OntoKit API",
+      title: "OntoBuilder API",
       version: "1.0.0",
       description:
-        "The HTTP API behind the OntoKit app. It runs locally with no authentication.\n\n" +
+        "The HTTP API behind the OntoBuilder app. It runs locally with no authentication.\n\n" +
         "Errors return a JSON body of the form `{ \"detail\": \"...\" }`. Entity IRIs and branch names in paths must be URL-encoded. " +
         "Most project routes accept a `branch` query parameter and default to the repository's default branch.",
     },

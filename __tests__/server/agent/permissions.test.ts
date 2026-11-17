@@ -137,7 +137,7 @@ describe("tool classification", () => {
       expect(ontology).toContain(n);
     }
     const read = namesOf(["read"]);
-    for (const n of ["get_entity", "search_entities", "get_source", "switch_branch", "list_files", "read_file", "run_lint"]) {
+    for (const n of ["get_entity", "search_entities", "get_source", "switch_branch", "switch_ontology", "list_imports", "list_files", "read_file", "run_lint"]) {
       expect(read).toContain(n);
     }
   });
@@ -145,10 +145,10 @@ describe("tool classification", () => {
 
 describe("permissions decide the tool list", () => {
   const cases: [AgentPermissions, ToolClass[]][] = [
-    [{ edit_ontology: true, edit_code: true }, ["read", "ontology", "code"]],
-    [{ edit_ontology: true, edit_code: false }, ["read", "ontology"]],
-    [{ edit_ontology: false, edit_code: true }, ["read", "code"]],
-    [{ edit_ontology: false, edit_code: false }, ["read"]],
+    [{ edit_ontology: true, edit_code: true, edit_imports: false }, ["read", "ontology", "code"]],
+    [{ edit_ontology: true, edit_code: false, edit_imports: false }, ["read", "ontology"]],
+    [{ edit_ontology: false, edit_code: true, edit_imports: false }, ["read", "code"]],
+    [{ edit_ontology: false, edit_code: false, edit_imports: false }, ["read"]],
   ];
   for (const [permissions, kinds] of cases) {
     it(`edit_ontology=${permissions.edit_ontology} edit_code=${permissions.edit_code} offers only ${kinds.join(", ")} tools`, async () => {

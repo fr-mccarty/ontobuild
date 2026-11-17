@@ -32,7 +32,7 @@ const renderSection = (ui: ReactElement = <AgentSettingsSection />) =>
 function makeStatus(overrides: Partial<AgentStatus> = {}): AgentStatus {
   return {
     configured: true,
-    secrets_file: "/home/me/.ontokit/secrets.env",
+    secrets_file: "/home/me/.ontobuilder/secrets.env",
     settings: {
       model: "anthropic/claude-sonnet-5.5",
       effort: "medium",
@@ -58,7 +58,7 @@ describe("AgentSettingsSection", () => {
 
     expect(await screen.findByText("Configured")).toBeDefined();
     expect(container.querySelector("#agent")).not.toBeNull();
-    expect(screen.getByText("/home/me/.ontokit/secrets.env")).toBeDefined();
+    expect(screen.getByText("/home/me/.ontobuilder/secrets.env")).toBeDefined();
     expect(screen.getByText("OPENROUTER_API_KEY=sk-or-...")).toBeDefined();
     expect(screen.getByRole("link", { name: /Create an OpenRouter key/ }).getAttribute("href")).toBe(
       "https://openrouter.ai/keys",
@@ -91,7 +91,7 @@ describe("AgentSettingsSection", () => {
     Object.assign(navigator, { clipboard: { writeText } });
     renderSection();
     fireEvent.click(await screen.findByRole("button", { name: "Copy secrets file path" }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith("/home/me/.ontokit/secrets.env"));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("/home/me/.ontobuilder/secrets.env"));
     expect(toastMock.success).toHaveBeenCalled();
   });
 

@@ -110,7 +110,7 @@ export function parsePermissions(v: unknown): AgentPermissions | null {
   if (typeof v !== "object" || Array.isArray(v)) return null;
   const p = v as Record<string, unknown>;
   const out = { ...DEFAULT_AGENT_PERMISSIONS };
-  for (const key of ["edit_code", "edit_ontology"] as const) {
+  for (const key of ["edit_code", "edit_ontology", "edit_imports"] as const) {
     if (p[key] === undefined) continue;
     if (typeof p[key] !== "boolean") return null;
     out[key] = p[key];
@@ -179,7 +179,7 @@ export function createAgentRoutes(getApp: () => AppLike) {
     if (body.model !== undefined && body.model !== null && !isValidModelId(body.model))
       httpError(422, "model must be a non-empty string of at most 200 characters");
     const permissions = parsePermissions(body.permissions);
-    if (!permissions) httpError(422, "permissions must be an object with boolean edit_code and edit_ontology");
+    if (!permissions) httpError(422, "permissions must be an object with boolean edit_code, edit_ontology and edit_imports");
     const apiKey = getApiKey();
     if (!apiKey) httpError(400, notConfiguredDetail());
     const branch = await requireBranch(projectId, c.req.query("branch"));

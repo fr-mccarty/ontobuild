@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Settings, FileCode, RefreshCw, Keyboard, LayoutDashboard, History, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { ArrowLeft, Settings, FileCode, RefreshCw, Keyboard, LayoutDashboard, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -11,7 +11,7 @@ import { AddEntityDialog, type NewEntityInfo } from "@/components/editor/AddEnti
 import { useToast } from "@/lib/context/ToastContext";
 import { readSelectionFromSearchParams } from "@/lib/utils/selectionUrl";
 import { StandardEditorLayout } from "@/components/editor/standard/StandardEditorLayout";
-import { BranchSelector, RevisionHistoryPanel, HistoryButton } from "@/components/revision";
+import { RevisionHistoryPanel } from "@/components/revision";
 import { HealthCheckPanel } from "@/components/editor/HealthCheckPanel";
 import { RightSidebar, lintSeverity, LINT_DOT_CLASSES } from "@/components/editor/RightSidebar";
 import { AgentPanel } from "@/components/editor/agent/AgentPanel";
@@ -25,7 +25,7 @@ import { useProjectViewer } from "@/lib/hooks/useProjectViewer";
 import { useEditorSidebars } from "@/lib/hooks/useEditorSidebars";
 import { useWorkspaceStore } from "@/lib/stores/workspaceStore";
 import { ImportsButton } from "@/components/project/ImportsButton";
-import { GitHubButton } from "@/components/project/GitHubButton";
+import { RepositoryButton } from "@/components/project/RepositoryButton";
 import { RunMenu } from "@/components/workspace/RunMenu";
 import { FilesPanel } from "@/components/workspace/FilesPanel";
 import { TerminalPanel } from "@/components/workspace/TerminalPanel";
@@ -105,7 +105,7 @@ export default function ProjectEditorPage() {
   );
   const consumedSelectionRef = useRef<string | null>(null);
   const initialBranch = resumeBranchParam
-    || (() => { try { return sessionStorage.getItem(`ontokit:branch:${projectId}`); } catch { return null; } })()
+    || (() => { try { return sessionStorage.getItem(`ontobuilder:branch:${projectId}`); } catch { return null; } })()
     || undefined;
 
   const queryClient = useQueryClient();
@@ -763,11 +763,12 @@ export default function ProjectEditorPage() {
             </div>
             <div className="ml-auto flex flex-shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-2">
               <RunMenu projectId={projectId} />
-              <GitHubButton projectId={projectId} onPulled={reloadOntologyFromServer} />
-
-              <BranchSelector
-                className="hidden md:block"
+              <RepositoryButton
+                projectId={projectId}
                 onBranchChange={handleBranchChange}
+                onPulled={reloadOntologyFromServer}
+                historyOpen={showHistory}
+                onToggleHistory={() => setShowHistory(!showHistory)}
               />
 
               <ShareButton
@@ -778,23 +779,6 @@ export default function ProjectEditorPage() {
                 moreHiddenClass={showNormalize ? "xl:hidden" : "lg:hidden"}
                 moreItems={(closeMenu) => (
                   <>
-                    <div role="group" aria-label="Branch" className="px-3 py-1.5 md:hidden">
-                      {/* The inline selector stays mounted (hidden) and reports branch changes. */}
-                      <BranchSelector />
-                    </div>
-                    <button
-                      type="button"
-                      role="menuitemcheckbox"
-                      aria-checked={showHistory}
-                      className={`${SHARE_MENU_ITEM_CLASSES} lg:hidden`}
-                      onClick={() => {
-                        setShowHistory(!showHistory);
-                        closeMenu();
-                      }}
-                    >
-                      <History className="h-3.5 w-3.5 flex-shrink-0" />
-                      {showHistory ? "Hide revision history" : "Revision history"}
-                    </button>
                     <button
                       type="button"
                       role="menuitem"
@@ -838,12 +822,6 @@ export default function ProjectEditorPage() {
                     </Link>
                   </>
                 )}
-              />
-
-              <HistoryButton
-                className="hidden lg:inline-flex"
-                onClick={() => setShowHistory(!showHistory)}
-                isOpen={showHistory}
               />
 
               {showNormalize && (

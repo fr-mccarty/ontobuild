@@ -233,7 +233,7 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
       {isImported && (
         <Tooltip content={`Imported from ${importedFromText(node)}. Read-only here: edit it in its own ontology.`}>
           <span
-            className="shrink-0 rounded-sm border border-slate-300 px-1 text-[10px] uppercase leading-4 tracking-wide text-slate-500 dark:border-slate-600 dark:text-slate-400"
+            className="shrink-0 rounded-sm border border-slate-200 px-0.5 text-[8px] uppercase leading-3 tracking-wide text-slate-400 dark:border-slate-700 dark:text-slate-500"
             aria-label={`Imported from ${importedFromText(node)}`}
             data-testid="imported-badge"
           >

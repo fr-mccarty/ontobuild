@@ -21,7 +21,7 @@ export interface EditorSidebarState {
   last?: EditorSidebarSide;
 }
 
-export const EDITOR_SIDEBARS_KEY = "ontokit:editorSidebars";
+export const EDITOR_SIDEBARS_KEY = "ontobuilder:editorSidebars";
 /** Both open by default; with nothing opened yet, a narrow window shows the right one. */
 export const EDITOR_SIDEBARS_DEFAULT: EditorSidebarState = { left: true, right: true };
 /** Below this width the sidebars are exclusive (Tailwind `lg` is 1024px). */

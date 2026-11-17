@@ -39,10 +39,10 @@ export default function FormatsPage() {
             <p className="text-slate-600 dark:text-slate-400 mb-4">
               Turtle (Terse RDF Triple Language) is the most popular human-readable RDF format. It{" "}
               supports prefix abbreviations, multi-value shorthand with commas, and multi-predicate{" "}
-              shorthand with semicolons. OntoKit uses Turtle as its canonical format.
+              shorthand with semicolons. OntoBuilder uses Turtle as its canonical format.
             </p>
             <p className="text-slate-600 dark:text-slate-400 mb-4">
-              OntoKit assumes all text is English and stores labels, comments, and other text{" "}
+              OntoBuilder assumes all text is English and stores labels, comments, and other text{" "}
               values as plain strings such as{" "}
               <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded-sm text-xs">&quot;Dog&quot;</code>,{" "}
               without RDF language tags.

@@ -1,12 +1,12 @@
-# OntoKit Monorepo
+# OntoBuilder
 
-OntoKit is a local, single-user editor for OWL/RDF ontologies. It runs as one Node app: a
+OntoBuilder is a local, single-user editor for OWL/RDF ontologies. It runs as one Node app: a
 Next.js frontend and an HTTP API (`/api/v1`) served by the same Next server. There is no login.
 Each project is a folder holding its ontology and its code, kept in its own git repository,
 and metadata is stored in SQLite. Everything runs on your machine except the optional editor agent, which calls
 OpenRouter (see [Editor agent](#editor-agent)).
 
-![The OntoKit editor showing a class form, the class tree and the agent panel](docs/screenshot.png)
+![The OntoBuilder editor showing a class form, the class tree and the agent panel](docs/screenshot.png)
 
 ## Features
 
@@ -22,7 +22,7 @@ OpenRouter (see [Editor agent](#editor-agent)).
 - **History and analytics.** Per-entity change history, project activity and the most
   frequently edited entities.
 - **Imports.** The **Imports** button in the editor's sub-heading adds `owl:imports` to the
-  ontology: pick another OntoKit project or paste any ontology IRI. Imports are followed
+  ontology: pick another OntoBuilder project or paste any ontology IRI. Imports are followed
   transitively (for example general principles → Node → your project), and imported classes
   appear read-only in the class tree, where your own classes can subclass them.
 - **Code and terminals.** Each project has a `code/` folder. The **Files** tab in the right
@@ -34,11 +34,11 @@ OpenRouter (see [Editor agent](#editor-agent)).
   server command for the project, and **View in Browser** opens the URL it reports.
 - **GitHub.** Link a project to a GitHub (or other git) remote, then fetch, pull and push, or
   create the repository with the `gh` CLI. Sign-in uses your existing git credentials, SSH keys
-  or `gh auth login`; OntoKit stores no tokens.
+  or `gh auth login`; OntoBuilder stores no tokens.
 - **Run as prompt, with approval.** The ▶ button next to any text value puts that text in the
   agent's message box (it is not sent until you send it). A green dot means the text was
   approved: it reached the default branch through a merged pull request with an approving
-  review. Otherwise OntoKit asks before using it. This lets a team agree on a prompt, as part of
+  review. Otherwise OntoBuilder asks before using it. This lets a team agree on a prompt, as part of
   the ontology, before anyone runs it.
 - **Editor agent.** An optional LLM chat in the editor that can read and edit the open project
   (see [Editor agent](#editor-agent)).
@@ -50,7 +50,7 @@ language tags. Tags are removed when a file is imported or a change is committed
 
 ## Origins
 
-OntoKit Monorepo is derived from two projects by CatholicOS:
+OntoBuilder is derived from two projects by CatholicOS:
 [ontokit-web](https://github.com/CatholicOS/ontokit-web), a Next.js frontend, and
 [ontokit-api](https://github.com/CatholicOS/ontokit-api), a FastAPI backend. The frontend code
 in this repository started from ontokit-web, and the API in `server/` started as a TypeScript
@@ -72,8 +72,8 @@ No database server or Docker is needed.
 ## Installation and getting started
 
 ```bash
-git clone <this repository> ontokit-monorepo
-cd ontokit-monorepo
+git clone <this repository> ontobuilder
+cd ontobuilder
 npm install
 npm run dev          # development server on http://localhost:3000 (this machine only)
 ```
@@ -100,11 +100,11 @@ ExperimentalWarning. That syntax works on macOS and Linux. On Windows, run `npx 
 
 ## Data
 
-All runtime data lives in `./data`, which is gitignored. Set `ONTOKIT_DATA_DIR` to store it
+All runtime data lives in `./data`, which is gitignored. Set `ONTOBUILDER_DATA_DIR` to store it
 somewhere else.
 
 - `data/import-cache/`: cached copies of imported ontologies fetched from the web
-- `data/ontokit.db`: SQLite database (projects, branch metadata, pull requests, reviews,
+- `data/ontobuilder.db`: SQLite database (projects, branch metadata, pull requests, reviews,
   comments, lint runs, issues and per-project lint configs, quality results, normalization
   runs, entity change events, background jobs, user and agent settings)
 - `data/projects/<folder>/`: one folder per project, named after the project when it is
@@ -137,7 +137,8 @@ Two toggles above the message box control what the agent may change:
 - **Edit Code** (off by default): writing and deleting files in the project folder and running
   commands with `bash -lc` there (60 s timeout by default, at most 300 s).
 
-With both off the agent is read-only. The choice is remembered in the browser and sent with
+With both off the agent is read-only. The agent can open imported ontologies to read them,
+but not change them. The choice is remembered in the browser and sent with
 every message. The server enforces it: tools that aren't allowed are hidden from the model and
 refused if it calls them anyway, and the agent is told which toggle to ask you to turn on.
 `ontology.ttl` is changed only through the ontology tools, never as a plain file. Note that a
@@ -157,7 +158,7 @@ browser ──> Next.js (App Router pages, React Query)
               ▼
             app/api/v1/[[...path]]/route.ts  ──>  Hono app (server/app.ts)
                                                     ├── server/routes/*.ts
-                                                    ├── SQLite (node:sqlite)   data/ontokit.db
+                                                    ├── SQLite (node:sqlite)   data/ontobuilder.db
                                                     ├── git CLI                data/projects/<folder>/
                                                     ├── in-process jobs (lint, quality, normalization, index)
                                                     └── editor agent (server/agent) ──> OpenRouter
@@ -196,7 +197,7 @@ server/user.ts                                the fixed local user (author of ev
   `NEXT_PUBLIC_API_URL` to point them at another server.
 - The servers listen on `127.0.0.1` only, and the API rejects requests whose `Host` isn't a
   loopback name (DNS rebinding) and browser requests from other origins (CSRF), since it can
-  edit files without a login. Set `ONTOKIT_ALLOWED_HOSTS` or `ONTOKIT_ALLOWED_ORIGINS`
+  edit files without a login. Set `ONTOBUILDER_ALLOWED_HOSTS` or `ONTOBUILDER_ALLOWED_ORIGINS`
   (comma-separated) to allow more, for example behind a reverse proxy.
 - Every request acts as the single local user. There are no roles or permission checks, so
   every action is always available.

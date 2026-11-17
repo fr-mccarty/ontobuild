@@ -129,7 +129,7 @@ SubClassOf(
           <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
             <p className="text-slate-600 dark:text-slate-400 mb-4">
               OWL axioms can also be expressed in Turtle using the OWL RDF mapping. This is the{" "}
-              format OntoKit uses internally. Complex class expressions use blank nodes and{" "}
+              format OntoBuilder uses internally. Complex class expressions use blank nodes and{" "}
               RDF collections.
             </p>
             <div className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm font-mono overflow-x-auto">
@@ -207,7 +207,7 @@ MargheritaPizza ⊑ Pizza
                   <td className="px-4 py-3 text-slate-900 dark:text-white font-medium">Turtle/RDF</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-400">Web developers</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-400">Medium&ndash;High</td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">RDFLib, Jena, OntoKit</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">RDFLib, Jena, OntoBuilder</td>
                 </tr>
                 <tr>
                   <td className="px-4 py-3 text-slate-900 dark:text-white font-medium">DL Notation</td>

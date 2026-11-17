@@ -30,10 +30,10 @@ function toJob<R>(r: JobRow): Job<R> {
   return { ...r, result: fromJson<R | null>(r.result, null) };
 }
 
-const g = globalThis as typeof globalThis & { __ontokitJobsInit?: boolean };
+const g = globalThis as typeof globalThis & { __ontobuilderJobsInit?: boolean };
 function init() {
-  if (g.__ontokitJobsInit) return;
-  g.__ontokitJobsInit = true;
+  if (g.__ontobuilderJobsInit) return;
+  g.__ontobuilderJobsInit = true;
   run(
     "UPDATE jobs SET status = 'failed', error = 'Server restarted', finished_at = ? WHERE status IN ('pending','running')",
     nowIso(),
@@ -67,7 +67,7 @@ export function startJob<R>(
       const result = await fn(ctx);
       update("jobs", { status: "completed", result: toJson(result), finished_at: nowIso() }, { id });
     } catch (e) {
-      console.warn(`[ontokit] job ${kind} ${id} failed:`, e);
+      console.warn(`[ontobuilder] job ${kind} ${id} failed:`, e);
       update(
         "jobs",
         { status: "failed", error: e instanceof Error ? e.message : String(e), finished_at: nowIso() },

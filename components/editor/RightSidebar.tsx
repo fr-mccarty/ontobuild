@@ -1,10 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
 import { ResizablePanelDivider } from "@/components/editor/ResizablePanelDivider";
 import { useWorkspaceStore, type RightSidebarTab } from "@/lib/stores/workspaceStore";
 
@@ -36,7 +33,7 @@ export const LINT_DOT_CLASSES: Record<LintSeverity, string> = {
   info: "bg-blue-500",
 };
 
-export const RIGHT_SIDEBAR_WIDTH_KEY = "ontokit:rightSidebarWidth";
+export const RIGHT_SIDEBAR_WIDTH_KEY = "ontobuilder:rightSidebarWidth";
 export const RIGHT_SIDEBAR_DEFAULT_WIDTH = 400;
 export const RIGHT_SIDEBAR_MIN_WIDTH = 320;
 
@@ -159,17 +156,6 @@ export function RightSidebar({ onClose, lintSummary, agent, health, files }: Rig
               </button>
             ))}
           </div>
-          <Tooltip content="Close panel" side="bottom">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              aria-label="Close panel"
-              className="my-auto mr-1 h-7 w-7 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </Tooltip>
         </div>
         <div
           role="tabpanel"

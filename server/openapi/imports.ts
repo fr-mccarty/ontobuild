@@ -11,7 +11,7 @@ export const importsSchemas: Record<string, Schema> = {
         type: "string",
         enum: ["project", "remote"],
         description:
-          "`project`: another OntoKit project whose ontology IRI matches, read from its default branch. `remote`: fetched over http(s) and cached.",
+          "`project`: another OntoBuilder project whose ontology IRI matches, read from its default branch. `remote`: fetched over http(s) and cached.",
       },
       project_id: { type: "string", description: "Set when `source` is `project`." },
       project_name: { type: "string", description: "Set when `source` is `project`." },
@@ -76,7 +76,7 @@ export const importsDocs: DocMap = {
   "GET /projects/{id}/imports": {
     summary: "List ontology imports",
     description:
-      "Returns the ontology's direct `owl:imports` and their transitive closure. Each IRI resolves to another OntoKit project with that ontology IRI, " +
+      "Returns the ontology's direct `owl:imports` and their transitive closure. Each IRI resolves to another OntoBuilder project with that ontology IRI, " +
       "or else to the document fetched from the IRI (cached on disk; see the refresh operation).",
     query: [branchQuery],
     responses: {
@@ -89,7 +89,7 @@ export const importsDocs: DocMap = {
     summary: "Add an ontology import",
     description:
       "Adds `owl:imports <iri>` to the ontology header (creating an `owl:Ontology` header if there is none) and commits the change. " +
-      "An IRI that no OntoKit project has as its ontology IRI must be http(s) so that it can be fetched.",
+      "An IRI that no OntoBuilder project has as its ontology IRI must be http(s) so that it can be fetched.",
     query: [branchQuery],
     body: {
       required: true,
@@ -137,7 +137,7 @@ export const importsDocs: DocMap = {
   "GET /import-candidates": {
     summary: "Search projects to import",
     description:
-      "Lists OntoKit projects that have an ontology IRI, matching `q` against the project name and ontology IRI (case-insensitive). At most 50 results.",
+      "Lists OntoBuilder projects that have an ontology IRI, matching `q` against the project name and ontology IRI (case-insensitive). At most 50 results.",
     query: [{ name: "q", description: "Search text. Empty lists every candidate.", schema: { type: "string", maxLength: 200 } }],
     responses: {
       "200": { description: "Matching projects.", schema: { type: "array", items: ref("ImportCandidate") } },

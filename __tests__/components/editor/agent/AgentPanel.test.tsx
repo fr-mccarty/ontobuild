@@ -32,7 +32,7 @@ import { AgentPanel } from "@/components/editor/agent/AgentPanel";
 
 const configuredStatus: AgentStatus = {
   configured: true,
-  secrets_file: "/home/u/.ontokit/secrets.env",
+  secrets_file: "/home/u/.ontobuilder/secrets.env",
   settings: { model: "anthropic/claude-opus-5.5", effort: "high", custom_instructions: "" },
 };
 
@@ -86,7 +86,7 @@ describe("AgentPanel", () => {
     vi.mocked(agentSettingsApi.getStatus).mockResolvedValue({ ...configuredStatus, configured: false });
     renderWithQueryClient(<AgentPanel pageInfo={pageInfo} />);
     await screen.findByTestId("agent-not-configured");
-    expect(screen.getByText("/home/u/.ontokit/secrets.env")).toBeDefined();
+    expect(screen.getByText("/home/u/.ontobuilder/secrets.env")).toBeDefined();
     expect(screen.getByText(/OPENROUTER_API_KEY=/)).toBeDefined();
     expect(screen.getByRole("link", { name: "openrouter.ai/keys" }).getAttribute("href")).toBe("https://openrouter.ai/keys");
     expect(screen.getByRole("link", { name: "agent settings" }).getAttribute("href")).toBe("/settings#agent");

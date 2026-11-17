@@ -102,15 +102,17 @@ export const agentDocs: DocMap = {
       "Event names are `message`, `text`, `thinking`, `tool_use`, `tool_result`, `ontology_changed`, `ui_action`, `done` and `error`; each `data` field is JSON. " +
       "`tool_result` carries `mutated: true` when the tool changed project state (ontology, branches, pull requests or settings). " +
       "`ontology_changed` follows the `tool_result` of a tool call that committed to an ontology file, once per branch it committed to: " +
-      "`{tool_use_id, name, branch, commit_hash, deleted_iris}`, where `commit_hash` is the branch's new head and `deleted_iris` lists entities the call deleted. " +
+      "`{tool_use_id, name, branch, commit_hash, deleted_iris}`, where `commit_hash` is the branch's new head and `deleted_iris` lists entities the call deleted; " +
+      "a commit to an imported project (see `edit_imports`) also carries that project's `project_id`. " +
       "Read-only tools never send it. " +
       "`ui_action` asks the editor to do something: `{tool_use_id, action: \"select_entity\", iri, entity_type, label, branch}` (sent by the `select_entity` tool) selects and reveals an entity, " +
       "where `entity_type` is `class`, `property` or `individual`. " +
       "The agent can read the project's ontology on the given branch and the files in the project folder. " +
       "What it may change is set per request by `permissions`: `edit_ontology` allows tools that change the ontology, branches, pull requests or project settings; " +
-      "`edit_code` allows writing and deleting files in the project folder and running shell commands there. " +
+      "`edit_code` allows writing and deleting files in the project folder and running shell commands there; " +
+      "`edit_imports` allows changing the ontologies of OntoBuilder projects this project imports (opened with the `switch_ontology` tool, on their default branch). " +
       "Tools that are not allowed are left out of the tool list sent to the model, and a call to one anyway returns an error tool result without side effects. " +
-      "When `permissions` (or one of its fields) is absent, `edit_ontology` defaults to true and `edit_code` to false.",
+      "When `permissions` (or one of its fields) is absent, `edit_ontology` defaults to true and `edit_code` and `edit_imports` to false.",
     query: [{ name: "branch", description: "Branch to work on. Defaults to the repository's default branch.", schema: { type: "string" } }],
     body: {
       required: true,
@@ -128,7 +130,7 @@ export const agentDocs: DocMap = {
           model: { type: ["string", "null"], maxLength: 200, description: "Overrides the configured model for this turn." },
           permissions: {
             type: "object",
-            description: "What the agent may change in this turn. Defaults to `{edit_ontology: true, edit_code: false}`.",
+            description: "What the agent may change in this turn. Defaults to `{edit_ontology: true, edit_code: false, edit_imports: false}`.",
             properties: {
               edit_ontology: {
                 type: "boolean",
@@ -139,6 +141,11 @@ export const agentDocs: DocMap = {
                 type: "boolean",
                 default: false,
                 description: "Allow writing and deleting files in the project folder and running shell commands there.",
+              },
+              edit_imports: {
+                type: "boolean",
+                default: false,
+                description: "Allow changes to the ontologies of OntoBuilder projects this project imports.",
               },
             },
           },

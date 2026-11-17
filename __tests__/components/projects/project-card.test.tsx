@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import { renderWithQueryClient as render } from "@/__tests__/helpers/renderWithProviders";
 
 vi.mock("next/link", () => ({
   __esModule: true,
@@ -8,6 +9,12 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("@/lib/api/imports", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return { ...actual, importsApi: { list: vi.fn() } };
+});
+
+import { importsApi, type ImportStatus } from "@/lib/api/imports";
 import { ProjectCard } from "@/components/projects/project-card";
 import type { Project } from "@/lib/api/projects";
 
@@ -21,6 +28,14 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     updated_at: "2024-06-15T12:00:00Z",
     ...overrides,
   };
+}
+
+beforeEach(() => {
+  vi.mocked(importsApi.list).mockResolvedValue({ direct: [], closure: [] });
+});
+
+function imp(overrides: Partial<ImportStatus>): ImportStatus {
+  return { iri: "http://x.org/a", source: "project", status: "ok", class_count: 1, direct: true, imported_by: [], label: null, ...overrides };
 }
 
 describe("ProjectCard", () => {
@@ -74,5 +89,32 @@ describe("ProjectCard", () => {
     render(<ProjectCard project={makeProject()} className="extra-class" />);
     const link = screen.getByRole("link");
     expect(link.className).toContain("extra-class");
+  });
+
+  it("lists the ontologies the project imports directly, between description and date", async () => {
+    vi.mocked(importsApi.list).mockResolvedValue({
+      direct: ["http://x.org/food", "http://w3id.org/remote"],
+      closure: [
+        imp({ iri: "http://x.org/food", project_id: "p2", project_name: "Food" }),
+        imp({ iri: "http://w3id.org/remote", source: "remote", label: "Remote Onto" }),
+        imp({ iri: "http://x.org/deep", direct: false, project_name: "Deep" }),
+      ],
+    });
+    render(<ProjectCard project={makeProject()} />);
+    const list = await screen.findByRole("list", { name: "Imported ontologies" });
+    expect([...list.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["Food", "Remote Onto"]);
+    expect(screen.queryByText("Deep")).toBeNull();
+    expect(importsApi.list).toHaveBeenCalledWith("proj-123", undefined);
+    const block = screen.getByTestId("project-card-imports");
+    const description = screen.getByText("A test project for ontology editing");
+    const updated = screen.getByText(/Updated/);
+    expect(description.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(block.compareDocumentPosition(updated) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("shows no imports section when the project imports nothing", async () => {
+    render(<ProjectCard project={makeProject()} />);
+    await screen.findByText(/Updated/);
+    expect(screen.queryByTestId("project-card-imports")).toBeNull();
   });
 });

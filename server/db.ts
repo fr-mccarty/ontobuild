@@ -4,23 +4,34 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 export const DATA_DIR = path.resolve(
-  /*turbopackIgnore: true*/ process.env.ONTOKIT_DATA_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "data"),
+  /*turbopackIgnore: true*/ process.env.ONTOBUILDER_DATA_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "data"),
 );
 /** Legacy location of bare project repositories, moved into PROJECTS_DIR by server/workspace.ts. */
 export const REPOS_DIR = path.join(/*turbopackIgnore: true*/ DATA_DIR, "repos");
 export const PROJECTS_DIR = path.join(/*turbopackIgnore: true*/ DATA_DIR, "projects");
 const SCHEMA_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), "server", "schema");
 
-type GlobalWithDb = typeof globalThis & { __ontokitDb?: DatabaseSync };
+type GlobalWithDb = typeof globalThis & { __ontobuilderDb?: DatabaseSync };
 const g = globalThis as GlobalWithDb;
 
 function open(): DatabaseSync {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.mkdirSync(PROJECTS_DIR, { recursive: true });
-  const db = new DatabaseSync(path.join(DATA_DIR, "ontokit.db"));
+  migrateLegacyDbFile();
+  const db = new DatabaseSync(path.join(DATA_DIR, "ontobuilder.db"));
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
   applySchema(db);
   return db;
+}
+
+/** Renames the database from its pre-OntoBuilder name, data/ontokit.db, if that is all there is. */
+function migrateLegacyDbFile() {
+  const to = path.join(DATA_DIR, "ontobuilder.db");
+  const from = path.join(DATA_DIR, "ontokit.db");
+  if (fs.existsSync(to) || !fs.existsSync(from)) return;
+  for (const suffix of ["", "-wal", "-shm"]) {
+    if (fs.existsSync(from + suffix)) fs.renameSync(from + suffix, to + suffix);
+  }
 }
 
 function applySchema(db: DatabaseSync) {
@@ -43,8 +54,8 @@ function ensureColumn(db: DatabaseSync, table: string, column: string, type: str
 }
 
 export function getDb(): DatabaseSync {
-  if (!g.__ontokitDb) g.__ontokitDb = open();
-  return g.__ontokitDb;
+  if (!g.__ontobuilderDb) g.__ontobuilderDb = open();
+  return g.__ontobuilderDb;
 }
 
 export type Param = SQLInputValue | boolean | undefined;

@@ -82,7 +82,7 @@ export default function TypesPage() {
               equivalence/disjointness declarations.
             </p>
             <p className="text-slate-600 dark:text-slate-400 text-sm">
-              This is the level of formality that OntoKit targets &mdash; editing and curating{" "}
+              This is the level of formality that OntoBuilder targets &mdash; editing and curating{" "}
               OWL ontologies with full expressiveness.
             </p>
           </div>

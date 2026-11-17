@@ -156,22 +156,19 @@ describe("Project editor sub header tooltips", () => {
     );
   });
 
-  it("explains the branch selector with the current branch and commit", async () => {
+  it("explains the Repository button with the current branch, commit and GitHub link", async () => {
     renderPage();
-    const branchButton = within(subHeader()).getByRole("button", { name: /main/ });
-    expect(await tooltipFor(branchButton)).toBe(
-      "Branch: main at commit a47aeb0. Click to switch branches or create a new one.",
+    const button = within(subHeader()).getByRole("button", { name: "Repository" });
+    expect(await tooltipFor(button)).toBe(
+      "Repository: on branch main at commit a47aeb0. GitHub: link this project to a repository. Click to switch branches, view history or push and pull.",
     );
   });
 
-  it("explains Share, History, Normalize, dashboard, shortcuts, settings and the panel toggles", async () => {
+  it("explains Share, Normalize, dashboard, shortcuts, settings and the panel toggles", async () => {
     renderPage();
     const bar = subHeader();
     expect(await tooltipFor(within(bar).getByRole("button", { name: /^Share options/ }))).toBe(
       "Share: copy a link to this project, or open pull requests (2 open). Also holds the editor controls that don't fit in the bar at this width",
-    );
-    expect(await tooltipFor(within(bar).getByRole("button", { name: "History" }))).toBe(
-      "Revision history: show the commits made to this ontology and their changes",
     );
     expect(await tooltipFor(within(bar).getByRole("link", { name: "Normalize ontology" }))).toBe(
       "Normalization recommended: the ontology file isn't in canonical Turtle format. Opens project settings to normalize it",
@@ -228,13 +225,11 @@ describe("Project editor sub header on one line", () => {
     expect(cls(within(bar).getByRole("link", { name: "Normalize ontology" }))).toEqual(
       expect.arrayContaining(["hidden", "xl:inline-flex"]),
     );
-    expect(cls(within(bar).getByRole("button", { name: "History" }))).toEqual(expect.arrayContaining(["hidden", "lg:inline-flex"]));
     expect(cls(within(bar).getByRole("button", { name: "Keyboard shortcuts" }))).toEqual(
       expect.arrayContaining(["hidden", "lg:inline-flex"]),
     );
-    expect(cls(within(bar).getByRole("button", { name: /main/ }).closest("div.relative")!)).toEqual(
-      expect.arrayContaining(["hidden", "md:block"]),
-    );
+    // The Repository button shows at every width (its branch name hides below sm).
+    expect(cls(within(bar).getByRole("button", { name: "Repository" }))).not.toContain("hidden");
     expect(cls(within(bar).getByRole("link", { name: "Project dashboard" }))).toEqual(
       expect.arrayContaining(["hidden", "sm:inline-flex"]),
     );
@@ -254,8 +249,9 @@ describe("Share overflow menu", () => {
   it("holds each overflowed control, shown only below the width where its inline version hides", () => {
     renderPage();
     const menu = openMenu();
-    expect(cls(within(menu).getByRole("group", { name: "Branch" }))).toContain("md:hidden");
-    expect(cls(within(menu).getByRole("menuitemcheckbox", { name: "Revision history" }))).toContain("lg:hidden");
+    // Versioning lives in the Repository popover, not the overflow menu.
+    expect(within(menu).queryByRole("group", { name: "Branch" })).toBeNull();
+    expect(within(menu).queryByRole("menuitemcheckbox", { name: /revision history/i })).toBeNull();
     expect(cls(within(menu).getByRole("menuitem", { name: "Keyboard shortcuts" }))).toContain("lg:hidden");
     expect(cls(within(menu).getByRole("menuitem", { name: "Normalize ontology" }))).toContain("xl:hidden");
     expect(cls(within(menu).getByRole("menuitem", { name: "Project dashboard" }))).toContain("sm:hidden");
@@ -285,17 +281,7 @@ describe("Share overflow menu", () => {
     const menu = openMenu();
     expect(within(menu).queryByRole("menuitem", { name: "Normalize ontology" })).toBeNull();
     expect(within(menu).getByRole("menuitem", { name: "Project settings" })).toBeDefined();
-    expect(cls(within(menu).getByRole("group", { name: "Branch" }).parentElement!)).toContain("lg:hidden");
-  });
-
-  it("toggles the history panel and closes the menu", () => {
-    renderPage();
-    const item = within(openMenu()).getByRole("menuitemcheckbox", { name: "Revision history" });
-    expect(item.getAttribute("aria-checked")).toBe("false");
-    fireEvent.click(item);
-    expect(screen.queryByRole("menu")).toBeNull();
-    expect(within(subHeader()).getByRole("button", { name: "History" }).getAttribute("aria-pressed")).toBe("true");
-    expect(within(openMenu()).getByRole("menuitemcheckbox", { name: "Hide revision history" }).getAttribute("aria-checked")).toBe("true");
+    expect(cls(within(menu).getByRole("menuitem", { name: "Keyboard shortcuts" }).parentElement!)).toContain("lg:hidden");
   });
 
   it("opens the keyboard shortcuts dialog", async () => {
@@ -305,15 +291,41 @@ describe("Share overflow menu", () => {
     expect(await screen.findByRole("dialog")).toBeDefined();
   });
 
-  it("shows the branch selector with the current branch", () => {
+});
+
+describe("Repository popover", () => {
+  const openPopover = () => {
+    fireEvent.click(within(subHeader()).getByRole("button", { name: "Repository" }));
+    return screen.getByRole("dialog", { name: "Repository" });
+  };
+
+  it("replaces the separate GitHub, branch and History buttons", () => {
     renderPage();
-    const group = within(openMenu()).getByRole("group", { name: "Branch" });
-    const button = within(group).getByRole("button", { name: /main/ });
-    expect(button.textContent).toContain("a47aeb0");
-    expect((button as HTMLButtonElement).disabled).toBe(false);
+    const bar = subHeader();
+    expect(within(bar).queryByRole("button", { name: "History" })).toBeNull();
+    expect(within(bar).queryByRole("button", { name: /^GitHub/ })).toBeNull();
+    expect(within(bar).getByTestId("repository-branch").textContent).toBe("main");
   });
 
-  it("switches branch from the menu's branch selector", () => {
+  it("groups the branch, history and GitHub sections", () => {
+    renderPage();
+    const popover = openPopover();
+    expect(within(popover).getByRole("region", { name: "Branch" })).toBeDefined();
+    expect(within(popover).getByRole("region", { name: "History" })).toBeDefined();
+    expect(within(popover).getByRole("region", { name: "GitHub" })).toBeDefined();
+    expect(within(popover).getByRole("option", { name: /main/ }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("toggles the history panel and closes the popover", () => {
+    renderPage();
+    const item = within(openPopover()).getByRole("button", { name: "Revision history" });
+    expect(item.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(item);
+    expect(screen.queryByRole("dialog", { name: "Repository" })).toBeNull();
+    expect(within(openPopover()).getByRole("button", { name: "Hide revision history" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("switches branch from the popover", () => {
     mockBranchState = {
       ...mockBranchState,
       branches: [
@@ -322,10 +334,16 @@ describe("Share overflow menu", () => {
       ],
     };
     renderPage();
-    const group = within(openMenu()).getByRole("group", { name: "Branch" });
-    fireEvent.click(within(group).getByRole("button", { name: /main/ }));
-    fireEvent.click(within(group).getByRole("option", { name: /feature\/x/ }));
+    fireEvent.click(within(openPopover()).getByRole("option", { name: /feature\/x/ }));
     expect(mockBranchState.switchBranch).toHaveBeenCalledWith("feature/x");
+  });
+
+  it("closes with Esc without closing the agent panel", () => {
+    renderPage();
+    const popover = openPopover();
+    fireEvent.keyDown(within(popover).getByRole("button", { name: "Revision history" }), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Repository" })).toBeNull();
+    expect(screen.queryByTestId("right-sidebar")).not.toBeNull();
   });
 });
 
@@ -405,7 +423,7 @@ describe("Project editor sidebars", () => {
   });
 
   it("restores the persisted sidebar state", () => {
-    localStorage.setItem("ontokit:editorSidebars", JSON.stringify({ left: false, right: true }));
+    localStorage.setItem("ontobuilder:editorSidebars", JSON.stringify({ left: false, right: true }));
     renderPage();
     expect(rightOpen()).toBe(true);
     expect(treeOpen()).toBe("false");

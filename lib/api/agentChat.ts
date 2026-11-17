@@ -62,6 +62,8 @@ export type AgentUiAction = AgentSelectEntityAction;
 export interface AgentOntologyChange {
   tool_use_id: string;
   name: string;
+  /** Set when the commit went to an imported project (API-only edit_imports) rather than the open one. */
+  project_id?: string;
   branch: string;
   commit_hash: string | null;
   deleted_iris: string[];
@@ -204,6 +206,7 @@ export function toAgentStreamEvent(raw: SSEEvent): AgentStreamEvent | null {
         type: "ontology_changed",
         tool_use_id: String(data.tool_use_id ?? ""),
         name: String(data.name ?? ""),
+        ...(typeof data.project_id === "string" && data.project_id ? { project_id: data.project_id } : {}),
         branch: data.branch,
         commit_hash: typeof data.commit_hash === "string" ? data.commit_hash : null,
         deleted_iris: Array.isArray(data.deleted_iris)

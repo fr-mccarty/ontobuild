@@ -35,8 +35,10 @@ import type { AnnotationUpdate, LocalizedString } from "@/lib/api/client";
  * What a tool may change. Every tool declares one, and the chat's permissions decide which
  * classes the model sees and may call:
  * - `read`: never changes anything (always allowed).
- * - `ontology`: changes the ontology, branches, pull requests or project settings (Edit Ontology).
- * - `code`: changes files in the project folder or runs commands there (Edit Code).
+ * - `ontology`: changes the ontology, branches, pull requests or project settings (Edit Ontology;
+ *   in an imported project opened with switch_ontology, the API-only edit_imports).
+ * - `code`: changes files in the project folder or runs commands there (Edit Code; never in an
+ *   imported project).
  */
 export type ToolClass = "read" | "ontology" | "code";
 
@@ -46,20 +48,40 @@ export const TOOL_CLASSES: readonly ToolClass[] = ["read", "ontology", "code"];
 export interface AgentPermissions {
   edit_code: boolean;
   edit_ontology: boolean;
+  /** Change the ontologies of OntoBuilder projects this project imports (owl:imports). */
+  edit_imports: boolean;
 }
 
 /** Used when a request has no permissions field, so older clients keep their behavior. */
-export const DEFAULT_AGENT_PERMISSIONS: AgentPermissions = { edit_code: false, edit_ontology: true };
+export const DEFAULT_AGENT_PERMISSIONS: AgentPermissions = { edit_code: false, edit_ontology: true, edit_imports: false };
 
+/** Whether the model is offered tools of this class at all (in any project it can open). */
 export function isToolClassAllowed(kind: ToolClass, permissions: AgentPermissions): boolean {
-  if (kind === "ontology") return permissions.edit_ontology;
+  if (kind === "ontology") return permissions.edit_ontology || permissions.edit_imports;
   if (kind === "code") return permissions.edit_code;
   return true;
 }
 
-export function permissionRefusal(kind: ToolClass): string {
-  return kind === "code"
-    ? "Editing code is turned off for this conversation. Ask the user to turn on Edit Code."
+/** True while switch_ontology has the tools working on an imported project. */
+export function inImportedProject(ctx: ToolContext): boolean {
+  return !!ctx.home && ctx.projectId !== ctx.home.projectId;
+}
+
+/** Why a tool of this class may not run right now, or null when it may. */
+export function permissionRefusal(kind: ToolClass, ctx: ToolContext): string | null {
+  const permissions = ctx.permissions ?? DEFAULT_AGENT_PERMISSIONS;
+  if (kind === "read") return null;
+  if (inImportedProject(ctx)) {
+    if (kind === "code")
+      return "Code tools only work in the user's own project. Call switch_ontology with \"home\" first.";
+    return permissions.edit_imports
+      ? null
+      : "Imported ontologies are read-only here. To change one, the user opens its own project and asks there.";
+  }
+  if (kind === "code")
+    return permissions.edit_code ? null : "Editing code is turned off for this conversation. Ask the user to turn on Edit Code.";
+  return permissions.edit_ontology
+    ? null
     : "Editing the ontology is turned off for this conversation. Ask the user to turn on Edit Ontology.";
 }
 
@@ -74,6 +96,11 @@ export interface ToolContext {
   pollTimeoutMs?: number;
   /** What the agent may change. Defaults to DEFAULT_AGENT_PERMISSIONS. */
   permissions?: AgentPermissions;
+  /**
+   * The user's own project and the branch the agent was on there, saved when switch_ontology
+   * opens an imported project. Unset while the agent has never left the user's project.
+   */
+  home?: { projectId: string; branch: string };
 }
 
 export type SelectableEntityKind = "class" | "property" | "individual";
@@ -89,6 +116,8 @@ export interface UiAction {
 
 /** One branch whose ontology source a tool call committed to, sent as an `ontology_changed` event. */
 export interface OntologyChange {
+  /** Set when the commit went to an imported project rather than the user's own. */
+  project_id?: string;
   branch: string;
   commit_hash: string;
   deleted_iris: string[];
@@ -492,6 +521,11 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
     parameters: { type: "object", properties: { iri: str("IRI (full or prefixed name) of the class, property or individual") }, required: ["iri"] },
     async run(input, ctx) {
       const iri = s(input, "iri").trim();
+      if (inImportedProject(ctx)) {
+        throw new ToolError(
+          'You are working on an imported ontology, which the editor does not show. Call switch_ontology with "home" first.',
+        );
+      }
       const editorBranch = ctx.editorBranch ?? ctx.branch;
       if (ctx.branch !== editorBranch) {
         throw new ToolError(
@@ -1204,6 +1238,103 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "list_imports",
+    kind: "read",
+    description:
+      "List the ontologies the user's project imports (owl:imports), directly or transitively. Imports with source \"project\" are other OntoBuilder projects that switch_ontology can open; \"remote\" ones are read-only cached copies of web ontologies.",
+    parameters: { type: "object", properties: {} },
+    async run(_input, ctx) {
+      const homeCtx = ctx.home ? { ...ctx, projectId: ctx.home.projectId, branch: ctx.home.branch } : ctx;
+      const { data } = await call<{ direct: string[]; closure: Record<string, unknown>[] }>(
+        homeCtx,
+        "GET",
+        projectPath(homeCtx, "/imports"),
+      );
+      const imports = data.closure.map((i) => ({
+        iri: i.iri,
+        label: i.label,
+        source: i.source,
+        project_id: i.project_id,
+        project_name: i.project_name,
+        status: i.status,
+        error: i.error,
+        direct: i.direct,
+        class_count: i.class_count,
+      }));
+      return {
+        result: { current_project_id: ctx.projectId, imports },
+        summary: `Listed ${imports.length} imports`,
+        mutated: false,
+      };
+    },
+  },
+  {
+    name: "switch_ontology",
+    kind: "read",
+    description:
+      "Switch which ontology the following tool calls read and edit, for the rest of this reply: an imported OntoBuilder project (by its import IRI or project id, from list_imports), opened on its default branch, or \"home\" for the user's own project, back on the branch you left it on. Imported ontologies are normally read-only. Code tools and select_entity only work at home. The next user message starts at home again.",
+    parameters: {
+      type: "object",
+      properties: {
+        target: str('"home", or the IRI or project id of an import listed by list_imports', { minLength: 1 }),
+      },
+      required: ["target"],
+    },
+    async run(input, ctx) {
+      const target = s(input, "target").trim();
+      const home = ctx.home ?? { projectId: ctx.projectId, branch: ctx.branch };
+      if (target === "home" || target === home.projectId) {
+        if (ctx.home) {
+          ctx.projectId = home.projectId;
+          ctx.branch = home.branch;
+        }
+        return {
+          result: { project_id: ctx.projectId, branch: ctx.branch, home: true },
+          summary: "Switched back to the project's own ontology",
+          mutated: false,
+        };
+      }
+      const homeCtx = { ...ctx, projectId: home.projectId, branch: home.branch };
+      const { data } = await call<{ closure: { iri: string; source: string; project_id?: string; project_name?: string; status: string }[] }>(
+        homeCtx,
+        "GET",
+        projectPath(homeCtx, "/imports"),
+      );
+      const norm = (v: string) => v.trim().replace(/[#/]+$/, "");
+      const match = data.closure.find((i) => i.project_id === target || norm(i.iri) === norm(target));
+      if (!match) throw new ToolError(`"${target}" is not imported by this project. Call list_imports to see the imports.`);
+      if (match.source !== "project" || !match.project_id) {
+        throw new ToolError(
+          `${match.iri} is a cached copy of a web ontology, not an OntoBuilder project, so it cannot be opened or edited. Read its classes through the merged class tree instead.`,
+        );
+      }
+      if (match.status === "cycle" || match.project_id === home.projectId) {
+        throw new ToolError(`${match.iri} is this project's own ontology (an import cycle). Use "home".`);
+      }
+      const { data: branches } = await call<{ default_branch: string }>(
+        { ...ctx, projectId: match.project_id },
+        "GET",
+        `/projects/${encodeURIComponent(match.project_id)}/branches`,
+        { branch: false },
+      );
+      ctx.home = home;
+      ctx.projectId = match.project_id;
+      ctx.branch = branches.default_branch;
+      return {
+        result: {
+          project_id: ctx.projectId,
+          project_name: match.project_name,
+          iri: match.iri,
+          branch: ctx.branch,
+          home: false,
+          can_edit: (ctx.permissions ?? DEFAULT_AGENT_PERMISSIONS).edit_imports,
+        },
+        summary: `Switched to imported ontology ${match.project_name ?? match.iri}`,
+        mutated: false,
+      };
+    },
+  },
+  {
     name: "list_pull_requests",
     kind: "read",
     description: "List pull requests, newest first.",
@@ -1419,13 +1550,13 @@ function failure(
 // collector records the commits made to its project, so the client learns about every
 // change, including ones made on another branch, without each tool reporting it.
 type CommitCollector = (e: OntologyEvent) => void;
-const collectorsG = globalThis as typeof globalThis & { __ontokitAgentCommitCollectors?: Set<CommitCollector> };
-const commitCollectors: Set<CommitCollector> = (collectorsG.__ontokitAgentCommitCollectors ??= new Set());
+const collectorsG = globalThis as typeof globalThis & { __ontobuilderAgentCommitCollectors?: Set<CommitCollector> };
+const commitCollectors: Set<CommitCollector> = (collectorsG.__ontobuilderAgentCommitCollectors ??= new Set());
 onOntologyEvent("agent:commit-collector", (e) => {
   for (const collect of commitCollectors) collect(e);
 });
 
-function collectCommits(projectId: string) {
+function collectCommits(projectId: string, imported: boolean) {
   const latest = new Map<string, string>();
   const collect: CommitCollector = (e) => {
     if (e.type !== "commit" || e.projectId !== projectId) return;
@@ -1436,7 +1567,11 @@ function collectCommits(projectId: string) {
   return {
     stop(deletedIris: string[] = []): OntologyChange[] {
       commitCollectors.delete(collect);
-      return [...latest].map(([branch, commit_hash]) => ({ branch, commit_hash, deleted_iris: deletedIris }));
+      return [...latest].map(([branch, commit_hash]) =>
+        imported
+          ? { project_id: projectId, branch, commit_hash, deleted_iris: [] }
+          : { branch, commit_hash, deleted_iris: deletedIris },
+      );
     },
   };
 }
@@ -1460,10 +1595,10 @@ export async function executeTool(
 ): Promise<ToolExecution> {
   const tool = TOOL_MAP.get(name);
   if (!tool) return failure(input, `Unknown tool: ${name}`);
-  // The model only sees allowed tools, but it can still name a hidden one; refuse before any side effect.
-  if (!isToolClassAllowed(tool.kind, ctx.permissions ?? DEFAULT_AGENT_PERMISSIONS)) {
-    return failure(input, permissionRefusal(tool.kind));
-  }
+  // The model only sees allowed tools, but it can still name a hidden one, or call an ontology
+  // tool in a project the permissions don't cover; refuse before any side effect.
+  const refusal = permissionRefusal(tool.kind, ctx);
+  if (refusal) return failure(input, refusal);
   const errors = validateJson(tool.parameters, input);
   if (errors.length) return failure(input, `Invalid input for ${name}: ${errors.join("; ")}`);
   let args = input;
@@ -1476,7 +1611,7 @@ export async function executeTool(
     if (expanded.errors.length) return failure(input, `Invalid input for ${name}: ${expanded.errors.join("; ")}`);
     args = expanded.input;
   }
-  const commits = collectCommits(ctx.projectId);
+  const commits = collectCommits(ctx.projectId, inImportedProject(ctx));
   try {
     const out = await tool.run(args, ctx);
     const ontologyChanges = commits.stop(out.deleted_iris);

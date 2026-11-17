@@ -221,8 +221,8 @@ function ImportRow({ entry, onRemove, disabled }: { entry: ImportStatus; onRemov
     <li className="flex items-start gap-3 px-3 py-2" data-testid="import-row" data-iri={entry.iri}>
       <span className="mt-0.5 text-slate-400">
         {entry.source === "project" ? (
-          <Tooltip content="An OntoKit project (read from its default branch)">
-            <FolderGit2 className="h-4 w-4" aria-label="OntoKit project" />
+          <Tooltip content="An OntoBuilder project (read from its default branch)">
+            <FolderGit2 className="h-4 w-4" aria-label="OntoBuilder project" />
           </Tooltip>
         ) : (
           <Tooltip content="Fetched from the web and cached">
@@ -320,8 +320,8 @@ function AddImport({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search OntoKit projects by name or ontology IRI"
-            aria-label="Search OntoKit projects"
+            placeholder="Search OntoBuilder projects by name or ontology IRI"
+            aria-label="Search OntoBuilder projects"
             className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           />
           <ul className="max-h-56 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-700" aria-label="Projects to import">
@@ -375,7 +375,7 @@ function AddImport({
       )}
       {mode === "iri" && (
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          The IRI of another OntoKit project&apos;s ontology links that project; any other http(s) IRI is fetched and cached.
+          The IRI of another OntoBuilder project&apos;s ontology links that project; any other http(s) IRI is fetched and cached.
         </p>
       )}
     </section>

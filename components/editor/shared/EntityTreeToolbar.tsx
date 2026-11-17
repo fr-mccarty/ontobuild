@@ -5,7 +5,7 @@ import { Search, X, Plus, ChevronDown, ChevronsDown, ChevronRight, ChevronsRight
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 
-const TIP_DISMISSED_KEY = "ontokit:expand-tip-dismissed";
+const TIP_DISMISSED_KEY = "ontobuilder:expand-tip-dismissed";
 
 function readTipDismissed(): boolean {
   try {

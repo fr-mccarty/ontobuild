@@ -8,7 +8,7 @@ export default function InfoPage() {
       <main id="main-content" className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center p-24">
         <div className="text-center">
         <h1 className="text-5xl font-bold tracking-tight text-slate-900 dark:text-white">
-          OntoKit
+          OntoBuilder
         </h1>
         <p className="mt-4 text-xl text-slate-600 dark:text-slate-300">
           Local OWL Ontology Curation Workbench

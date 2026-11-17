@@ -4,7 +4,7 @@ export const userSchemas: Record<string, Schema> = {
   User: {
     type: "object",
     required: ["id", "name", "email"],
-    description: "OntoKit runs as a single local user.",
+    description: "OntoBuilder runs as a single local user.",
     properties: {
       id: { type: "string", examples: ["local-user"] },
       name: { type: "string", examples: ["Local User"] },

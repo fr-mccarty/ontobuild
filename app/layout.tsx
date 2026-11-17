@@ -22,7 +22,7 @@ const notoColorEmoji = Noto_Color_Emoji({
 });
 
 export const metadata: Metadata = {
-  title: "OntoKit - Ontology Editor",
+  title: "OntoBuilder - Ontology Editor",
   description:
     "A local workbench for OWL ontology curation with structured editing and Git-backed version history.",
   keywords: ["ontology", "OWL", "RDF", "semantic web", "knowledge graph", "collaboration"],
@@ -37,7 +37,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <Script id="theme-init" strategy="beforeInteractive">
-          {`(function(){try{var s=JSON.parse(localStorage.getItem("ontokit-editor-preferences")||"{}");var t=(s.state&&s.state.theme)||"system";if(t==="dark")document.documentElement.classList.add("dark");else if(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches)document.documentElement.classList.add("dark")}catch(e){}})()`}
+          {`(function(){try{for(var S of [localStorage,sessionStorage])for(var i=S.length-1;i>=0;i--){var k=S.key(i);if(k&&k.indexOf("ontokit")===0){var n="ontobuilder"+k.slice(7);if(S.getItem(n)===null)S.setItem(n,S.getItem(k));S.removeItem(k)}}}catch(e){}try{var s=JSON.parse(localStorage.getItem("ontobuilder-editor-preferences")||"{}");var t=(s.state&&s.state.theme)||"system";if(t==="dark")document.documentElement.classList.add("dark");else if(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches)document.documentElement.classList.add("dark")}catch(e){}})()`}
         </Script>
       </head>
       <body className={`${inter.variable} ${jetbrainsMono.variable} ${notoColorEmoji.variable} font-sans antialiased`}>

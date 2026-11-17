@@ -446,8 +446,8 @@ interface IndexMemo {
   entity_count: number;
   indexed_at: string;
 }
-const memoG = globalThis as typeof globalThis & { __ontokitIndexMemo?: Map<string, IndexMemo> };
-const indexMemo: Map<string, IndexMemo> = (memoG.__ontokitIndexMemo ??= new Map());
+const memoG = globalThis as typeof globalThis & { __ontobuilderIndexMemo?: Map<string, IndexMemo> };
+const indexMemo: Map<string, IndexMemo> = (memoG.__ontobuilderIndexMemo ??= new Map());
 
 function indexEntities(onto: LoadedOntology): IndexMemo {
   const memo = {

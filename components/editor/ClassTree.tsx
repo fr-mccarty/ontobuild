@@ -188,7 +188,7 @@ function SearchResultItem({ result, onSelect }: SearchResultItemProps) {
 
       {importedFrom ? (
         <Tooltip content={`Imported from ${importedFrom}. Read-only here.`}>
-          <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 flex-shrink-0">
+          <span className="text-[8px] uppercase tracking-wider text-slate-300 dark:text-slate-600 flex-shrink-0">
             imported {result.entity_type}
           </span>
         </Tooltip>

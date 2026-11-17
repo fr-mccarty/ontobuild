@@ -66,8 +66,8 @@ interface PRRow {
 }
 
 type Cache = Map<string, Provenance>;
-const g = globalThis as typeof globalThis & { __ontokitProvenanceCache?: Cache };
-const cache: Cache = (g.__ontokitProvenanceCache ??= new Map());
+const g = globalThis as typeof globalThis & { __ontobuilderProvenanceCache?: Cache };
+const cache: Cache = (g.__ontobuilderProvenanceCache ??= new Map());
 const CACHE_SIZE = 2000;
 
 /** Turtle spellings of a literal, most likely first, as the serializer and hand-written files use them. */

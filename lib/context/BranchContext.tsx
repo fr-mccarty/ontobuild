@@ -21,7 +21,7 @@ export const branchQueryKeys = {
 
 function getStoredBranch(projectId: string): string | null {
   try {
-    return sessionStorage.getItem(`ontokit:branch:${projectId}`);
+    return sessionStorage.getItem(`ontobuilder:branch:${projectId}`);
   } catch {
     return null;
   }
@@ -29,7 +29,7 @@ function getStoredBranch(projectId: string): string | null {
 
 function setStoredBranch(projectId: string, branch: string): void {
   try {
-    sessionStorage.setItem(`ontokit:branch:${projectId}`, branch);
+    sessionStorage.setItem(`ontobuilder:branch:${projectId}`, branch);
   } catch {
   }
 }
@@ -124,7 +124,7 @@ export function BranchProvider({
   useEffect(() => {
     if (!lastSync?.clearStoredBranch) return;
     try {
-      sessionStorage.removeItem(`ontokit:branch:${lastSync.projectId}`);
+      sessionStorage.removeItem(`ontobuilder:branch:${lastSync.projectId}`);
     } catch {
     }
   }, [lastSync]);

@@ -10,7 +10,7 @@ import { useGitHub } from "@/lib/hooks/useGitHub";
 import { cn } from "@/lib/utils";
 
 /** The GitHub mark (lucide-react in this version has no GitHub icon). */
-function GitHubMark({ className }: { className?: string }) {
+export function GitHubMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden className={className}>
       <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
@@ -24,7 +24,7 @@ function remoteLabel(r: GitHubRemote): string {
   return r.remote_url;
 }
 
-function tooltipFor(r: GitHubRemote | undefined): string {
+export function githubTooltip(r: GitHubRemote | undefined): string {
   if (!r) return "GitHub: link this project to a repository";
   if (!r.remote_url) return "GitHub: link this project to a repository to push and pull";
   const where = r.is_github ? remoteLabel(r) : `${remoteLabel(r)} (not GitHub)`;
@@ -33,18 +33,39 @@ function tooltipFor(r: GitHubRemote | undefined): string {
   return `Linked to ${where}. ${r.branch} is ${r.ahead} ahead and ${r.behind} behind ${r.upstream ?? "the remote"} (as of the last fetch).`;
 }
 
+/** The ahead/behind counts against the remote, or nothing when unlinked or in sync. */
+export function GitHubAheadBehind({ remote }: { remote: GitHubRemote | undefined }) {
+  const ahead = remote?.ahead ?? 0;
+  const behind = remote?.behind ?? 0;
+  if (!remote?.remote_url || (ahead <= 0 && behind <= 0)) return null;
+  return (
+    <span data-testid="github-ahead-behind" className="flex items-center gap-0.5 text-xs tabular-nums">
+      {ahead > 0 && (
+        <span className="flex items-center">
+          <ArrowUp className="h-3 w-3" />
+          {ahead}
+        </span>
+      )}
+      {behind > 0 && (
+        <span className="flex items-center">
+          <ArrowDown className="h-3 w-3" />
+          {behind}
+        </span>
+      )}
+    </span>
+  );
+}
+
 /** `onPulled` runs after a pull moved the checked-out branch, so the editor can reload its source. */
 export function GitHubButton({ projectId, onPulled }: { projectId: string; onPulled?: () => void }) {
   const [open, setOpen] = useState(false);
   const { query } = useGitHub(projectId);
   const remote = query.data;
   const linked = !!remote?.remote_url;
-  const ahead = remote?.ahead ?? 0;
-  const behind = remote?.behind ?? 0;
 
   return (
     <>
-      <Tooltip side="bottom" content={tooltipFor(remote)}>
+      <Tooltip side="bottom" content={githubTooltip(remote)}>
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -55,22 +76,7 @@ export function GitHubButton({ projectId, onPulled }: { projectId: string; onPul
           )}
         >
           <GitHubMark className="h-4 w-4" />
-          {linked && (ahead > 0 || behind > 0) && (
-            <span data-testid="github-ahead-behind" className="flex items-center gap-0.5 text-xs tabular-nums">
-              {ahead > 0 && (
-                <span className="flex items-center">
-                  <ArrowUp className="h-3 w-3" />
-                  {ahead}
-                </span>
-              )}
-              {behind > 0 && (
-                <span className="flex items-center">
-                  <ArrowDown className="h-3 w-3" />
-                  {behind}
-                </span>
-              )}
-            </span>
-          )}
+          <GitHubAheadBehind remote={remote} />
         </button>
       </Tooltip>
       {open && <GitHubDialog projectId={projectId} onOpenChange={setOpen} onPulled={onPulled} />}
@@ -87,9 +93,6 @@ function GitHubDialog({
   onOpenChange: (open: boolean) => void;
   onPulled?: () => void;
 }) {
-  const gh = useGitHub(projectId);
-  const remote = gh.query.data;
-
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -99,14 +102,25 @@ function GitHubDialog({
           </DialogTitle>
           <DialogDescription>
             Push and pull this project&apos;s repository. Sign-in uses your existing git setup (gh auth login, a
-            credential helper or SSH keys); OntoKit never stores tokens.
+            credential helper or SSH keys); OntoBuilder never stores tokens.
           </DialogDescription>
         </DialogHeader>
-        {gh.query.isLoading && <p className="text-sm text-slate-500">Loading…</p>}
-        {gh.query.error && <p className="text-sm text-red-600">{githubErrorMessage(gh.query.error)}</p>}
-        {remote && (remote.remote_url ? <LinkedView remote={remote} gh={gh} onPulled={onPulled} /> : <UnlinkedView remote={remote} gh={gh} />)}
+        <GitHubPanel projectId={projectId} onPulled={onPulled} />
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Link/create a repository, or fetch/pull/push a linked one. Renders in the GitHub dialog or the Repository popover. */
+export function GitHubPanel({ projectId, onPulled }: { projectId: string; onPulled?: () => void }) {
+  const gh = useGitHub(projectId);
+  const remote = gh.query.data;
+  return (
+    <>
+      {gh.query.isLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Loading…</p>}
+      {gh.query.error && <p className="text-sm text-red-600 dark:text-red-400">{githubErrorMessage(gh.query.error)}</p>}
+      {remote && (remote.remote_url ? <LinkedView remote={remote} gh={gh} onPulled={onPulled} /> : <UnlinkedView remote={remote} gh={gh} />)}
+    </>
   );
 }
 

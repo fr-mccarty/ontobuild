@@ -38,7 +38,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       setHideSaveButton: (on) => set({ hideSaveButton: on }),
     }),
     {
-      name: "ontokit-editor-preferences",
+      name: "ontobuilder-editor-preferences",
       onRehydrateStorage: () => (state) => {
         if (state) {
           applyThemeToDOM(state.theme);

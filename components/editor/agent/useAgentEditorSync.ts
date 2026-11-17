@@ -174,6 +174,11 @@ export function useAgentEditorSync({
 
   const onOntologyChanged = useCallback(
     (change: AgentOntologyChange) => {
+      // A commit to an imported project: its classes appear read-only in this tree, so reload it.
+      if (change.project_id && change.project_id !== latest.current.projectId) {
+        schedule({ ontology: true });
+        return;
+      }
       // An empty branch means unknown (the stream stopped mid-tool): assume the open one.
       const current = latest.current.activeBranch;
       const onOpenBranch = !change.branch || !current || change.branch === current;

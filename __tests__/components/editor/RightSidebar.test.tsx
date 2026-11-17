@@ -64,10 +64,9 @@ describe("RightSidebar", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onClose from the close button", () => {
-    const { onClose } = setup();
-    fireEvent.click(screen.getByLabelText("Close panel"));
-    expect(onClose).toHaveBeenCalled();
+  it("has no close button; the sub-heading toggle closes it", () => {
+    setup();
+    expect(screen.queryByLabelText("Close panel")).toBeNull();
   });
 
   it("starts on the Agent tab again after reopening", () => {
