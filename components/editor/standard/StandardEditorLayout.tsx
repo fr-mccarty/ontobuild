@@ -99,6 +99,8 @@ export interface StandardEditorLayoutProps {
    * panel or the agent) still updates it for when it opens again.
    */
   treePanelOpen?: boolean;
+  /** Asks the page to open the tree panel (Cmd/Ctrl+K search while it is closed). */
+  onRequestTreePanel?: () => void;
   /**
    * Whether the centre panel shows the relationship graph for the selected class instead of
    * its details. Controlled by the page (the graph is opened from the sub-header's More menu);
@@ -296,6 +298,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     projectId,
     branch: activeBranch,
     onSearchSelect: navigateToNode,
+    onShortcut: treePanelOpen ? undefined : props.onRequestTreePanel,
   });
 
   const handleSearchSelect = (iri: string) => {

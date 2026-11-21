@@ -7,6 +7,8 @@ interface UseTreeSearchOptions {
   projectId: string;
   branch?: string;
   onSearchSelect: (iri: string) => void;
+  /** Called when Cmd/Ctrl+K opens the search, e.g. to reveal a collapsed tree panel. */
+  onShortcut?: () => void;
 }
 
 interface UseTreeSearchReturn {
@@ -25,12 +27,17 @@ export function useTreeSearch({
   projectId,
   branch,
   onSearchSelect,
+  onShortcut,
 }: UseTreeSearchOptions): UseTreeSearchReturn {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<EntitySearchResult[] | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const onShortcutRef = useRef(onShortcut);
+  useEffect(() => {
+    onShortcutRef.current = onShortcut;
+  }, [onShortcut]);
 
   const toggleSearch = useCallback(() => {
     setShowSearch((prev) => {
@@ -48,6 +55,24 @@ export function useTreeSearch({
     setShowSearch(false);
     setSearchQuery("");
     setSearchResults(null);
+  }, []);
+
+  // Cmd+K (Mac) / Ctrl+K opens the search, or refocuses it if it is already open.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
+      if (document.querySelector("[data-state='open'][role='dialog']")) return;
+      if (document.activeElement?.closest(".monaco-editor")) return;
+      e.preventDefault();
+      onShortcutRef.current?.();
+      setShowSearch(true);
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }, 0);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, []);
 
   const handleSearchSelect = useCallback(

@@ -29,6 +29,8 @@ export function AgentComposer({ value, onChange, onSend, onStop, isStreaming, di
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
+    // Only scroll once the text is taller than the cap; otherwise no scrollbar shows.
+    el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
   }, [value]);
 
   const canSend = !disabled && !isStreaming && value.trim().length > 0;

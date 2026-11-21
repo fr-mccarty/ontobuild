@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useCallback, useState, useSyncExternalStore } from "react";
-import { Search, X, Plus, ChevronDown, ChevronsDown, ChevronRight, ChevronsRight, Loader2 } from "lucide-react";
+import { Command, Search, X, Plus, ChevronDown, ChevronsDown, ChevronRight, ChevronsRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
+import { isMac } from "@/lib/hooks/useKeyboardShortcuts";
 
 const TIP_DISMISSED_KEY = "ontobuilder:expand-tip-dismissed";
 
@@ -69,6 +70,8 @@ export function EntityTreeToolbar({
     readTipDismissed,
     getServerTipDismissed,
   );
+  // Server render assumes non-Mac; the client corrects it after hydration.
+  const mac = useSyncExternalStore(subscribeToNothing, isMac, () => false);
   const [tipDismissedLocally, setTipDismissedLocally] = useState(false);
   const showTip = !tipDismissedInStorage && !tipDismissedLocally;
 
@@ -178,7 +181,7 @@ export function EntityTreeToolbar({
           </div>
         )}
 
-        <Tooltip side="bottom" content={showSearch ? "Close search" : "Search (Ctrl+K)"}>
+        <Tooltip side="bottom" content={showSearch ? "Close search" : `Search (${mac ? "Cmd" : "Ctrl"}+K)`}>
           <button
             onClick={handleToggle}
             className={cn(
@@ -192,7 +195,9 @@ export function EntityTreeToolbar({
             ) : (
               <>
                 <Search className="h-4 w-4 text-slate-500" />
-                <kbd className="hidden text-[9px] text-slate-400 sm:inline">K</kbd>
+                <kbd className="hidden items-center text-[9px] text-slate-400 sm:inline-flex">
+                  {mac ? <Command className="h-2.5 w-2.5" aria-hidden /> : "Ctrl "}K
+                </kbd>
               </>
             )}
           </button>

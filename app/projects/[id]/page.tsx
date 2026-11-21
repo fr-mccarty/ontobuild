@@ -187,7 +187,8 @@ export default function ProjectEditorPage() {
 
   const [showHistory, setShowHistory] = useState(false);
   // Below the lg breakpoint only one sidebar shows at a time; from lg up both can (see the hook).
-  const { leftOpen, rightOpen: showRightSidebar, toggleLeft, toggleRight, closeRight } = useEditorSidebars();
+  const { leftOpen, rightOpen: showRightSidebar, setOpen: setSidebarOpen, toggleLeft, toggleRight, closeRight } = useEditorSidebars();
+  const openLeft = useCallback(() => setSidebarOpen("left", true), [setSidebarOpen]);
   // "Run as prompt", "Files" and similar actions ask for the right sidebar through the workspace store.
   const rightOpenRequest = useWorkspaceStore((s) => s.rightOpenRequest);
   const handledRightOpenRequest = useRef(rightOpenRequest);
@@ -1035,6 +1036,7 @@ export default function ProjectEditorPage() {
               rollbackReparent={rollbackReparent}
               onActiveTabChange={setLeftTab}
               treePanelOpen={leftOpen}
+              onRequestTreePanel={openLeft}
               showGraph={showGraph}
               onShowGraphChange={setShowGraph}
             />

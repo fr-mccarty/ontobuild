@@ -172,4 +172,30 @@ describe("useTreeSearch", () => {
       expect(result.current.searchResults).toEqual([]);
     }, { timeout: 2000 });
   });
+
+  it("opens search on Cmd+K and Ctrl+K", () => {
+    const { result } = renderHook(() => useTreeSearch(defaultOpts));
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
+    });
+    expect(result.current.showSearch).toBe(true);
+
+    act(() => {
+      result.current.closeSearch();
+    });
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+    });
+    expect(result.current.showSearch).toBe(true);
+  });
+
+  it("ignores K without a modifier", () => {
+    const { result } = renderHook(() => useTreeSearch(defaultOpts));
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "k" }));
+    });
+    expect(result.current.showSearch).toBe(false);
+  });
 });
