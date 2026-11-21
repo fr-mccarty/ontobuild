@@ -12,7 +12,6 @@ import { IndividualDetailPanel } from "@/components/editor/IndividualDetailPanel
 import { ResizablePanelDivider } from "@/components/editor/ResizablePanelDivider";
 import { EntityTreeToolbar } from "@/components/editor/shared/EntityTreeToolbar";
 import { useTreeSearch } from "@/lib/hooks/useTreeSearch";
-import { useFilteredTree } from "@/lib/hooks/useFilteredTree";
 import { ArrowLeft } from "lucide-react";
 import { DraggableTreeWrapper } from "@/components/editor/shared/DraggableTreeWrapper";
 import { useTreeDragDrop, type DragMode } from "@/lib/hooks/useTreeDragDrop";
@@ -299,12 +298,6 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
     onSearchSelect: navigateToNode,
   });
 
-  const { filteredNodes, isBuilding: isFilteredTreeBuilding, truncated: filteredTreeTruncated } = useFilteredTree({
-    searchResults: showSearch ? searchResults : null,
-    projectId,
-    branch: activeBranch,
-  });
-
   const handleSearchSelect = (iri: string) => {
     baseSearchSelect(iri);
     closeSearch();
@@ -383,11 +376,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
                     searchResults={showSearch ? searchResults : undefined}
                     isSearching={isSearching}
                     onSearchSelect={handleSearchSelect}
-                    searchQuery={searchQuery}
                     draftIris={draftIris}
-                    filteredTree={filteredNodes}
-                    isFilteredTreeBuilding={isFilteredTreeBuilding}
-                    filteredTreeTruncated={filteredTreeTruncated}
                     dragState={!showSearch && canEdit ? dragState : undefined}
                     onDragEnterNode={handleDragEnterNode}
                     onDragLeaveNode={handleDragLeaveNode}

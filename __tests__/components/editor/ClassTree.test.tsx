@@ -97,19 +97,7 @@ describe("ClassTree", () => {
     expect(screen.getByText("No results found")).toBeDefined();
   });
 
-  it("does not show results when isFilteredTreeBuilding is true", () => {
-    render(
-      <ClassTree
-        {...defaultProps}
-        searchResults={[makeSearchResult()]}
-        isSearching={false}
-        isFilteredTreeBuilding={true}
-      />,
-    );
-    expect(screen.queryByText("Result1")).toBeNull();
-  });
-
-  it("renders flat list of class search results when no filtered tree", () => {
+  it("renders flat list of class search results", () => {
     const results = [
       makeSearchResult({ iri: "http://example.org/A", label: "Alpha" }),
       makeSearchResult({ iri: "http://example.org/B", label: "Beta" }),
@@ -211,30 +199,6 @@ describe("ClassTree", () => {
     );
     const label = screen.getByText("OldClass");
     expect(label.className).toContain("line-through");
-  });
-
-  it("shows truncation message when filteredTreeTruncated is true", () => {
-    const results = [makeSearchResult()];
-    const filteredTree = [
-      {
-        iri: "http://example.org/Class1",
-        label: "Class1",
-        children: [],
-        isExpanded: false,
-        isLoading: false,
-        hasChildren: false,
-      },
-    ];
-    render(
-      <ClassTree
-        {...defaultProps}
-        searchResults={results}
-        isSearching={false}
-        filteredTree={filteredTree}
-        filteredTreeTruncated={true}
-      />,
-    );
-    expect(screen.getByText(/Showing top/)).toBeDefined();
   });
 
   it("renders both class and non-class results with divider", () => {

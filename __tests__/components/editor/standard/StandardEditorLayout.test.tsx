@@ -122,14 +122,6 @@ vi.mock("@/lib/hooks/useTreeSearch", () => ({
   }),
 }));
 
-vi.mock("@/lib/hooks/useFilteredTree", () => ({
-  useFilteredTree: () => ({
-    filteredNodes: null,
-    isBuilding: false,
-    truncated: false,
-  }),
-}));
-
 let _useTreeDragDropOverride: Record<string, unknown> | null = null;
 let _lastDragDropOptions: Record<string, unknown> | null = null;
 vi.mock("@/lib/hooks/useTreeDragDrop", () => ({

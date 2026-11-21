@@ -6,7 +6,7 @@ import { EntityTypeIcon } from "@/components/editor/shared/EntityTypeIcon";
 import { EntityTree } from "@/components/editor/shared/EntityTree";
 import { Tooltip } from "@/components/ui/tooltip";
 import { classTreeNodesToEntityNodes } from "@/lib/ontology/types";
-import type { ClassTreeNode, EntityTreeNode, ImportedMarker } from "@/lib/ontology/types";
+import type { ClassTreeNode, ImportedMarker } from "@/lib/ontology/types";
 import type { EntitySearchResult } from "@/lib/api/client";
 import type { DragState } from "@/lib/hooks/useTreeDragDrop";
 
@@ -22,11 +22,7 @@ interface ClassTreeProps {
   searchResults?: EntitySearchResult[] | null;
   isSearching?: boolean;
   onSearchSelect?: (iri: string) => void;
-  searchQuery?: string;
   draftIris?: Set<string>;
-  filteredTree?: EntityTreeNode[] | null;
-  isFilteredTreeBuilding?: boolean;
-  filteredTreeTruncated?: boolean;
   dragState?: DragState;
   onDragEnterNode?: (iri: string) => void;
   onDragLeaveNode?: () => void;
@@ -44,11 +40,7 @@ export function ClassTree({
   searchResults,
   isSearching,
   onSearchSelect,
-  searchQuery,
   draftIris,
-  filteredTree,
-  isFilteredTreeBuilding,
-  filteredTreeTruncated,
   dragState,
   onDragEnterNode,
   onDragLeaveNode,
@@ -59,67 +51,32 @@ export function ClassTree({
   );
 
   if (searchResults !== null && searchResults !== undefined) {
-    const classResults = searchResults.filter((r) => r.entity_type === "class");
-    const nonClassResults = searchResults.filter((r) => r.entity_type !== "class");
+    // Classes first, then properties and individuals, all as the same flat rows.
+    const ordered = [
+      ...searchResults.filter((r) => r.entity_type === "class"),
+      ...searchResults.filter((r) => r.entity_type !== "class"),
+    ];
 
     return (
       <div className="py-2">
-        {isSearching || isFilteredTreeBuilding ? (
+        {isSearching ? (
           <div className="flex h-20 items-center justify-center">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary-200 border-t-primary-600" />
           </div>
-        ) : searchResults.length === 0 ? (
+        ) : ordered.length === 0 ? (
           <div className="px-4 py-6 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               No results found
             </p>
           </div>
         ) : (
-          <>
-            {filteredTree && filteredTree.length > 0 && (
-              <>
-                <EntityTree
-                  nodes={filteredTree}
-                  selectedIri={selectedIri}
-                  onSelect={onSearchSelect || onSelect}
-                  onExpand={onExpand}
-                  onCollapse={onCollapse}
-                  searchQuery={searchQuery}
-                  enableKeyboardNav
-                />
-                {filteredTreeTruncated && (
-                  <p className="px-4 py-1 text-xs text-slate-400 dark:text-slate-500">
-                    Showing top {classResults.length > 20 ? 20 : classResults.length} matches in tree context
-                  </p>
-                )}
-              </>
-            )}
-
-            {(!filteredTree || filteredTree.length === 0) && classResults.length > 0 && (
-              classResults.map((result, index) => (
-                <SearchResultItem
-                  key={`${result.iri}-${index}`}
-                  result={result}
-                  onSelect={onSearchSelect || onSelect}
-                />
-              ))
-            )}
-
-            {nonClassResults.length > 0 && (
-              <>
-                {((filteredTree && filteredTree.length > 0) || classResults.length > 0) && nonClassResults.length > 0 && (
-                  <div className="mx-4 my-2 border-t border-slate-200 dark:border-slate-700" />
-                )}
-                {nonClassResults.map((result, index) => (
-                  <SearchResultItem
-                    key={`${result.iri}-${index}`}
-                    result={result}
-                    onSelect={onSearchSelect || onSelect}
-                  />
-                ))}
-              </>
-            )}
-          </>
+          ordered.map((result, index) => (
+            <SearchResultItem
+              key={`${result.iri}-${index}`}
+              result={result}
+              onSelect={onSearchSelect || onSelect}
+            />
+          ))
         )}
       </div>
     );
