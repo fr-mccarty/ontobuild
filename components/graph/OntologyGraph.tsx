@@ -16,6 +16,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { ArrowDown, ArrowRight, ChevronDown, ChevronUp, Maximize2, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EntityTypeIcon } from "@/components/editor/shared/EntityTypeIcon";
 import { useGraphData } from "@/lib/hooks/useGraphData";
 import { computeLayout } from "@/lib/graph/elkLayout";
 import { OntologyNode, type OntologyNodeData } from "./OntologyNode";
@@ -53,10 +54,10 @@ function GraphLegend() {
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               <LegendNodeItem color="border-2 border-primary-500 bg-primary-50 dark:bg-primary-950/40" label="Focus" />
-              <LegendNodeItem color="border border-slate-300 bg-white dark:bg-slate-800" label="Class" />
-              <LegendNodeItem color="border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30" label="Root" />
-              <LegendNodeItem color="border border-pink-300 bg-pink-50 dark:bg-pink-950/30" label="Individual" badge="I" badgeColor="bg-pink-200 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300" />
-              <LegendNodeItem color="border border-blue-300 bg-blue-50 dark:bg-blue-950/30" label="Property" badge="P" badgeColor="bg-blue-200 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" />
+              <LegendNodeItem color="border border-slate-300 bg-white dark:bg-slate-800" label="Class" marker="class" />
+              <LegendNodeItem color="border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30" label="Root" marker="class" />
+              <LegendNodeItem color="border border-purple-300 bg-purple-50 dark:bg-purple-950/30" label="Individual" marker="individual" />
+              <LegendNodeItem color="border border-blue-300 bg-blue-50 dark:bg-blue-950/30" label="Property" marker="property" />
               <LegendNodeItem color="border border-slate-200 bg-slate-50 dark:bg-slate-900" label="External" />
               <LegendNodeItem color="border border-dashed border-slate-300 bg-white dark:bg-slate-800" label="Unexplored" />
             </div>
@@ -79,22 +80,16 @@ function GraphLegend() {
 function LegendNodeItem({
   color,
   label,
-  badge,
-  badgeColor,
+  marker,
 }: {
   color: string;
   label: string;
-  badge?: string;
-  badgeColor?: string;
+  marker?: "class" | "property" | "individual";
 }) {
   return (
     <div className="flex items-center gap-1.5">
       <div className={cn("h-3 w-5 shrink-0 rounded-xs", color)} />
-      {badge && badgeColor && (
-        <span className={cn("flex h-3 w-3 shrink-0 items-center justify-center rounded-full text-[7px] font-bold", badgeColor)}>
-          {badge}
-        </span>
-      )}
+      {marker && <EntityTypeIcon type={marker} className="h-3 w-3" tooltip={false} />}
       <span className="text-[10px] text-slate-600 dark:text-slate-400">{label}</span>
     </div>
   );

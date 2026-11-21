@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X } from "lucide-react";
 import { cn, getLocalName } from "@/lib/utils";
+import { EntityTypeIcon } from "@/components/editor/shared/EntityTypeIcon";
 import { projectOntologyApi, type EntitySearchResult } from "@/lib/api/client";
 import type { ImportedMarker } from "@/lib/ontology/types";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -120,9 +121,7 @@ export function ParentClassPicker({
                   "hover:bg-slate-50 dark:hover:bg-slate-600",
                 )}
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-owl-class/10 border border-owl-class/50">
-                  <span className="text-[9px] font-bold text-owl-class">C</span>
-                </span>
+                <EntityTypeIcon type="class" className="h-4 w-4" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-slate-900 dark:text-white">
                     {result.label || getLocalName(result.iri)}

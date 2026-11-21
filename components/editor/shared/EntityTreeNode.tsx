@@ -3,6 +3,7 @@
 import { memo, useCallback } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { ChevronRight, ChevronDown, Circle, Plus } from "lucide-react";
+import { IndividualIcon } from "@/components/editor/shared/IndividualIcon";
 import { cn } from "@/lib/utils";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { TreeNodeContextMenu } from "@/components/editor/TreeNodeContextMenu";
@@ -215,7 +216,11 @@ export const EntityTreeNodeRow = memo(function EntityTreeNodeRow({
         </span>
       ) : (
         <span className="w-4 h-4 flex items-center justify-center flex-shrink-0">
-          <span className="tree-leaf-dot" />
+          {node.entityType === "individual" ? (
+            <IndividualIcon className="h-3.5 w-3.5" />
+          ) : (
+            <span className="tree-leaf-dot" />
+          )}
         </span>
       )}
 

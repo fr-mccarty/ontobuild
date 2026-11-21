@@ -138,14 +138,14 @@ describe("OntologyNode", () => {
     expect(screen.queryByText(/child/)).toBeNull();
   });
 
-  it("renders type badge for individual nodes", () => {
+  it("renders the diamond icon for individual nodes", () => {
     render(<OntologyNode {...makeProps({ nodeType: "individual" })} />);
-    expect(screen.getByText("I")).toBeDefined();
+    expect(screen.getByTestId("individual-icon")).toBeDefined();
   });
 
-  it("renders type badge for property nodes", () => {
+  it("renders the bar icon for property nodes", () => {
     render(<OntologyNode {...makeProps({ nodeType: "property" })} />);
-    expect(screen.getByText("P")).toBeDefined();
+    expect(screen.getByTestId("property-icon")).toBeDefined();
   });
 
   it("does not render type badge for class nodes", () => {

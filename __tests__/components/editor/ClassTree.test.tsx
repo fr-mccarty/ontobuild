@@ -253,7 +253,7 @@ describe("ClassTree", () => {
     expect(screen.getByText("PropP")).toBeDefined();
   });
 
-  it("renders individual results with I badge", () => {
+  it("renders individual results with the diamond icon", () => {
     const results = [
       makeSearchResult({ iri: "http://example.org/ind1", label: "Individual1", entity_type: "individual" }),
     ];
@@ -264,7 +264,7 @@ describe("ClassTree", () => {
         isSearching={false}
       />,
     );
-    expect(screen.getByText("I")).toBeDefined();
+    expect(screen.getByTestId("individual-icon")).toBeDefined();
     expect(screen.getByText("individual")).toBeDefined();
   });
 });

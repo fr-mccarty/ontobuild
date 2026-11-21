@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { ExternalLink, Expand } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EntityTypeIcon } from "@/components/editor/shared/EntityTypeIcon";
 import type { GraphNodeType } from "@/lib/graph/types";
 
 export interface OntologyNodeData {
@@ -29,24 +30,13 @@ const nodeStyles: Record<GraphNodeType, string> = {
   root:
     "border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-500/70 font-medium",
   individual:
-    "border border-pink-300 bg-pink-50 dark:bg-pink-950/30 dark:border-pink-500/60",
+    "border border-purple-300 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-500/60",
   property:
     "border border-blue-300 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-500/60",
   external:
     "border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 text-slate-500 dark:text-slate-400",
   unexplored:
     "border border-dashed border-slate-300 bg-white dark:bg-slate-800 dark:border-slate-600",
-};
-
-const typeBadge: Partial<Record<GraphNodeType, { letter: string; className: string }>> = {
-  individual: {
-    letter: "I",
-    className: "bg-pink-200 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300",
-  },
-  property: {
-    letter: "P",
-    className: "bg-blue-200 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-  },
 };
 
 export const OntologyNode = memo(function OntologyNode({
@@ -93,15 +83,8 @@ export const OntologyNode = memo(function OntologyNode({
       <Handle type="target" position={Position.Bottom} className="bg-slate-400! w-2! h-2! border-0!" />
 
       <div className="flex items-center gap-1.5">
-        {typeBadge[nodeType] && (
-          <span
-            className={cn(
-              "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold",
-              typeBadge[nodeType]!.className,
-            )}
-          >
-            {typeBadge[nodeType]!.letter}
-          </span>
+        {(nodeType === "class" || nodeType === "root" || nodeType === "individual" || nodeType === "property") && (
+          <EntityTypeIcon type={nodeType === "root" ? "class" : nodeType} className="h-4 w-4" />
         )}
         <span
           className={cn(

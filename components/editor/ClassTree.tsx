@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { cn, getLocalName } from "@/lib/utils";
+import { EntityTypeIcon } from "@/components/editor/shared/EntityTypeIcon";
 import { EntityTree } from "@/components/editor/shared/EntityTree";
 import { Tooltip } from "@/components/ui/tooltip";
 import { classTreeNodesToEntityNodes } from "@/lib/ontology/types";
@@ -152,12 +153,6 @@ function SearchResultItem({ result, onSelect }: SearchResultItemProps) {
   const localName = getLocalName(result.iri);
   const showLocalName = localName !== result.label;
 
-  const typeIcon = {
-    class: { letter: "C", color: "bg-owl-class/20 border-owl-class text-owl-class" },
-    property: { letter: "P", color: "bg-emerald-100 border-emerald-500 text-emerald-600 dark:bg-emerald-900/30 dark:border-emerald-400 dark:text-emerald-400" },
-    individual: { letter: "I", color: "bg-purple-100 border-purple-500 text-purple-600 dark:bg-purple-900/30 dark:border-purple-400 dark:text-purple-400" },
-  }[result.entity_type];
-
   const importedFrom = result.imported_from
     ? result.imported_from_label
       ? `${result.imported_from_label} (${result.imported_from})`
@@ -171,9 +166,7 @@ function SearchResultItem({ result, onSelect }: SearchResultItemProps) {
       onClick={() => onSelect(result.iri)}
       data-imported={importedFrom ? "true" : undefined}
     >
-      <div className={cn("w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0", typeIcon.color)}>
-        <span className="text-[10px] font-bold">{typeIcon.letter}</span>
-      </div>
+      <EntityTypeIcon type={result.entity_type} className="h-4 w-4" />
 
       <div className="flex-1 min-w-0">
         <span className={cn("text-sm truncate block", result.deprecated && "line-through opacity-60")}>

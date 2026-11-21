@@ -28,6 +28,7 @@ import { qualityApi } from "@/lib/api/quality";
 import type { ConsistencyCheckResult, ConsistencyIssue, DuplicateCluster, DuplicateDetectionResult } from "@/lib/ontology/qualityTypes";
 import Link from "next/link";
 import { cn, formatDateTime, getLocalName } from "@/lib/utils";
+import { EntityTypeIcon, EntityTypeTooltipContent } from "@/components/editor/shared/EntityTypeIcon";
 import { Tooltip } from "@/components/ui/tooltip";
 
 interface HealthCheckPanelProps {
@@ -760,11 +761,7 @@ export function HealthCheckPanel({
                         onClick={() => onNavigateToClass?.(entity.iri, entity.entity_type)}
                         className="flex w-full items-center gap-2 text-left text-sm text-primary-600 hover:underline dark:text-primary-400"
                       >
-                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-owl-class/10 border border-owl-class/50">
-                          <span className="text-[8px] font-bold text-owl-class">
-                            {entity.entity_type === "class" ? "C" : entity.entity_type === "property" ? "P" : "I"}
-                          </span>
-                        </span>
+                        <EntityTypeIcon type={entity.entity_type} className="h-4 w-4" />
                         {entity.label || getLocalName(entity.iri)}
                       </button>
                     ))}
@@ -823,11 +820,11 @@ interface IssueCardProps {
   onDismiss?: () => void;
 }
 
-const SUBJECT_TYPE_BADGE: Record<SubjectType, { letter: string; colorClass: string }> = {
-  class: { letter: "C", colorClass: "text-owl-class bg-owl-class/10 border-owl-class/50" },
-  property: { letter: "P", colorClass: "text-emerald-600 bg-emerald-100/50 border-emerald-500/50 dark:text-emerald-400 dark:bg-emerald-900/20 dark:border-emerald-400/50" },
-  individual: { letter: "I", colorClass: "text-violet-600 bg-violet-100/50 border-violet-500/50 dark:text-violet-400 dark:bg-violet-900/20 dark:border-violet-400/50" },
-  other: { letter: "?", colorClass: "text-slate-500 bg-slate-100/50 border-slate-400/50 dark:text-slate-400 dark:bg-slate-700/50 dark:border-slate-500/50" },
+const SUBJECT_TYPE_BADGE: Record<SubjectType, true> = {
+  class: true,
+  property: true,
+  individual: true,
+  other: true,
 };
 
 function resolveBadgeKey(subjectType: SubjectType | null): SubjectType {
@@ -839,7 +836,6 @@ function resolveBadgeKey(subjectType: SubjectType | null): SubjectType {
 
 function IssueCard({ issue, onNavigate, onDismiss }: IssueCardProps) {
   const subjectTypeKey = resolveBadgeKey(issue.subject_type);
-  const subjectBadge = SUBJECT_TYPE_BADGE[subjectTypeKey];
   return (
     <div
       className={cn(
@@ -859,7 +855,7 @@ function IssueCard({ issue, onNavigate, onDismiss }: IssueCardProps) {
             {issue.message}
           </p>
           {issue.subject_iri && (
-            <Tooltip content={issue.subject_iri}>
+            <Tooltip content={<EntityTypeTooltipContent type={subjectTypeKey} iri={issue.subject_iri} />}>
               <button
                 onClick={() => onNavigate?.(issue.subject_iri!, subjectTypeKey)}
                 className="mt-2 flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400"
@@ -867,9 +863,9 @@ function IssueCard({ issue, onNavigate, onDismiss }: IssueCardProps) {
                 <span
                   aria-label={`subject type: ${subjectTypeKey}`}
                   data-testid={`subject-type-badge-${subjectTypeKey}`}
-                  className={cn("flex h-4 w-4 items-center justify-center rounded-full border", subjectBadge.colorClass)}
+                  className="flex h-4 w-4 items-center justify-center"
                 >
-                  <span className="text-[8px] font-bold">{subjectBadge.letter}</span>
+                  <EntityTypeIcon type={subjectTypeKey} className="h-4 w-4" tooltip={false} />
                 </span>
                 {getLocalName(issue.subject_iri)}
                 <ExternalLink className="h-3 w-3 opacity-50" />

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import type { LocalizedString, AnnotationUpdate } from "@/lib/api/client";
 import { cn, getLocalName } from "@/lib/utils";
+import { EntityTypeIcon } from "@/components/editor/shared/EntityTypeIcon";
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
 import { COMMENT_ROWS } from "@/components/editor/standard/commentRows";
 import { sectionHelp } from "@/lib/editor/sectionHelp";
@@ -48,10 +49,10 @@ function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
 }
 
 const PROPERTY_TYPE_LABELS: Record<PropertyType, { label: string; letter: string; color: string }> = {
-  object: { label: "Object Property", letter: "O", color: "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-400" },
-  data: { label: "Data Property", letter: "D", color: "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-400" },
-  other: { label: "Property", letter: "P", color: "bg-slate-100 border-slate-300 text-slate-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300" },
-  annotation: { label: "Annotation Property", letter: "A", color: "bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-400" },
+  object: { label: "Object Property", letter: "O", color: "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300" },
+  data: { label: "Data Property", letter: "D", color: "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300" },
+  other: { label: "Property", letter: "P", color: "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300" },
+  annotation: { label: "Annotation Property", letter: "A", color: "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300" },
 };
 
 interface PropertyDetailPanelProps {
@@ -395,8 +396,8 @@ export function PropertyDetailPanel({
     return (
       <div className="p-6">
         <div className="flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border bg-emerald-100 border-emerald-300 dark:bg-emerald-900/30 dark:border-emerald-700">
-            <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">P</span>
+          <div className="flex h-8 w-8 items-center justify-center">
+            <EntityTypeIcon type="property" className="h-7 w-7" />
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{getLocalName(propertyIri)}</h2>
@@ -421,8 +422,8 @@ export function PropertyDetailPanel({
     <div className="flex h-full w-full flex-col">
       <div className="shrink-0 border-b border-slate-200 p-4 dark:border-slate-700">
         <div className="flex items-start gap-3">
-          <div className={cn("mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border", typeInfo.color)}>
-            <span className="text-sm font-bold">{typeInfo.letter}</span>
+          <div className="mt-0.5 flex h-8 w-8 items-center justify-center">
+            <EntityTypeIcon type="property" className="h-7 w-7" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">

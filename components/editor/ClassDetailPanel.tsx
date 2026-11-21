@@ -18,7 +18,6 @@ import {
   Equal,
   Ban,
   ArrowDown,
-  Circle,
   Star,
   Tags,
   EyeOff,
@@ -27,11 +26,13 @@ import {
   Hash,
   Link2,
 } from "lucide-react";
+import { IndividualIcon } from "@/components/editor/shared/IndividualIcon";
 import { DisclosureSection } from "@/components/editor/shared/Disclosure";
 import { projectOntologyApi, type OWLClassDetail, type ClassUpdatePayload, type AnnotationUpdate } from "@/lib/api/client";
 import type { LocalizedString } from "@/lib/api/client";
 import { lintApi, type LintIssue } from "@/lib/api/lint";
 import { cn, getLocalName, getPreferredLabel } from "@/lib/utils";
+import { EntityTypeIcon } from "@/components/editor/shared/EntityTypeIcon";
 import { ParentClassPicker } from "@/components/editor/ParentClassPicker";
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
 import { COMMENT_ROWS } from "@/components/editor/standard/commentRows";
@@ -484,8 +485,8 @@ export function ClassDetailPanel({
       <div className="h-full overflow-y-auto">
         <div className="border-b border-slate-200 p-4 dark:border-slate-700">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-owl-class/20 border border-owl-class">
-              <span className="text-sm font-bold text-owl-class">C</span>
+            <div className="mt-0.5 flex h-8 w-8 items-center justify-center">
+              <EntityTypeIcon type="class" className="h-7 w-7" />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -538,9 +539,9 @@ export function ClassDetailPanel({
     <div className="flex h-full w-full flex-col">
       <div className="shrink-0 border-b border-slate-200 p-4 dark:border-slate-700">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-owl-class/20 border border-owl-class">
-            <span className="text-sm font-bold text-owl-class">C</span>
-          </div>
+          <div className="mt-0.5 flex h-8 w-8 items-center justify-center">
+              <EntityTypeIcon type="class" className="h-7 w-7" />
+            </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-white truncate">
@@ -841,9 +842,7 @@ export function ClassDetailPanel({
               <div className="space-y-2">
                 {editParentIris.map((parentIri) => (
                   <div key={parentIri} className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-owl-class/10 border border-owl-class/50">
-                      <span className="text-[9px] font-bold text-owl-class">C</span>
-                    </span>
+                    <EntityTypeIcon type="class" className="h-4 w-4" />
                     {onNavigateToClass ? (
                       <Tooltip content={`Show ${editParentLabels[parentIri] || getLocalName(parentIri)} in the tree`}>
                         <button
@@ -960,7 +959,7 @@ export function ClassDetailPanel({
 
           <DisclosureSection
             testId="individuals-section"
-            icon={<Circle className="h-4 w-4" />}
+            icon={<IndividualIcon className="h-4 w-4" tooltip={false} />}
             title="Individuals"
             count={classDetail.instance_count ?? classDetail.instances?.length ?? 0}
             tooltip={sectionHelp("Individuals")}
@@ -980,7 +979,7 @@ export function ClassDetailPanel({
               ) : undefined
             }
           >
-            <EntityLinkList items={classDetail.instances ?? []} onNavigate={onNavigateToIndividual} />
+            <EntityLinkList items={classDetail.instances ?? []} onNavigate={onNavigateToIndividual} icon={<IndividualIcon className="h-3.5 w-3.5" />} />
           </DisclosureSection>
 
           <CrossReferencesPanel
@@ -1037,11 +1036,12 @@ const ANNOTATION_ICON_MAP: Record<string, React.ReactNode> = {
 };
 
 /** Entities by label, each linking to its own page in the editor. */
-function EntityLinkList({ items, onNavigate }: { items: { iri: string; label: string }[]; onNavigate?: (iri: string) => void }) {
+function EntityLinkList({ items, onNavigate, icon }: { items: { iri: string; label: string }[]; onNavigate?: (iri: string) => void; icon?: React.ReactNode }) {
   return (
     <ul className="space-y-0.5">
       {items.map((item) => (
-        <li key={item.iri}>
+        <li key={item.iri} className={icon ? "flex items-center gap-1.5" : undefined}>
+          {icon}
           <Tooltip content={item.iri}>
             <button
               type="button"
@@ -1104,9 +1104,7 @@ function IriLink({ iri, label, onClick }: IriLinkProps) {
           )}
           disabled={!onClick}
         >
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-owl-class/10 border border-owl-class/50">
-            <span className="text-[9px] font-bold text-owl-class">C</span>
-          </span>
+          <EntityTypeIcon type="class" className="h-4 w-4" />
           {displayLabel}
           <ExternalLink className="h-3 w-3 opacity-50" />
         </button>

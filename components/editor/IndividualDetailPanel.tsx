@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { LocalizedString, AnnotationUpdate } from "@/lib/api/client";
 import { cn, getLocalName } from "@/lib/utils";
+import { IndividualIcon } from "@/components/editor/shared/IndividualIcon";
 import { AnnotationRow } from "@/components/editor/standard/AnnotationRow";
 import { COMMENT_ROWS } from "@/components/editor/standard/commentRows";
 import { sectionHelp } from "@/lib/editor/sectionHelp";
@@ -366,8 +367,8 @@ export function IndividualDetailPanel({
     return (
       <div className="p-6">
         <div className="flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-slate-700">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border bg-purple-100 border-purple-300 dark:bg-purple-900/30 dark:border-purple-700">
-            <span className="text-sm font-bold text-purple-700 dark:text-purple-400">I</span>
+          <div className="flex h-8 w-8 items-center justify-center">
+            <IndividualIcon className="h-7 w-7" />
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{getLocalName(individualIri)}</h2>
@@ -389,8 +390,8 @@ export function IndividualDetailPanel({
     <div className="flex h-full w-full flex-col">
       <div className="shrink-0 border-b border-slate-200 p-4 dark:border-slate-700">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border bg-purple-100 border-purple-300 dark:bg-purple-900/30 dark:border-purple-700">
-            <span className="text-sm font-bold text-purple-700 dark:text-purple-400">I</span>
+          <div className="mt-0.5 flex h-8 w-8 items-center justify-center">
+            <IndividualIcon className="h-7 w-7" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">

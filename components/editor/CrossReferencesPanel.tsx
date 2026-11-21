@@ -4,6 +4,7 @@ import { ExternalLink, Link } from "lucide-react";
 import { DisclosureSection } from "@/components/editor/shared/Disclosure";
 import { useCrossReferences } from "@/lib/hooks/useCrossReferences";
 import { cn, getLocalName } from "@/lib/utils";
+import { EntityTypeIcon, EntityTypeTooltipContent } from "@/components/editor/shared/EntityTypeIcon";
 import type { CrossReferenceGroup, ReferenceContext } from "@/lib/ontology/qualityTypes";
 import { Tooltip } from "@/components/ui/tooltip";
 import { sectionHelp } from "@/lib/editor/sectionHelp";
@@ -19,12 +20,6 @@ const CONTEXT_LABELS: Record<ReferenceContext, string> = {
   annotation_value: "In annotation",
   see_also: "As see also",
   inverse_of: "As inverse property",
-};
-
-const entityTypeBadges: Record<string, { letter: string; className: string }> = {
-  class: { letter: "C", className: "bg-owl-class/10 border-owl-class/50 text-owl-class" },
-  property: { letter: "P", className: "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-400" },
-  individual: { letter: "I", className: "bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-400" },
 };
 
 interface CrossReferencesPanelProps {
@@ -96,9 +91,8 @@ function ReferenceGroup({
       </p>
       <div className="mt-1 space-y-0.5">
         {group.references.map((ref) => {
-          const badge = entityTypeBadges[ref.source_type] || entityTypeBadges.class;
           return (
-            <Tooltip key={`${ref.source_iri}-${ref.reference_context}`} content={ref.source_iri}>
+            <Tooltip key={`${ref.source_iri}-${ref.reference_context}`} content={<EntityTypeTooltipContent type={ref.source_type} iri={ref.source_iri} />}>
               <button
                 onClick={() => onNavigate?.(ref.source_iri)}
                 className={cn(
@@ -107,14 +101,7 @@ function ReferenceGroup({
                   "dark:text-primary-400 dark:hover:bg-slate-800 dark:hover:text-primary-300"
                 )}
               >
-                <span
-                  className={cn(
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                    badge.className
-                  )}
-                >
-                  <span className="text-[8px] font-bold">{badge.letter}</span>
-                </span>
+                <EntityTypeIcon type={ref.source_type} className="h-4 w-4" tooltip={false} />
                 <span className="truncate">
                   {ref.source_label || getLocalName(ref.source_iri)}
                 </span>

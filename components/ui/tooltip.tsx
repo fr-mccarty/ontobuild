@@ -4,6 +4,9 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cn } from "@/lib/utils";
 import { useState, type ReactNode } from "react";
 
+/** How long the pointer rests on a trigger before its tooltip opens, app-wide. */
+export const TOOLTIP_DELAY_MS = 1000;
+
 interface TooltipProps {
   content: ReactNode;
   children: ReactNode;

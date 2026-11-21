@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Trash2, Search, ChevronDown } from "lucide-react";
+import { EntityTypeIcon } from "@/components/editor/shared/EntityTypeIcon";
 import { cn, getLocalName } from "@/lib/utils";
 import { projectOntologyApi, type EntitySearchResult } from "@/lib/api/client";
 import {
@@ -26,12 +27,6 @@ const BUILT_IN_RELATIONSHIP_PROPERTIES = [
   { iri: SEE_ALSO_IRI, label: "See Also", curie: "rdfs:seeAlso" },
   { iri: IS_DEFINED_BY_IRI, label: "Defined By", curie: "rdfs:isDefinedBy" },
 ];
-
-const entityTypeIcons: Record<string, { letter: string; className: string }> = {
-  class: { letter: "C", className: "bg-owl-class/10 border-owl-class/50 text-owl-class" },
-  property: { letter: "P", className: "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-400" },
-  individual: { letter: "I", className: "bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-400" },
-};
 
 interface RelationshipSectionProps {
   groups: RelationshipGroup[];
@@ -428,20 +423,14 @@ function RelationshipEntitySearch({
             ) : results.length > 0 ? (
               <div className="py-1">
                 {results.map((result) => {
-                  const icon = entityTypeIcons[result.entity_type] || entityTypeIcons.class;
                   return (
                     <button
                       key={result.iri}
                       onClick={() => handleSelect(result)}
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-600"
                     >
-                      <span
-                        className={cn(
-                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-                          icon.className
-                        )}
-                      >
-                        <span className="text-[9px] font-bold">{icon.letter}</span>
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                        <EntityTypeIcon type={result.entity_type} className="h-4 w-4" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-slate-900 dark:text-white">

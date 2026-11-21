@@ -11,6 +11,7 @@ import {
 } from "@/lib/hooks/useProjectAnalytics";
 import { useProjectHomeHref } from "@/lib/hooks/useProjectHomeHref";
 import { cn, getLocalName } from "@/lib/utils";
+import { EntityTypeIcon } from "@/components/editor/shared/EntityTypeIcon";
 import { Tooltip } from "@/components/ui/tooltip";
 
 export default function ProjectAnalyticsPage() {
@@ -123,15 +124,7 @@ export default function ProjectAnalyticsPage() {
                     }
                     className="flex w-full items-center gap-3 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-owl-class/10 border border-owl-class/50">
-                      <span className="text-[9px] font-bold text-owl-class">
-                        {entity.entity_type === "class"
-                          ? "C"
-                          : entity.entity_type === "property"
-                            ? "P"
-                            : "I"}
-                      </span>
-                    </span>
+                    <EntityTypeIcon type={entity.entity_type} className="h-4 w-4" />
                     <span className="flex-1 truncate text-sm text-slate-700 dark:text-slate-300">
                       {entity.label || getLocalName(entity.entity_iri)}
                     </span>

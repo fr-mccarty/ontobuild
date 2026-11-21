@@ -6,6 +6,7 @@ import { ToastProvider } from "@/lib/context/ToastContext";
 import { ToastContainer } from "@/components/ui/toast-container";
 import { ScreenReaderAnnouncerProvider } from "@/components/ui/ScreenReaderAnnouncer";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { TOOLTIP_DELAY_MS } from "@/components/ui/tooltip";
 
 import "@/lib/stores/preferencesStore";
 
@@ -30,7 +31,7 @@ export function Providers({ children }: ProvidersProps) {
     <QueryClientProvider client={queryClient}>
         <ScreenReaderAnnouncerProvider>
           <ToastProvider>
-            <TooltipPrimitive.Provider delayDuration={1000}>
+            <TooltipPrimitive.Provider delayDuration={TOOLTIP_DELAY_MS}>
               {children}
               <ToastContainer />
             </TooltipPrimitive.Provider>
