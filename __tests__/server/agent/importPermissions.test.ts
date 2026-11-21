@@ -121,7 +121,7 @@ describe("imported ontologies (edit_imports, API only)", () => {
     expect(toolNames).toContain("create_entity");
     expect(toolNames).toContain("switch_ontology");
     expect(toolNames).not.toContain("write_file");
-    expect(systemText).toContain("You may change the ontologies of OntoBuilder projects this project imports");
+    expect(systemText).toContain("You may change the ontologies of OntoBuild projects this project imports");
     expect(systemText).not.toContain("read-only mode");
   });
 

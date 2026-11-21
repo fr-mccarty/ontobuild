@@ -283,11 +283,11 @@ describe("Project editor sub header on one line", () => {
 });
 
 describe("In place of the main header", () => {
-  it("leaves out the main header and puts the OntoBuilder icon, linking home, at the far left", () => {
+  it("leaves out the main header and puts the OntoBuild icon, linking home, at the far left", () => {
     renderPage();
     expect(document.querySelector("header")).toBeNull();
     const bar = screen.getByTestId("editor-sub-header");
-    const home = within(bar).getByRole("link", { name: "OntoBuilder home" });
+    const home = within(bar).getByRole("link", { name: "OntoBuild home" });
     expect(home.getAttribute("href")).toBe("/");
     expect(bar.querySelector("a, button")).toBe(home);
   });
@@ -615,7 +615,7 @@ describe("Project editor sidebars", () => {
   });
 
   it("restores the persisted sidebar state", () => {
-    localStorage.setItem("ontobuilder:editorSidebars", JSON.stringify({ left: false, right: true }));
+    localStorage.setItem("ontobuild:editorSidebars", JSON.stringify({ left: false, right: true }));
     renderPage();
     expect(rightOpen()).toBe(true);
     expect(treeOpen()).toBe("false");

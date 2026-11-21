@@ -12,19 +12,19 @@ let app: AppLike;
 
 beforeAll(async () => {
   dataDir = useTempDataDir();
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuilder-clone-test-"));
-  process.env.ONTOBUILDER_GH_BIN = path.join(tmp, "no-such-gh");
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuild-clone-test-"));
+  process.env.ONTOBUILD_GH_BIN = path.join(tmp, "no-such-gh");
   app = (await import("@/server/app")).default;
 }, 30_000);
 
 afterAll(() => {
   removeDir(dataDir);
   fs.rmSync(tmp, { recursive: true, force: true });
-  delete process.env.ONTOBUILDER_GH_BIN;
+  delete process.env.ONTOBUILD_GH_BIN;
 });
 
 afterEach(() => {
-  delete process.env.ONTOBUILDER_CLONE_TIMEOUT_MS;
+  delete process.env.ONTOBUILD_CLONE_TIMEOUT_MS;
 });
 
 const GIT_ENV = {
@@ -194,7 +194,7 @@ describe("Import a project from a Git repository", () => {
     const folder = path.join(dataDir, "projects", data.folder);
     expect(fs.readFileSync(path.join(folder, "src/pizza.owl"), "utf8")).toBe(PIZZA_RDFXML);
     expect(fs.readFileSync(path.join(folder, "ontology.ttl"), "utf8")).toMatch(/xmlpizza#Pizza/);
-    expect(sh(folder, "log", "-1", "--format=%s").trim()).toBe("Convert src/pizza.owl to Turtle for OntoBuilder");
+    expect(sh(folder, "log", "-1", "--format=%s").trim()).toBe("Convert src/pizza.owl to Turtle for OntoBuild");
     expect(sh(folder, "status", "--porcelain").trim()).toBe("");
     const remote = (await (await app.request(`/api/v1/projects/${data.id}/github`)).json()) as Record<string, unknown>;
     expect(remote).toMatchObject({ ahead: 1, behind: 0 });
@@ -266,7 +266,7 @@ describe("Import a project from a Git repository", () => {
   it("stops a clone that takes too long and cleans up", async () => {
     const url = makeRemote("slow", { "ontology.ttl": PIZZA_TTL });
     const before = projectFolders();
-    process.env.ONTOBUILDER_CLONE_TIMEOUT_MS = "1";
+    process.env.ONTOBUILD_CLONE_TIMEOUT_MS = "1";
     const { status, data } = await clone({ url });
     expect(status).toBe(504);
     expect(data.detail).toMatch(/took longer than/);

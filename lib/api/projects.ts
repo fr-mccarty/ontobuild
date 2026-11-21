@@ -272,7 +272,7 @@ export const projectApi = {
   switchOntologyFile: (id: string, path: string, branch?: string, options: { reconvert?: boolean } = {}) =>
     api.put<OntologyFileChange>(`/api/v1/projects/${id}/ontology-file`, { path, branch, reconvert: options.reconvert }),
 
-  /** Whether the ontology file in the project folder has changes made outside OntoBuilder that aren't committed. */
+  /** Whether the ontology file in the project folder has changes made outside OntoBuild that aren't committed. */
   getOntologyLocalChanges: (id: string) =>
     api.get<OntologyLocalChanges>(`/api/v1/projects/${id}/ontology-file/local-changes`),
 

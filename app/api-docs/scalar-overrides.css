@@ -29,7 +29,7 @@
 }
 
 /*
- * OntoBuilder theme for Scalar: Tailwind slate neutrals, the header's blue accent,
+ * OntoBuild theme for Scalar: Tailwind slate neutrals, the header's blue accent,
  * and the app fonts. body.light-mode / body.dark-mode are synced from the app's
  * theme by useSyncScalarDarkMode().
  */

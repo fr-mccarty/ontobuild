@@ -55,10 +55,10 @@ interface LintConfigRow {
   updated_at: string;
 }
 
-const g = globalThis as typeof globalThis & { __ontobuilderLintInit?: boolean };
+const g = globalThis as typeof globalThis & { __ontobuildLintInit?: boolean };
 function init() {
-  if (g.__ontobuilderLintInit) return;
-  g.__ontobuilderLintInit = true;
+  if (g.__ontobuildLintInit) return;
+  g.__ontobuildLintInit = true;
   run(
     "UPDATE lint_runs SET status = 'failed', error_message = 'Server restarted', completed_at = ? WHERE status IN ('pending','running')",
     nowIso(),

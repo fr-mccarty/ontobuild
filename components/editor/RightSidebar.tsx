@@ -33,7 +33,7 @@ export const LINT_DOT_CLASSES: Record<LintSeverity, string> = {
   info: "bg-blue-500",
 };
 
-export const RIGHT_SIDEBAR_WIDTH_KEY = "ontobuilder:rightSidebarWidth";
+export const RIGHT_SIDEBAR_WIDTH_KEY = "ontobuild:rightSidebarWidth";
 export const RIGHT_SIDEBAR_DEFAULT_WIDTH = 400;
 export const RIGHT_SIDEBAR_MIN_WIDTH = 320;
 

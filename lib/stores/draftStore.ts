@@ -104,7 +104,7 @@ export const useDraftStore = create<DraftState>()(
         }),
     }),
     {
-      name: "ontobuilder-drafts",
+      name: "ontobuild-drafts",
       storage: createJSONStorage(() => localStorage),
     },
   ),

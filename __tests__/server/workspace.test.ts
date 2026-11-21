@@ -138,11 +138,11 @@ describe("workspace files", () => {
   });
 
   it("rejects paths outside the project folder", async () => {
-    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuilder-outside-"));
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuild-outside-"));
     fs.writeFileSync(path.join(outside, "secret.txt"), "TOP-SECRET-CONTENT");
     fs.symlinkSync(outside, path.join(projectDir, "code", "escape"));
     try {
-      for (const p of ["../ontobuilder.db", "code/../../ontobuilder.db", "/etc/passwd", "../../../../../etc/passwd", "code/escape/secret.txt"]) {
+      for (const p of ["../ontobuild.db", "code/../../ontobuild.db", "/etc/passwd", "../../../../../etc/passwd", "code/escape/secret.txt"]) {
         const res = await app.request(api(`/files/content?path=${encodeURIComponent(p)}`));
         expect([400, 404], p).toContain(res.status);
         expect(await res.text(), p).not.toContain("TOP-SECRET-CONTENT");

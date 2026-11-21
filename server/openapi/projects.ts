@@ -254,7 +254,7 @@ export const projectSchemas: Record<string, Schema> = {
   OntologyLocalChanges: {
     type: "object",
     description:
-      "Whether the ontology file in the project folder has changes that aren't committed, made outside OntoBuilder (by an agent, a terminal or a text editor). " +
+      "Whether the ontology file in the project folder has changes that aren't committed, made outside OntoBuild (by an agent, a terminal or a text editor). " +
       "The editor shows the branch's last commit, so these stay out of view until they are committed.",
     required: ["branch", "path", "changed", "problem"],
     properties: {
@@ -508,7 +508,7 @@ export const projectDocs: DocMap = {
       "The file must be tracked by git on the branch, be a regular file (not a symbolic link) and parse. A Turtle file is edited in place. " +
       "Another format is converted to Turtle and committed on the branch as `<name>.ttl` next to it. When that file, or the file an earlier conversion made, " +
       "already exists it is reused if it is up to date: it has the same triples as the chosen file (blank nodes compared by structure, language tags ignored), " +
-      "or, for an earlier OntoBuilder conversion, the chosen file's triples haven't changed since that conversion. When it is out of date, `reconvert` decides; " +
+      "or, for an earlier OntoBuild conversion, the chosen file's triples haven't changed since that conversion. When it is out of date, `reconvert` decides; " +
       "without it the request fails with 409 and `code: \"turtle_out_of_date\"`. The original is never changed. Derived state of the old file is dropped: the search index, lint runs, " +
       "consistency and duplicate results, the normalization check and the import normalization report. Label preferences are kept. " +
       "Normalization history is kept per file, so the normalization status and history then describe the new file.",
@@ -605,7 +605,7 @@ export const projectDocs: DocMap = {
           commit_message: {
             type: ["string", "null"],
             maxLength: 500,
-            description: "The commit message. Defaults to \"Commit changes to <file> made outside OntoBuilder\".",
+            description: "The commit message. Defaults to \"Commit changes to <file> made outside OntoBuild\".",
           },
         },
       },

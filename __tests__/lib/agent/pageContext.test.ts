@@ -7,7 +7,7 @@ import {
   truncatePageText,
 } from "@/lib/agent/pageContext";
 
-const env = { url: "http://localhost/projects/p1", title: "OntoBuilder", pageText: "Dog\nAnimal" };
+const env = { url: "http://localhost/projects/p1", title: "OntoBuild", pageText: "Dog\nAnimal" };
 const info = {
   projectId: "p1",
   projectName: "Zoo",
@@ -24,7 +24,7 @@ describe("pageContext", () => {
   it("includes url, project, branch, tab, selection and page text", () => {
     const { context, pageText } = buildPageContext(info, null, env);
     expect(context).toContain("URL: http://localhost/projects/p1");
-    expect(context).toContain("Page title: OntoBuilder");
+    expect(context).toContain("Page title: OntoBuild");
     expect(context).toContain("Project: Zoo (id: p1)");
     expect(context).toContain("Branch: main");
     expect(context).toContain("Left sidebar tab: Classes");

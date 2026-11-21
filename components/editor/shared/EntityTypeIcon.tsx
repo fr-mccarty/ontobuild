@@ -5,7 +5,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { Tooltip, TOOLTIP_DELAY_MS } from "@/components/ui/tooltip";
 
 /**
- * OntoBuilder's visual language: every entity kind has exactly one shape and one color,
+ * OntoBuild's visual language: every entity kind has exactly one shape and one color,
  * used on every screen. The shape carries the meaning on its own (it reads in grayscale and
  * for color-blind users); the color reinforces it.
  *

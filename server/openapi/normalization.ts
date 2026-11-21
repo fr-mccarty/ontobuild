@@ -69,7 +69,7 @@ export const normalizationSchemas: Record<string, Schema> = {
       ontology_path: {
         type: ["string", "null"],
         description:
-          "The ontology file the run normalized. Null for runs recorded before OntoBuilder stored it; those count as the project's current file until it switches files.",
+          "The ontology file the run normalized. Null for runs recorded before OntoBuild stored it; those count as the project's current file until it switches files.",
       },
       original_content: {
         type: ["string", "null"],

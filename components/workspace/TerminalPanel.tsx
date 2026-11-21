@@ -16,7 +16,7 @@ import { apiErrorMessage } from "@/lib/api/errors";
 
 const XTerm = dynamic(() => import("./XTerm"), { ssr: false });
 
-const HEIGHT_KEY = "ontobuilder.terminalPanel.height";
+const HEIGHT_KEY = "ontobuild.terminalPanel.height";
 const DEFAULT_HEIGHT = 280;
 const MIN_HEIGHT = 120;
 

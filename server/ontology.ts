@@ -118,8 +118,8 @@ export interface LoadedOntology {
 }
 
 type Cache = Map<string, LoadedOntology>;
-const g = globalThis as typeof globalThis & { __ontobuilderOntologyCache?: Cache };
-const cache: Cache = (g.__ontobuilderOntologyCache ??= new Map());
+const g = globalThis as typeof globalThis & { __ontobuildOntologyCache?: Cache };
+const cache: Cache = (g.__ontobuildOntologyCache ??= new Map());
 const CACHE_SIZE = 12;
 
 export async function loadOntology(projectId: string, ref?: string | null): Promise<LoadedOntology> {
@@ -183,8 +183,8 @@ export type OntologyEvent =
   | { type: "ontology-file-changed"; projectId: string; path: string; previousPath: string | null };
 
 type Listener = (e: OntologyEvent) => void | Promise<void>;
-const listenersG = globalThis as typeof globalThis & { __ontobuilderListeners?: Map<string, Listener> };
-const listeners: Map<string, Listener> = (listenersG.__ontobuilderListeners ??= new Map());
+const listenersG = globalThis as typeof globalThis & { __ontobuildListeners?: Map<string, Listener> };
+const listeners: Map<string, Listener> = (listenersG.__ontobuildListeners ??= new Map());
 
 export function onOntologyEvent(name: string, fn: Listener) {
   listeners.set(name, fn);
@@ -195,7 +195,7 @@ export async function emitOntologyEvent(e: OntologyEvent): Promise<void> {
     try {
       await fn(e);
     } catch (err) {
-      console.warn(`[ontobuilder] listener '${name}' failed for ${e.type}:`, err);
+      console.warn(`[ontobuild] listener '${name}' failed for ${e.type}:`, err);
     }
   }
 }

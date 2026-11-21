@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PIZZA_TTL, createPizzaProject, removeDir, useTempDataDir, type AppLike } from "./agent/helpers";
 
-/** The ontology file changed in the project folder, outside OntoBuilder, and committing it. */
+/** The ontology file changed in the project folder, outside OntoBuild, and committing it. */
 
 let dataDir: string;
 let app: AppLike;
@@ -61,7 +61,7 @@ describe("Uncommitted changes to the ontology file", () => {
     const body = (await res.json()) as { branch: string; commit_hash: string };
     expect(body.branch).toBe("main");
     expect(sh("rev-parse", "main").trim()).toBe(body.commit_hash);
-    expect(sh("log", "-1", "--format=%s").trim()).toBe("Commit changes to ontology.ttl made outside OntoBuilder");
+    expect(sh("log", "-1", "--format=%s").trim()).toBe("Commit changes to ontology.ttl made outside OntoBuild");
 
     // The folder is clean and the editor's source now has the change.
     expect(sh("status", "--porcelain").trim()).toBe("");

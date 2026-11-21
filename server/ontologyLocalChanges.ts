@@ -6,7 +6,7 @@ import { commitOntology, ontologyFilePath, requireProject } from "./ontology";
 import { parseTurtle, RdfParseError, stripLanguageTagsFromTurtle } from "./rdf";
 
 /**
- * Changes to the ontology file made in the project folder, outside OntoBuilder (by an agent, a
+ * Changes to the ontology file made in the project folder, outside OntoBuild (by an agent, a
  * terminal or a text editor). The editor reads the ontology from the branch's last commit, so
  * these stay out of view until they are committed.
  */
@@ -31,8 +31,8 @@ async function fileIsChanged(projectId: string, file: string): Promise<boolean> 
 }
 
 /** Parse results by file and modification, so polling a large unchanged file doesn't parse it again. */
-const g = globalThis as typeof globalThis & { __ontobuilderLocalParse?: Map<string, string | null> };
-const parseMemo: Map<string, string | null> = (g.__ontobuilderLocalParse ??= new Map());
+const g = globalThis as typeof globalThis & { __ontobuildLocalParse?: Map<string, string | null> };
+const parseMemo: Map<string, string | null> = (g.__ontobuildLocalParse ??= new Map());
 
 function parseProblem(absolute: string): string | null {
   let stat: fs.Stats;
@@ -104,7 +104,7 @@ export async function commitOntologyLocalChanges(
     projectId,
     branch: status.branch,
     content,
-    message: commitMessage?.trim().slice(0, 500) || `Commit changes to ${status.path} made outside OntoBuilder`,
+    message: commitMessage?.trim().slice(0, 500) || `Commit changes to ${status.path} made outside OntoBuild`,
     origin: "local",
   });
   return { branch: commit.branch, path: status.path, commit_hash: commit.hash };

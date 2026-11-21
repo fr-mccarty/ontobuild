@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import { isMac } from "@/lib/hooks/useKeyboardShortcuts";
 
-const TIP_DISMISSED_KEY = "ontobuilder:expand-tip-dismissed";
+const TIP_DISMISSED_KEY = "ontobuild:expand-tip-dismissed";
 
 function readTipDismissed(): boolean {
   try {

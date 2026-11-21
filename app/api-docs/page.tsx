@@ -48,7 +48,7 @@ export default function ApiDocsPage() {
             hideClientButton: true,
             hideTestRequestButton: true,
             metaData: {
-              title: "OntoBuilder API Documentation",
+              title: "OntoBuild API Documentation",
             },
           }}
         />

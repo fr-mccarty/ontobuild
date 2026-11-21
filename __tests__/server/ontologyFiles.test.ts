@@ -14,15 +14,15 @@ let app: AppLike;
 
 beforeAll(async () => {
   dataDir = useTempDataDir();
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuilder-ontofiles-test-"));
-  process.env.ONTOBUILDER_GH_BIN = path.join(tmp, "no-such-gh");
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuild-ontofiles-test-"));
+  process.env.ONTOBUILD_GH_BIN = path.join(tmp, "no-such-gh");
   app = (await import("@/server/app")).default;
 }, 30_000);
 
 afterAll(() => {
   removeDir(dataDir);
   fs.rmSync(tmp, { recursive: true, force: true });
-  delete process.env.ONTOBUILDER_GH_BIN;
+  delete process.env.ONTOBUILD_GH_BIN;
 });
 
 const GIT_ENV = {
@@ -290,7 +290,7 @@ describe("Ontology files of a project", () => {
     expect(data.project).toMatchObject({ git_ontology_path: "wine/wine.ttl", ontology_iri: "http://example.org/wine" });
     expect(data.project.normalization_report?.original_format).toBe("RDF/XML");
     expect(data.project.normalization_report?.notes.join("\n")).toMatch(/Saved as wine\/wine\.ttl, committed on branch main/);
-    expect(sh(folder, "log", "-1", "--format=%s").trim()).toBe("Convert wine/wine.owl to Turtle for OntoBuilder");
+    expect(sh(folder, "log", "-1", "--format=%s").trim()).toBe("Convert wine/wine.owl to Turtle for OntoBuild");
     expect(fs.readFileSync(path.join(folder, "wine/wine.owl"), "utf8")).toBe(WINE_RDFXML);
     expect(fs.readFileSync(path.join(folder, "wine/wine.ttl"), "utf8")).toMatch(/wine#Wine/);
     expect(await rootLabels(project.id)).toEqual(["Wine"]);
@@ -445,7 +445,7 @@ describe("A Turtle file next to a non-Turtle one", () => {
     folder = path.join(dataDir, "projects", project.folder);
   }, 30_000);
 
-  /** Commits a change to a file in the project folder, as the user would outside OntoBuilder. */
+  /** Commits a change to a file in the project folder, as the user would outside OntoBuild. */
   function commitInFolder(rel: string, content: string, message: string) {
     fs.writeFileSync(path.join(folder, rel), content);
     sh(folder, "add", rel);
@@ -487,20 +487,20 @@ describe("A Turtle file next to a non-Turtle one", () => {
     expect(again.status).toBe(200);
     expect(again.data).toMatchObject({ path: "ale/ale.ttl", converted: true, reused: false, replaced: true });
     expect(again.data.commit_hash).toMatch(/^[0-9a-f]{40}$/);
-    expect(sh(folder, "log", "-1", "--format=%s").trim()).toBe("Convert ale/ale.owl to Turtle for OntoBuilder");
+    expect(sh(folder, "log", "-1", "--format=%s").trim()).toBe("Convert ale/ale.owl to Turtle for OntoBuild");
     expect(sh(folder, "show", "--name-status", "--format=", "HEAD").trim()).toBe("M\tale/ale.ttl");
     expect(fs.readFileSync(path.join(folder, "ale/ale.ttl"), "utf8")).toMatch(/someValuesFrom/);
     expect(fs.readFileSync(path.join(folder, "ale/ale.owl"), "utf8")).toBe(BEER_RDFXML);
     expect(again.data.project.normalization_report?.notes.join("\n")).toMatch(/replacing the earlier file/);
 
-    // Now it is OntoBuilder's conversion and up to date: reused without asking.
+    // Now it is OntoBuild's conversion and up to date: reused without asking.
     expect((await switchTo(project.id, { path: "ontology.ttl" })).status).toBe(200);
     const later = await switchTo(project.id, { path: "ale/ale.owl" });
     expect(later.status).toBe(200);
     expect(later.data).toMatchObject({ reused: true, warnings: [] });
   });
 
-  it("asks again when the source changed since OntoBuilder converted it, but not for a change that keeps its triples", async () => {
+  it("asks again when the source changed since OntoBuild converted it, but not for a change that keeps its triples", async () => {
     expect((await switchTo(project.id, { path: "ontology.ttl" })).status).toBe(200);
     // Reformatting the RDF/XML doesn't change its triples.
     commitInFolder("ale/ale.owl", BEER_RDFXML.replace(/\n {2}/g, "\n    "), "Reindent ale.owl");

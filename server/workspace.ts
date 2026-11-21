@@ -120,9 +120,9 @@ export function migrateProjectFolders(): void {
         }
         if (hasHead) gitSync(gitDir, dir, ["read-tree", "-u", "--reset", "HEAD"]);
       }
-      console.info(`[ontobuilder] moved project ${p.id} to ${path.relative(DATA_DIR, dir)}`);
+      console.info(`[ontobuild] moved project ${p.id} to ${path.relative(DATA_DIR, dir)}`);
     } catch (e) {
-      console.error(`[ontobuilder] failed to migrate project ${p.id} to a project folder:`, e);
+      console.error(`[ontobuild] failed to migrate project ${p.id} to a project folder:`, e);
     }
   }
 }

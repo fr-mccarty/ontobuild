@@ -6,7 +6,7 @@
  * RDF files, so this module
  * - finds them: files tracked by git on a branch (symbolic links and submodules are skipped, since
  *   they can point outside the folder), best candidate first. Used by the Git import too.
- * - switches the project to another one. OntoBuilder reads and writes Turtle only, so choosing a
+ * - switches the project to another one. OntoBuild reads and writes Turtle only, so choosing a
  *   file in another format converts it to Turtle and commits the result next to the original. When
  *   that Turtle file exists already (an earlier conversion, or the repository's own copy) it is
  *   reused if it is up to date: it has the same triples as the original, or for an earlier
@@ -271,7 +271,7 @@ export function requireTreeCandidate(
   if (entry.mode === SUBMODULE_MODE) httpError(422, `${rel} is a git submodule, not a file.`);
   const format = formatFromFilename(rel);
   if (!format) {
-    httpError(422, `${rel} isn't an RDF file OntoBuilder can read. Supported extensions: ${SUPPORTED_EXTENSIONS.join(", ")}.`);
+    httpError(422, `${rel} isn't an RDF file OntoBuild can read. Supported extensions: ${SUPPORTED_EXTENSIONS.join(", ")}.`);
   }
   return { path: rel, format, size_bytes: entry.size, declares_ontology: false };
 }
@@ -313,16 +313,16 @@ export function countLanguageTags(store: ParsedStore): number {
 }
 
 export function languageTagWarning(count: number, file: string): string {
-  return `${count} literal(s) in ${file} have language tags. OntoBuilder stores plain strings, so the tags are dropped the next time it saves the ontology.`;
+  return `${count} literal(s) in ${file} have language tags. OntoBuild stores plain strings, so the tags are dropped the next time it saves the ontology.`;
 }
 
-const CONVERSION_SUFFIX = " to Turtle for OntoBuilder";
+const CONVERSION_SUFFIX = " to Turtle for OntoBuild";
 
 /** The commit message of a conversion; its first line also finds the conversion again later. */
 export function conversionMessage(source: string, target: string, formatName: string): string {
   return (
     `Convert ${source}${CONVERSION_SUFFIX}\n\n` +
-    `OntoBuilder edits Turtle, so the ontology was converted from ${formatName} ` +
+    `OntoBuild edits Turtle, so the ontology was converted from ${formatName} ` +
     `and saved as ${target}. ${source} is left unchanged.`
   );
 }
@@ -347,7 +347,7 @@ async function previousConversions(dir: string, ref: string, entries: TreeListin
   }
   for (const line of log.split("\n")) {
     const [sha, subject] = line.split("\x1f");
-    const m = subject && /^Convert (.+) to Turtle for OntoBuilder$/.exec(subject);
+    const m = subject && /^Convert (.+) to Turtle for OntoBuild$/.exec(subject);
     if (!m || found.has(m[1])) continue;
     try {
       const written = await runGit(dir, ["diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "--diff-filter=AM", sha]);
@@ -367,7 +367,7 @@ export function siblingTurtlePath(source: string): string {
 interface TurtleTarget {
   path: string;
   exists: boolean;
-  /** The commit of the earlier OntoBuilder conversion that wrote `path`, or null. */
+  /** The commit of the earlier OntoBuild conversion that wrote `path`, or null. */
   conversionCommit: string | null;
 }
 
@@ -382,7 +382,7 @@ function turtleTarget(source: string, entries: TreeListing, conversions: Map<str
   return { path: sibling, exists: entries.has(sibling), conversionCommit: null };
 }
 
-/** The graph a Turtle file gives the editor: its triples, without language tags (OntoBuilder drops them). */
+/** The graph a Turtle file gives the editor: its triples, without language tags (OntoBuild drops them). */
 function editorGraph(turtle: string): ParsedStore {
   const store = parseTurtle(turtle).store;
   stripLanguageTags(store);
@@ -392,7 +392,7 @@ function editorGraph(turtle: string): ParsedStore {
 /**
  * Whether an existing Turtle target still matches the file it stands for. Null when it does;
  * otherwise why not.
- * - Made by an earlier OntoBuilder conversion: it is out of date when the source's triples
+ * - Made by an earlier OntoBuild conversion: it is out of date when the source's triples
  *   changed since that conversion (the Turtle file may have been edited since, which is fine).
  * - Otherwise (the repository's own copy): it is out of date when converting the source now
  *   would give different triples. Blank nodes are compared by structure, and language tags are
@@ -794,7 +794,7 @@ export async function createOntologyFile(
   const rel = cleanRelativePath(body.file_name, "file_name");
   if (!rel) httpError(422, "Field 'file_name' is required");
   if (!rel.endsWith(".ttl") || rel.split("/").pop() === ".ttl") {
-    httpError(422, "Field 'file_name' must end in .ttl (OntoBuilder writes Turtle), like 'ontology.ttl'");
+    httpError(422, "Field 'file_name' must end in .ttl (OntoBuild writes Turtle), like 'ontology.ttl'");
   }
   if (typeof body.ontology_iri !== "string" || !body.ontology_iri.trim()) httpError(422, "Field 'ontology_iri' is required");
   const iri = body.ontology_iri.trim();
@@ -836,7 +836,7 @@ export async function createOntologyFile(
       projectId,
       branch,
       { path: rel, content },
-      `Create ontology ${rel}\n\nA new, empty ontology (${iri}), made the project's ontology file in OntoBuilder.`,
+      `Create ontology ${rel}\n\nA new, empty ontology (${iri}), made the project's ontology file in OntoBuild.`,
       "create",
     );
   } catch (e) {

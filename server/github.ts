@@ -3,7 +3,7 @@
  * fetch, push and fast-forward pull.
  *
  * Authentication is whatever the user already has set up for git: a credential helper,
- * an SSH agent or `gh auth login`. OntoBuilder never stores tokens. Git runs with terminal
+ * an SSH agent or `gh auth login`. OntoBuild never stores tokens. Git runs with terminal
  * prompts disabled so a missing credential fails fast instead of hanging the server.
  */
 import { execFile } from "node:child_process";
@@ -38,7 +38,7 @@ export interface ParsedRemote {
 }
 
 function fileRemotesAllowed(): boolean {
-  return process.env.NODE_ENV === "test" || process.env.ONTOBUILDER_ALLOW_FILE_REMOTES === "1";
+  return process.env.NODE_ENV === "test" || process.env.ONTOBUILD_ALLOW_FILE_REMOTES === "1";
 }
 
 /**
@@ -228,15 +228,15 @@ interface GhStatus {
   authenticated: boolean;
   at: number;
 }
-const gs = globalThis as typeof globalThis & { __ontobuilderGhStatus?: GhStatus };
+const gs = globalThis as typeof globalThis & { __ontobuildGhStatus?: GhStatus };
 
 function ghBin(): string {
-  return process.env.ONTOBUILDER_GH_BIN || "gh";
+  return process.env.ONTOBUILD_GH_BIN || "gh";
 }
 
 /** Whether the GitHub CLI is installed and signed in (cached for a minute). */
 export async function ghStatus(force = false): Promise<{ available: boolean; authenticated: boolean }> {
-  const cached = gs.__ontobuilderGhStatus;
+  const cached = gs.__ontobuildGhStatus;
   if (!force && cached && Date.now() - cached.at < 60_000) return cached;
   let status: GhStatus;
   try {
@@ -249,7 +249,7 @@ export async function ghStatus(force = false): Promise<{ available: boolean; aut
   } catch {
     status = { available: false, authenticated: false, at: Date.now() };
   }
-  gs.__ontobuilderGhStatus = status;
+  gs.__ontobuildGhStatus = status;
   return status;
 }
 
@@ -457,7 +457,7 @@ export async function createGitHubRepo(
 
 /** How long a clone may take. Big repositories need longer than the other remote commands. */
 function cloneTimeoutMs(): number {
-  const fromEnv = Number(process.env.ONTOBUILDER_CLONE_TIMEOUT_MS);
+  const fromEnv = Number(process.env.ONTOBUILD_CLONE_TIMEOUT_MS);
   return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 5 * 60_000;
 }
 

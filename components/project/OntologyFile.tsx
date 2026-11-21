@@ -130,7 +130,7 @@ export function NewOntologyDialog({
   const nameProblem = !trimmedName
     ? "Enter a file name."
     : !trimmedName.toLowerCase().endsWith(".ttl") || trimmedName.endsWith("/.ttl") || trimmedName === ".ttl"
-      ? "The file name must end in .ttl: OntoBuilder writes Turtle."
+      ? "The file name must end in .ttl: OntoBuild writes Turtle."
       : trimmedName.startsWith("/") || trimmedName.includes("\\") || trimmedName.split("/").some((s) => s === ".." || s === "." || s === "")
         ? "Use a path inside the project folder, like ontology.ttl or src/new.ttl."
         : existingPaths.includes(trimmedName)
@@ -336,7 +336,7 @@ export function OutOfDateTurtleDialog({
           </DialogTitle>
           <DialogDescription>
             {choice
-              ? `${choice.reason}. OntoBuilder edits ${choice.turtlePath} when you choose ${baseName(choice.file.path)}, which itself is never changed.`
+              ? `${choice.reason}. OntoBuild edits ${choice.turtlePath} when you choose ${baseName(choice.file.path)}, which itself is never changed.`
               : ""}
           </DialogDescription>
         </DialogHeader>
@@ -441,7 +441,7 @@ function useOntologyFileController({ projectId, branch, projectName, currentIri,
         title={`Convert ${pendingConversion ? baseName(pendingConversion.path) : ""} to Turtle?`}
         description={
           pendingConversion
-            ? `OntoBuilder edits Turtle only. ${pendingConversion.path} is ${formatName(pendingConversion.format)}, so it will be converted ` +
+            ? `OntoBuild edits Turtle only. ${pendingConversion.path} is ${formatName(pendingConversion.format)}, so it will be converted ` +
               `and saved as ${pendingConversion.turtle_path}, committed on branch ${list?.branch ?? branch ?? "the default branch"} (not pushed). ` +
               `That Turtle file becomes the project's ontology; ${baseName(pendingConversion.path)} itself is not changed.`
             : ""
@@ -511,7 +511,7 @@ function MissingOnBranch({ list }: { list: OntologyFileList }) {
 }
 
 const CONVERSION_HELP =
-  "OntoBuilder edits Turtle. Choosing a file in another format (RDF/XML, JSON-LD, …) converts it to a .ttl file next to it, committed on this branch; the original isn't changed. If that .ttl exists already, it is used when it is up to date; if it isn't, you choose whether to use it or convert again.";
+  "OntoBuild edits Turtle. Choosing a file in another format (RDF/XML, JSON-LD, …) converts it to a .ttl file next to it, committed on this branch; the original isn't changed. If that .ttl exists already, it is used when it is up to date; if it isn't, you choose whether to use it or convert again.";
 
 interface OntologyFileMenuProps extends ControllerOptions {
   /** The project's ontology file, shown on the button. */

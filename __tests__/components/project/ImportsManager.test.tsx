@@ -70,7 +70,7 @@ describe("ImportsManager", () => {
     const changed = vi.fn();
     window.addEventListener(IMPORTS_CHANGED_EVENT, changed);
     const dialog = await open();
-    fireEvent.change(within(dialog).getByRole("searchbox", { name: "Search OntoBuilder projects" }), { target: { value: "del" } });
+    fireEvent.change(within(dialog).getByRole("searchbox", { name: "Search OntoBuild projects" }), { target: { value: "del" } });
     const pick = await within(dialog).findByRole("button", { name: "Import Delta" });
     fireEvent.click(pick);
     await waitFor(() => expect(api.add).toHaveBeenCalledWith("pa", "http://example.org/onto/d", "main"));

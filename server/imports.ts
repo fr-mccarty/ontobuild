@@ -3,7 +3,7 @@
  *
  * A project's ontology lists the ontologies it imports as `owl:imports <iri>` triples on its
  * owl:Ontology header. Each import IRI is resolved, in order, to:
- *   1. another OntoBuilder project whose ontology IRI (the `projects.ontology_iri` column, or the
+ *   1. another OntoBuild project whose ontology IRI (the `projects.ontology_iri` column, or the
  *      owl:Ontology subject of its source on its default branch) is that IRI, read from git; or
  *   2. a document fetched over http(s) and cached under DATA_DIR/import-cache/.
  * Imports are transitive: the closure is resolved breadth-first, cycle-safe, to a depth of 10.
@@ -142,7 +142,7 @@ interface ProjectIriEntry {
 }
 
 type G = typeof globalThis & {
-  __ontobuilderImportState?: {
+  __ontobuildImportState?: {
     projectIndex: { at: number; entries: ProjectIriEntry[] } | null;
     generation: number;
     views: Map<string, { at: number; generation: number; view: ImportView }>;
@@ -151,7 +151,7 @@ type G = typeof globalThis & {
     classSets: Map<string, ReadonlySet<string>>;
   };
 };
-const state = ((globalThis as G).__ontobuilderImportState ??= {
+const state = ((globalThis as G).__ontobuildImportState ??= {
   projectIndex: null,
   generation: 0,
   views: new Map(),
@@ -167,8 +167,8 @@ onOntologyEvent("imports:invalidate", (e) => {
   if (e.type === "ontology-file-changed") iriMemo.delete(e.projectId);
 });
 
-const iriMemoG = globalThis as typeof globalThis & { __ontobuilderImportIriMemo?: Map<string, { sha: string; iri: string | null }> };
-const iriMemo = (iriMemoG.__ontobuilderImportIriMemo ??= new Map());
+const iriMemoG = globalThis as typeof globalThis & { __ontobuildImportIriMemo?: Map<string, { sha: string; iri: string | null }> };
+const iriMemo = (iriMemoG.__ontobuildImportIriMemo ??= new Map());
 
 /**
  * The owl:Ontology IRI declared by a project's source on its default branch. Memoized per
@@ -214,7 +214,7 @@ async function projectIndex(): Promise<ProjectIriEntry[]> {
   return entries;
 }
 
-/** The OntoBuilder project whose ontology IRI is `iri`, if any. */
+/** The OntoBuild project whose ontology IRI is `iri`, if any. */
 export async function findProjectByIri(iri: string): Promise<ProjectIriEntry | null> {
   const n = normIri(iri);
   for (const e of await projectIndex()) if (e.iris.some((i) => normIri(i) === n)) return e;
@@ -244,7 +244,7 @@ export async function importCandidates(q: string): Promise<
 // ---------------------------------------------------------------------------
 
 function cacheDir(): string {
-  const dataDir = path.resolve(process.env.ONTOBUILDER_DATA_DIR || path.join(process.cwd(), "data"));
+  const dataDir = path.resolve(process.env.ONTOBUILD_DATA_DIR || path.join(process.cwd(), "data"));
   return path.join(dataDir, "import-cache");
 }
 
@@ -283,7 +283,7 @@ export function isPrivateAddress(ip: string): boolean {
 }
 
 function allowPrivate(): boolean {
-  return process.env.ONTOBUILDER_IMPORT_ALLOW_PRIVATE === "1";
+  return process.env.ONTOBUILD_IMPORT_ALLOW_PRIVATE === "1";
 }
 
 async function assertFetchable(url: URL): Promise<void> {
@@ -530,7 +530,7 @@ export async function resolveClosure(
   opts: { refresh?: boolean } = {},
 ): Promise<ImportClosure> {
   const project = requireProject(projectId);
-  const rootIri = findOntologyIri(store) ?? project.ontology_iri ?? `urn:ontobuilder:project:${projectId}`;
+  const rootIri = findOntologyIri(store) ?? project.ontology_iri ?? `urn:ontobuild:project:${projectId}`;
   const rootNorms = new Set([normIri(rootIri), ...(project.ontology_iri ? [normIri(project.ontology_iri)] : [])]);
   const direct = directImports(store);
   const entries = new Map<string, ResolvedImport>();
@@ -899,7 +899,7 @@ export async function addImport(
       scheme = "";
     }
     if (scheme !== "http:" && scheme !== "https:") {
-      httpError(400, "No OntoBuilder project has this ontology IRI, and only http(s) IRIs can be fetched");
+      httpError(400, "No OntoBuild project has this ontology IRI, and only http(s) IRIs can be fetched");
     }
   }
   const fallback = project.ontology_iri ?? `http://example.org/ontologies/${slug(project.name)}`;

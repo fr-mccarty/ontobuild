@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/agentSettings";
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-export const OPENROUTER_HEADERS = { "HTTP-Referer": "http://localhost:3000", "X-Title": "OntoBuilder" };
+export const OPENROUTER_HEADERS = { "HTTP-Referer": "http://localhost:3000", "X-Title": "OntoBuild" };
 export const API_KEY_ENV = DEFAULT_AGENT_API_KEY_ENV;
 export const SECRETS_FILE = path.resolve(process.cwd(), ".env.local");
 export const MODEL_ID_MAX = 200;

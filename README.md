@@ -1,6 +1,6 @@
-# OntoBuilder
+# OntoBuild
 
-OntoBuilder is a local, single-user workspace for building an OWL/RDF ontology together with
+OntoBuild is a local, single-user workspace for building an OWL/RDF ontology together with
 the code that uses it, with an LLM agent that can work on both. Each project is a folder in its
 own git repository: one Turtle ontology file, edited through forms and saved as git commits,
 and a `code/` folder for the project's application code, with files, terminals, a dev server
@@ -10,7 +10,7 @@ It runs as one Node app: a Next.js frontend and an HTTP API (`/api/v1`) served b
 server, with metadata in SQLite. There is no login. Everything runs on your machine except the
 optional editor agent, which calls OpenRouter (see [Editor agent](#editor-agent)).
 
-![The OntoBuilder editor showing an imported class, the class tree, and the Agent tab with its model picker and Edit Ontology / Edit Code toggles](docs/screenshot.png)
+![The OntoBuild editor showing an imported class, the class tree, and the Agent tab with its model picker and Edit Ontology / Edit Code toggles](docs/screenshot.png)
 
 ## Features
 
@@ -36,7 +36,7 @@ optional editor agent, which calls OpenRouter (see [Editor agent](#editor-agent)
 - **History and analytics.** Per-entity change history, project activity and the most
   frequently edited entities.
 - **Imports.** **Settings → Imports** adds `owl:imports` to the ontology: pick another
-  OntoBuilder project or paste any ontology IRI. Imports are followed transitively (for example
+  OntoBuild project or paste any ontology IRI. Imports are followed transitively (for example
   general principles → Node → your project), and imported classes appear read-only in the class
   tree, where your own classes can subclass them.
 
@@ -61,13 +61,13 @@ optional editor agent, which calls OpenRouter (see [Editor agent](#editor-agent)
     entry points (Next.js `app/` and `pages/`, `package.json`, `index.html` and so on).
 - **GitHub.** Under **Settings → GitHub**, link a project to a GitHub (or other git) remote,
   then fetch, pull and push, or create the repository with the `gh` CLI. Sign-in uses your
-  existing git credentials, SSH keys or `gh auth login`; OntoBuilder stores no tokens.
+  existing git credentials, SSH keys or `gh auth login`; OntoBuild stores no tokens.
 
 ### Agent and API
 - **Run as prompt, with approval.** The ▶ button next to any text value puts that text in the
   agent's message box (it is not sent until you send it). A green dot means the text was
   approved: it reached the default branch through a merged pull request with an approving
-  review. Otherwise OntoBuilder asks before using it. This lets a team agree on a prompt, as part of
+  review. Otherwise OntoBuild asks before using it. This lets a team agree on a prompt, as part of
   the ontology, before anyone runs it.
 - **Editor agent.** An optional LLM chat in the editor that works on the open project: the
   ontology, its branches and pull requests, and, when you allow it, the code in the project
@@ -80,7 +80,7 @@ language tags. Tags are removed when a file is imported or a change is committed
 
 ## Origins
 
-OntoBuilder is derived from two projects by CatholicOS:
+OntoBuild is derived from two projects by CatholicOS:
 [ontokit-web](https://github.com/CatholicOS/ontokit-web), a Next.js frontend, and
 [ontokit-api](https://github.com/CatholicOS/ontokit-api), a FastAPI backend. The frontend code
 in this repository started from ontokit-web, and the API in `server/` started as a TypeScript
@@ -102,8 +102,8 @@ No database server or Docker is needed.
 ## Installation and getting started
 
 ```bash
-git clone <this repository> ontobuilder
-cd ontobuilder
+git clone <this repository> ontobuild
+cd ontobuild
 npm install
 npm run dev          # development server on http://localhost:3000 (this machine only)
 ```
@@ -130,11 +130,11 @@ ExperimentalWarning. That syntax works on macOS and Linux. On Windows, run `npx 
 
 ## Data
 
-All runtime data lives in `./data`, which is gitignored. Set `ONTOBUILDER_DATA_DIR` to store it
+All runtime data lives in `./data`, which is gitignored. Set `ONTOBUILD_DATA_DIR` to store it
 somewhere else.
 
 - `data/import-cache/`: cached copies of imported ontologies fetched from the web
-- `data/ontobuilder.db`: SQLite database (projects, branch metadata, pull requests, reviews,
+- `data/ontobuild.db`: SQLite database (projects, branch metadata, pull requests, reviews,
   comments, lint runs, issues and per-project lint configs, quality results, normalization
   runs, entity change events, background jobs, user and agent settings)
 - `data/projects/<folder>/`: one folder per project, named after the project when it is
@@ -236,7 +236,7 @@ browser ──> Next.js (App Router pages, React Query)
               ▼
             app/api/v1/[[...path]]/route.ts  ──>  Hono app (server/app.ts)
                                                     ├── server/routes/*.ts
-                                                    ├── SQLite (node:sqlite)   data/ontobuilder.db
+                                                    ├── SQLite (node:sqlite)   data/ontobuild.db
                                                     ├── git CLI                data/projects/<folder>/
                                                     ├── in-process jobs (lint, quality, normalization, index)
                                                     └── editor agent (server/agent) ──> OpenRouter
@@ -281,7 +281,7 @@ server/user.ts                                the fixed local user (author of ev
   `NEXT_PUBLIC_API_URL` to point them at another server.
 - The servers listen on `127.0.0.1` only, and the API rejects requests whose `Host` isn't a
   loopback name (DNS rebinding) and browser requests from other origins (CSRF), since it can
-  edit files without a login. Set `ONTOBUILDER_ALLOWED_HOSTS` or `ONTOBUILDER_ALLOWED_ORIGINS`
+  edit files without a login. Set `ONTOBUILD_ALLOWED_HOSTS` or `ONTOBUILD_ALLOWED_ORIGINS`
   (comma-separated) to allow more, for example behind a reverse proxy.
 - Every request acts as the single local user. There are no roles or permission checks, so
   every action is always available.

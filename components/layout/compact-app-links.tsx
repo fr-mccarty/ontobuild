@@ -13,7 +13,7 @@ export const USER_SETTINGS_TOOLTIP =
   "User settings: your preferences across all projects (theme, Save button, AI agent key, effort and instructions)";
 
 /** The app icon (same drawing as app/icon.svg). */
-export function OntoBuilderIcon({ className }: { className?: string }) {
+export function OntoBuildIcon({ className }: { className?: string }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden className={className}>
       <rect width="32" height="32" rx="6" fill="#3B82F6" />
@@ -27,12 +27,12 @@ export function OntoBuilderIcon({ className }: { className?: string }) {
   );
 }
 
-/** The OntoBuilder icon, linking home to the projects list. Sits at the far left of the row. */
+/** The OntoBuild icon, linking home to the projects list. Sits at the far left of the row. */
 export function HomeIconLink() {
   return (
-    <Tooltip side="bottom" content="OntoBuilder: back to all projects">
-      <Link href="/" aria-label="OntoBuilder home" className="-my-1 flex flex-shrink-0 items-center rounded-md">
-        <OntoBuilderIcon className="h-6 w-6" />
+    <Tooltip side="bottom" content="OntoBuild: back to all projects">
+      <Link href="/" aria-label="OntoBuild home" className="-my-1 flex flex-shrink-0 items-center rounded-md">
+        <OntoBuildIcon className="h-6 w-6" />
       </Link>
     </Tooltip>
   );

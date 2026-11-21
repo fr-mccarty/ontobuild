@@ -664,7 +664,7 @@ export default function ProjectSettingsPage() {
             </div>
             <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
               Link this project&apos;s repository to a remote. Sign-in uses your existing git setup (gh auth login, a
-              credential helper or SSH keys); OntoBuilder never stores tokens.
+              credential helper or SSH keys); OntoBuild never stores tokens.
             </p>
             <GitHubPanel projectId={projectId} mode="settings" />
           </section>

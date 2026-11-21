@@ -457,8 +457,8 @@ interface IndexMemo {
   entity_count: number;
   indexed_at: string;
 }
-const memoG = globalThis as typeof globalThis & { __ontobuilderIndexMemo?: Map<string, IndexMemo> };
-const indexMemo: Map<string, IndexMemo> = (memoG.__ontobuilderIndexMemo ??= new Map());
+const memoG = globalThis as typeof globalThis & { __ontobuildIndexMemo?: Map<string, IndexMemo> };
+const indexMemo: Map<string, IndexMemo> = (memoG.__ontobuildIndexMemo ??= new Map());
 
 onOntologyEvent("ontology:index-memo", (e) => {
   if (e.type !== "ontology-file-changed" && e.type !== "project-deleted") return;

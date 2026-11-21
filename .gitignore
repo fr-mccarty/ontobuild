@@ -10,7 +10,7 @@ next-env.d.ts
 # Test coverage
 /coverage/
 
-# Runtime data: SQLite database and project git repos (default ONTOBUILDER_DATA_DIR)
+# Runtime data: SQLite database and project git repos (default ONTOBUILD_DATA_DIR)
 /data/
 
 # Secrets, including OPENROUTER_API_KEY. Next.js reads all of these.

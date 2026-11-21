@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
-import { OntoBuilderIcon } from "@/components/layout/compact-app-links";
+import { OntoBuildIcon } from "@/components/layout/compact-app-links";
 
 const navLinks = [
   { href: "/", label: "Projects" },
@@ -21,9 +21,9 @@ export function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
-            <OntoBuilderIcon className="h-7 w-7" />
+            <OntoBuildIcon className="h-7 w-7" />
             <span className="text-xl font-bold text-slate-900 dark:text-white">
-              OntoBuilder
+              OntoBuild
             </span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">

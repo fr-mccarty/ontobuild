@@ -228,10 +228,10 @@ interface Ctx {
 
 /** Tells the linter which classes an ontology's imports provide (set by server/imports.ts). */
 export type ExternalClassResolver = (store: Store) => ReadonlySet<string> | null;
-const resolverG = globalThis as typeof globalThis & { __ontobuilderLintExternalClasses?: ExternalClassResolver };
+const resolverG = globalThis as typeof globalThis & { __ontobuildLintExternalClasses?: ExternalClassResolver };
 
 export function setExternalClassResolver(fn: ExternalClassResolver): void {
-  resolverG.__ontobuilderLintExternalClasses = fn;
+  resolverG.__ontobuildLintExternalClasses = fn;
 }
 
 type Checker = (ctx: Ctx) => LintResult[];
@@ -764,7 +764,7 @@ export function lintOntology(
   const uriSubjects = uniqueNamed(store.getSubjects(null, null, null)).filter((s) => s.value !== OWL_THING);
   let externalClasses: ReadonlySet<string> = new Set();
   try {
-    externalClasses = resolverG.__ontobuilderLintExternalClasses?.(store) ?? new Set();
+    externalClasses = resolverG.__ontobuildLintExternalClasses?.(store) ?? new Set();
   } catch {
     externalClasses = new Set();
   }

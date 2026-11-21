@@ -230,7 +230,7 @@ describe("BranchContext", () => {
         await result.current.switchBranch("feature-1");
       });
 
-      expect(sessionStorage.getItem("ontobuilder:branch:p1")).toBe("feature-1");
+      expect(sessionStorage.getItem("ontobuild:branch:p1")).toBe("feature-1");
     });
   });
 

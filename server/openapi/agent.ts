@@ -110,7 +110,7 @@ export const agentDocs: DocMap = {
       "The agent can read the project's ontology on the given branch and the files in the project folder. " +
       "What it may change is set per request by `permissions`: `edit_ontology` allows tools that change the ontology, branches, pull requests or project settings; " +
       "`edit_code` allows writing and deleting files in the project folder and running shell commands there; " +
-      "`edit_imports` allows changing the ontologies of OntoBuilder projects this project imports (opened with the `switch_ontology` tool, on their default branch). " +
+      "`edit_imports` allows changing the ontologies of OntoBuild projects this project imports (opened with the `switch_ontology` tool, on their default branch). " +
       "Tools that are not allowed are left out of the tool list sent to the model, and a call to one anyway returns an error tool result without side effects. " +
       "When `permissions` (or one of its fields) is absent, `edit_ontology` defaults to true and `edit_code` and `edit_imports` to false.",
     query: [{ name: "branch", description: "Branch to work on. Defaults to the repository's default branch.", schema: { type: "string" } }],
@@ -145,7 +145,7 @@ export const agentDocs: DocMap = {
               edit_imports: {
                 type: "boolean",
                 default: false,
-                description: "Allow changes to the ontologies of OntoBuilder projects this project imports.",
+                description: "Allow changes to the ontologies of OntoBuild projects this project imports.",
               },
             },
           },

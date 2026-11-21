@@ -88,7 +88,7 @@ async function ontologyFile(projectId: string): Promise<string> {
 
 beforeAll(async () => {
   dataDir = useTempDataDir();
-  delete process.env.ONTOBUILDER_IMPORT_ALLOW_PRIVATE;
+  delete process.env.ONTOBUILD_IMPORT_ALLOW_PRIVATE;
   app = (await import("@/server/app")).default;
   projA = await createProject("Alpha", A, `:Pizza a owl:Class ; rdfs:label "Pizza" ; rdfs:subClassOf <${B}#Food> .\n:Local a owl:Class ; rdfs:label "Local" .`);
   projB = await createProject("Beta", B, `:Food a owl:Class ; rdfs:label "Food" ; rdfs:subClassOf <${C}#Thing> .`);
@@ -109,7 +109,7 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  delete process.env.ONTOBUILDER_IMPORT_ALLOW_PRIVATE;
+  delete process.env.ONTOBUILD_IMPORT_ALLOW_PRIVATE;
   await new Promise<void>((resolve) => server.close(() => resolve()));
   removeDir(dataDir);
 });
@@ -238,7 +238,7 @@ describe("ontology imports", () => {
     expect(blocked.error).toMatch(/private|loopback/);
     expect(remoteHits).toBe(0);
 
-    process.env.ONTOBUILDER_IMPORT_ALLOW_PRIVATE = "1";
+    process.env.ONTOBUILD_IMPORT_ALLOW_PRIVATE = "1";
     const refreshed = await app.request(`/api/v1/projects/${projC}/imports/refresh?branch=main`, { method: "POST" });
     expect(refreshed.status).toBe(200);
     const ok = ((await refreshed.json()) as ImportsResponse).closure.find((e) => e.iri === remoteUrl)!;

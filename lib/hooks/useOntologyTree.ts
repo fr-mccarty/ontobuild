@@ -6,7 +6,7 @@ import { apiErrorMessage } from "@/lib/api/errors";
 import type { ClassTreeNode, ImportedMarker } from "@/lib/ontology/types";
 
 /** Fired (on window) after something outside the editor's own forms changes the ontology's imports. */
-export const IMPORTS_CHANGED_EVENT = "ontobuilder:imports-changed";
+export const IMPORTS_CHANGED_EVENT = "ontobuild:imports-changed";
 
 export interface ImportsChangedDetail {
   projectId: string;

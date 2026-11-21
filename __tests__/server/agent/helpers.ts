@@ -33,10 +33,10 @@ export const PIZZA_TTL = `@prefix : <http://example.org/pizza#> .
 type G = typeof globalThis & Record<string, unknown>;
 
 export function useTempDataDir(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuilder-agent-test-"));
-  process.env.ONTOBUILDER_DATA_DIR = dir;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuild-agent-test-"));
+  process.env.ONTOBUILD_DATA_DIR = dir;
   const g = globalThis as G;
-  for (const k of ["__ontobuilderDb", "__ontobuilderOntologyCache", "__ontobuilderJobsInit", "__ontobuilderLintInit", "__ontobuilderIndexMemo"]) {
+  for (const k of ["__ontobuildDb", "__ontobuildOntologyCache", "__ontobuildJobsInit", "__ontobuildLintInit", "__ontobuildIndexMemo"]) {
     delete g[k];
   }
   return dir;
@@ -44,12 +44,12 @@ export function useTempDataDir(): string {
 
 export function removeDir(dir: string) {
   const g = globalThis as G;
-  const db = g.__ontobuilderDb as { close?: () => void } | undefined;
+  const db = g.__ontobuildDb as { close?: () => void } | undefined;
   try {
     db?.close?.();
   } catch {
   }
-  delete g.__ontobuilderDb;
+  delete g.__ontobuildDb;
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

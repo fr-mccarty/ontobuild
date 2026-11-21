@@ -12,7 +12,7 @@ let dataDir: string;
 beforeAll(() => {
   dataDir = useTempDataDir();
   // The table as it was before `ontology_path`, with one run in it.
-  const old = new DatabaseSync(path.join(dataDir, "ontobuilder.db"));
+  const old = new DatabaseSync(path.join(dataDir, "ontobuild.db"));
   old.exec(`
     CREATE TABLE normalization_runs (
       id TEXT PRIMARY KEY,
@@ -48,15 +48,15 @@ describe("Database migration", () => {
     expect(all("SELECT id, ontology_path FROM normalization_runs")).toEqual([{ id: "old-run", ontology_path: null }]);
     const indexes = all<{ name: string }>("PRAGMA index_list(normalization_runs)").map((i) => i.name);
     expect(indexes).toContain("ix_normalization_runs_file");
-    expect(fs.existsSync(path.join(dataDir, "ontobuilder.db"))).toBe(true);
+    expect(fs.existsSync(path.join(dataDir, "ontobuild.db"))).toBe(true);
   });
 
   it("applies schema changes to a connection opened by older code (a reload in development)", async () => {
     const { all, getDb, run } = await import("@/server/db");
-    const g = globalThis as typeof globalThis & { __ontobuilderSchema?: string };
+    const g = globalThis as typeof globalThis & { __ontobuildSchema?: string };
     getDb();
     run("DROP INDEX ix_normalization_runs_file");
-    g.__ontobuilderSchema = "older code";
+    g.__ontobuildSchema = "older code";
     getDb();
     expect(all<{ name: string }>("PRAGMA index_list(normalization_runs)").map((i) => i.name)).toContain("ix_normalization_runs_file");
   });

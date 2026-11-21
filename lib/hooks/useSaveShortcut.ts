@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
  * Cmd/Ctrl+S in the editor. The page's shortcut dispatches this event; the entity panel being
  * edited answers by committing its draft, the same as its "Save now" button.
  */
-export const SAVE_REQUEST_EVENT = "ontobuilder:save-request";
+export const SAVE_REQUEST_EVENT = "ontobuild:save-request";
 
 export function requestSave(): void {
   window.dispatchEvent(new Event(SAVE_REQUEST_EVENT));

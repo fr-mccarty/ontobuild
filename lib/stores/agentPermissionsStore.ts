@@ -6,7 +6,7 @@ export type { AgentPermissions };
 
 export const DEFAULT_AGENT_PERMISSIONS: AgentPermissions = { edit_code: false, edit_ontology: true };
 
-export const AGENT_PERMISSIONS_STORAGE_KEY = "ontobuilder-agent-permissions";
+export const AGENT_PERMISSIONS_STORAGE_KEY = "ontobuild-agent-permissions";
 
 /** localStorage that never throws (private windows, blocked storage, test environments). */
 const safeLocalStorage: StateStorage = {

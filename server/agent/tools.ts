@@ -48,7 +48,7 @@ export const TOOL_CLASSES: readonly ToolClass[] = ["read", "ontology", "code"];
 export interface AgentPermissions {
   edit_code: boolean;
   edit_ontology: boolean;
-  /** Change the ontologies of OntoBuilder projects this project imports (owl:imports). */
+  /** Change the ontologies of OntoBuild projects this project imports (owl:imports). */
   edit_imports: boolean;
 }
 
@@ -1289,7 +1289,7 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
       type: "object",
       properties: {
         commit_message: str(
-          "What the changes are, in the imperative mood, for example \"Add the service and server classes\". Defaults to \"Commit changes to <file> made outside OntoBuilder\".",
+          "What the changes are, in the imperative mood, for example \"Add the service and server classes\". Defaults to \"Commit changes to <file> made outside OntoBuild\".",
         ),
       },
     },
@@ -1440,7 +1440,7 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
     name: "list_imports",
     kind: "read",
     description:
-      "List the ontologies the user's project imports (owl:imports), directly or transitively. Imports with source \"project\" are other OntoBuilder projects that switch_ontology can open; \"remote\" ones are read-only cached copies of web ontologies.",
+      "List the ontologies the user's project imports (owl:imports), directly or transitively. Imports with source \"project\" are other OntoBuild projects that switch_ontology can open; \"remote\" ones are read-only cached copies of web ontologies.",
     parameters: { type: "object", properties: {} },
     async run(_input, ctx) {
       const homeCtx = ctx.home ? { ...ctx, projectId: ctx.home.projectId, branch: ctx.home.branch } : ctx;
@@ -1471,7 +1471,7 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
     name: "switch_ontology",
     kind: "read",
     description:
-      "Switch which ontology the following tool calls read and edit, for the rest of this reply: an imported OntoBuilder project (by its import IRI or project id, from list_imports), opened on its default branch, or \"home\" for the user's own project, back on the branch you left it on. Imported ontologies are normally read-only. Code tools and select_entity only work at home. The next user message starts at home again.",
+      "Switch which ontology the following tool calls read and edit, for the rest of this reply: an imported OntoBuild project (by its import IRI or project id, from list_imports), opened on its default branch, or \"home\" for the user's own project, back on the branch you left it on. Imported ontologies are normally read-only. Code tools and select_entity only work at home. The next user message starts at home again.",
     parameters: {
       type: "object",
       properties: {
@@ -1504,7 +1504,7 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
       if (!match) throw new ToolError(`"${target}" is not imported by this project. Call list_imports to see the imports.`);
       if (match.source !== "project" || !match.project_id) {
         throw new ToolError(
-          `${match.iri} is a cached copy of a web ontology, not an OntoBuilder project, so it cannot be opened or edited. Read its classes through the merged class tree instead.`,
+          `${match.iri} is a cached copy of a web ontology, not an OntoBuild project, so it cannot be opened or edited. Read its classes through the merged class tree instead.`,
         );
       }
       if (match.status === "cycle" || match.project_id === home.projectId) {
@@ -1749,8 +1749,8 @@ function failure(
 // collector records the commits made to its project, so the client learns about every
 // change, including ones made on another branch, without each tool reporting it.
 type CommitCollector = (e: OntologyEvent) => void;
-const collectorsG = globalThis as typeof globalThis & { __ontobuilderAgentCommitCollectors?: Set<CommitCollector> };
-const commitCollectors: Set<CommitCollector> = (collectorsG.__ontobuilderAgentCommitCollectors ??= new Set());
+const collectorsG = globalThis as typeof globalThis & { __ontobuildAgentCommitCollectors?: Set<CommitCollector> };
+const commitCollectors: Set<CommitCollector> = (collectorsG.__ontobuildAgentCommitCollectors ??= new Set());
 onOntologyEvent("agent:commit-collector", (e) => {
   for (const collect of commitCollectors) collect(e);
 });

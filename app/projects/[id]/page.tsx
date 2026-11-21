@@ -158,7 +158,7 @@ export default function ProjectEditorPage() {
   );
   const consumedSelectionRef = useRef<string | null>(null);
   const initialBranch = resumeBranchParam
-    || (() => { try { return sessionStorage.getItem(`ontobuilder:branch:${projectId}`); } catch { return null; } })()
+    || (() => { try { return sessionStorage.getItem(`ontobuild:branch:${projectId}`); } catch { return null; } })()
     || undefined;
 
   const queryClient = useQueryClient();

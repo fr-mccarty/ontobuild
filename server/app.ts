@@ -38,10 +38,10 @@ app.onError((err, c) => {
     return c.json({ detail: err.message }, err.status);
   }
   if (err instanceof GitError) {
-    console.warn("[ontobuilder] git error:", err.message);
+    console.warn("[ontobuild] git error:", err.message);
     return c.json({ detail: err.message }, 400);
   }
-  console.error("[ontobuilder] unhandled error:", err);
+  console.error("[ontobuild] unhandled error:", err);
   return c.json({ detail: err instanceof Error ? err.message : "Internal Server Error" }, 500);
 });
 

@@ -7,7 +7,7 @@
  *   Nothing is moved; `projects.git_ontology_path` records where the ontology lives.
  * - A Turtle (.ttl) ontology is edited in place, wherever it is in the repository. It is not
  *   rewritten on import, so the first commit after the clone is the user's own edit.
- * - Any other RDF format is converted to Turtle (OntoBuilder reads and writes Turtle) with the
+ * - Any other RDF format is converted to Turtle (OntoBuild reads and writes Turtle) with the
  *   same normalization as an uploaded file, and committed as `ontology.ttl` at the top of the
  *   repository (or next to the original when that name is taken). The original file is left
  *   unchanged. The conversion is a local commit; it reaches the remote only when the user pushes.

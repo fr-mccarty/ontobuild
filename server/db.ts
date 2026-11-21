@@ -4,33 +4,40 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 export const DATA_DIR = path.resolve(
-  /*turbopackIgnore: true*/ process.env.ONTOBUILDER_DATA_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "data"),
+  /*turbopackIgnore: true*/ process.env.ONTOBUILD_DATA_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "data"),
 );
 /** Legacy location of bare project repositories, moved into PROJECTS_DIR by server/workspace.ts. */
 export const REPOS_DIR = path.join(/*turbopackIgnore: true*/ DATA_DIR, "repos");
 export const PROJECTS_DIR = path.join(/*turbopackIgnore: true*/ DATA_DIR, "projects");
 const SCHEMA_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), "server", "schema");
 
-type GlobalWithDb = typeof globalThis & { __ontobuilderDb?: DatabaseSync; __ontobuilderSchema?: string };
+type GlobalWithDb = typeof globalThis & { __ontobuildDb?: DatabaseSync; __ontobuildSchema?: string };
 const g = globalThis as GlobalWithDb;
 
 function open(): DatabaseSync {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.mkdirSync(PROJECTS_DIR, { recursive: true });
   migrateLegacyDbFile();
-  const db = new DatabaseSync(path.join(DATA_DIR, "ontobuilder.db"));
+  const db = new DatabaseSync(path.join(DATA_DIR, "ontobuild.db"));
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
   applySchema(db);
   return db;
 }
 
-/** Renames the database from its pre-OntoBuilder name, data/ontokit.db, if that is all there is. */
+/**
+ * Renames the database from an earlier name to data/ontobuild.db (with its -wal and -shm files),
+ * if the earlier file is all there is: data/ontobuilder.db, or before that data/ontokit.db.
+ */
 function migrateLegacyDbFile() {
-  const to = path.join(DATA_DIR, "ontobuilder.db");
-  const from = path.join(DATA_DIR, "ontokit.db");
-  if (fs.existsSync(to) || !fs.existsSync(from)) return;
-  for (const suffix of ["", "-wal", "-shm"]) {
-    if (fs.existsSync(from + suffix)) fs.renameSync(from + suffix, to + suffix);
+  const to = path.join(DATA_DIR, "ontobuild.db");
+  if (fs.existsSync(to)) return;
+  for (const legacy of ["ontobuilder.db", "ontokit.db"]) {
+    const from = path.join(DATA_DIR, legacy);
+    if (!fs.existsSync(from)) continue;
+    for (const suffix of ["", "-wal", "-shm"]) {
+      if (fs.existsSync(from + suffix)) fs.renameSync(from + suffix, to + suffix);
+    }
+    return;
   }
 }
 
@@ -40,7 +47,7 @@ function applySchema(db: DatabaseSync) {
     db.exec(fs.readFileSync(path.join(SCHEMA_DIR, file), "utf8"));
   }
   for (const [table, column, type] of ADDED_COLUMNS) ensureColumn(db, table, column, type);
-  g.__ontobuilderSchema = schemaKey();
+  g.__ontobuildSchema = schemaKey();
   // Indexes on added columns: they can only be made once the column exists.
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS ux_projects_folder ON projects(folder)");
   db.exec("CREATE INDEX IF NOT EXISTS ix_normalization_runs_file ON normalization_runs(project_id, ontology_path, created_at)");
@@ -65,11 +72,11 @@ function schemaKey(): string {
 }
 
 export function getDb(): DatabaseSync {
-  if (!g.__ontobuilderDb) g.__ontobuilderDb = open();
+  if (!g.__ontobuildDb) g.__ontobuildDb = open();
   // The connection outlives a code reload in development (it is kept on globalThis), so apply
   // schema changes made since it was opened. Everything in applySchema is idempotent.
-  else if (g.__ontobuilderSchema !== schemaKey()) applySchema(g.__ontobuilderDb);
-  return g.__ontobuilderDb;
+  else if (g.__ontobuildSchema !== schemaKey()) applySchema(g.__ontobuildDb);
+  return g.__ontobuildDb;
 }
 
 export type Param = SQLInputValue | boolean | undefined;

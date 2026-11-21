@@ -6,8 +6,8 @@ import { ApiError } from "./http";
 import { CODE_DIR, projectDir, removeProjectDir } from "./workspace";
 
 export const DEFAULT_BRANCH = "main";
-export const COMMITTER_NAME = "OntoBuilder";
-export const COMMITTER_EMAIL = "noreply@ontobuilder.dev";
+export const COMMITTER_NAME = "OntoBuild";
+export const COMMITTER_EMAIL = "noreply@ontobuild.dev";
 
 export interface CommitInfo {
   hash: string;
@@ -139,8 +139,8 @@ function gitRaw(
   });
 }
 
-const g = globalThis as typeof globalThis & { __ontobuilderGitLocks?: Map<string, Promise<unknown>> };
-const locks = (g.__ontobuilderGitLocks ??= new Map());
+const g = globalThis as typeof globalThis & { __ontobuildGitLocks?: Map<string, Promise<unknown>> };
+const locks = (g.__ontobuildGitLocks ??= new Map());
 
 export async function withRepoLock<T>(projectId: string, fn: () => Promise<T>): Promise<T> {
   const prev = locks.get(projectId) ?? Promise.resolve();
@@ -502,7 +502,7 @@ export function authorEnv(author?: Author): Record<string, string> {
 }
 
 async function withTempIndex<T>(fn: (env: Record<string, string>) => Promise<T>): Promise<T> {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuilder-idx-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ontobuild-idx-"));
   try {
     return await fn({ GIT_INDEX_FILE: path.join(dir, "index") });
   } finally {
