@@ -10,6 +10,7 @@ import {
   type PRFileChange,
 } from "@/lib/api/pullRequests";
 import { PRActions } from "./PRActions";
+import { RuleViolationList } from "@/components/editor/rules/RuleViolationList";
 import { PRCommentThread } from "./PRCommentThread";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -260,6 +261,18 @@ export function PRDetail({
           <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">
             {pr.description}
           </p>
+        </div>
+      )}
+
+      {pr.rule_violations_added.length > 0 && (
+        <div
+          data-testid="pr-rule-violations"
+          className="space-y-2 rounded-lg border border-red-200 bg-white p-4 dark:border-red-900/50 dark:bg-slate-800"
+        >
+          <h3 className="text-sm font-medium text-slate-900 dark:text-white">
+            Rule violations this pull request adds ({pr.rule_violations_added.length})
+          </h3>
+          <RuleViolationList violations={pr.rule_violations_added} />
         </div>
       )}
 

@@ -51,6 +51,10 @@ const SECTION_HELP: Record<string, string> = {
     "This individual's links to other individuals, such as worksFor → Acme. Each is an object property assertion.",
   "Used By":
     "Every other entity in the ontology that refers to this one: as a parent, a domain or range, a type, a value or in an annotation. Check it before renaming or deleting. Worked out, not stored.",
+  Rules:
+    "What instances of this class must look like: how many values a property may have, their class, datatype, allowed values or pattern. Stored as rule:Rule terms; OntoBuild checks them as SHACL and reports each instance that breaks one.",
+  "Rule Violations":
+    "The rules this individual breaks. Worked out when rules are validated, not stored; fix the individual or change the rule.",
   History:
     "The commits that changed this entity, newest first: who changed what and when. Read from the project's Git history.",
   "Data Properties":

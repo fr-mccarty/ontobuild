@@ -19,7 +19,7 @@ export const pullRequestSchemas: Record<string, Schema> = {
       "id", "project_id", "pr_number", "title", "description", "source_branch", "target_branch", "status",
       "author_id", "author", "merged_by", "merged_by_user", "merged_at", "merge_commit_hash", "base_commit_hash",
       "head_commit_hash", "created_at", "updated_at", "review_count", "approval_count", "comment_count",
-      "commits_ahead", "can_merge",
+      "commits_ahead", "can_merge", "merge_blocked_reason", "rule_violations_added",
     ],
     properties: {
       id: { type: "string" },
@@ -53,7 +53,17 @@ export const pullRequestSchemas: Record<string, Schema> = {
       can_merge: {
         type: "boolean",
         description:
-          "True when the pull request is open, has commits to merge (`commits_ahead` > 0) and has at least the project's required number of approvals.",
+          "True when the pull request is open, has commits to merge (`commits_ahead` > 0), has at least the project's required number of approvals and adds no rule violations (`rule_violations_added` is empty).",
+      },
+      merge_blocked_reason: {
+        type: ["string", "null"],
+        description: "Why `can_merge` is false, or null when it is true.",
+      },
+      rule_violations_added: {
+        type: "array",
+        items: ref("RuleViolation"),
+        description:
+          "Rule violations the source branch has that the target branch does not, compared by rule, focus node, property and value. Empty unless the pull request is open.",
       },
     },
   },
@@ -267,7 +277,9 @@ export const pullRequestDocs: DocMap = {
     description:
       "Merges the source branch into the target branch. The pull request must be open and have the project's required number of approvals. " +
       "If the target branch already contains every commit of the source branch (`commits_ahead` is 0), the merge is refused with 409 " +
-      "\"Nothing to merge\" and the pull request stays open; close it instead.",
+      "\"Nothing to merge\" and the pull request stays open; close it instead. " +
+      "It is also refused with 409 while the source branch adds rule violations the target branch does not have; the body then has " +
+      "`code: \"rule_violations\"` and the `rule_violations_added` list.",
     body: {
       required: false,
       schema: {
@@ -304,7 +316,19 @@ export const pullRequestDocs: DocMap = {
       },
       "400": error("The pull request lacks approvals, or a branch no longer exists."),
       "404": error("The project, pull request or repository does not exist."),
-      "409": error("The pull request is not open, there is nothing to merge, or the merge failed (for example because of conflicts)."),
+      "409": {
+        description:
+          "The pull request is not open, there is nothing to merge, the source branch adds rule violations, or the merge failed (for example because of conflicts).",
+        schema: {
+          type: "object",
+          required: ["detail"],
+          properties: {
+            detail: { type: "string" },
+            code: { type: "string", const: "rule_violations", description: "Set when rule violations refused the merge." },
+            rule_violations_added: { type: "array", items: ref("RuleViolation") },
+          },
+        },
+      },
       "422": error("A field is invalid, or the PR number is not an integer."),
     },
   },

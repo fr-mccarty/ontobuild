@@ -30,6 +30,7 @@ import { LABEL_IRI, COMMENT_IRI, DEFINITION_IRI, SEE_ALSO_IRI, getAnnotationProp
 import { AutoSaveAffordanceBar } from "@/components/editor/AutoSaveAffordanceBar";
 import { useEntityAutoSave } from "@/lib/hooks/useEntityAutoSave";
 import { useToast } from "@/lib/context/ToastContext";
+import { EntityViolationsSection } from "@/components/editor/rules/EntityViolationsSection";
 import {
   extractIndividualDetail,
   type ParsedIndividualDetail,
@@ -723,6 +724,8 @@ export function IndividualDetailPanel({
                 onNavigateToClass={onNavigateToEntity} onSaveNeeded={() => triggerSave()} />
             </Section>
           )}
+
+          <EntityViolationsSection projectId={projectId} entityIri={individualIri} branch={branch} />
         </div>
       </div>
 

@@ -73,6 +73,7 @@ export interface StandardEditorLayoutProps {
 
   onUpdateClass?: (classIri: string, data: ClassUpdatePayload) => Promise<void>;
   detailRefreshKey?: number;
+  onRulesChanged?: () => void | Promise<void>;
 
   sourceContent?: string;
   onUpdateProperty?: (propertyIri: string, data: TurtlePropertyUpdateData) => Promise<void>;
@@ -462,6 +463,7 @@ export function StandardEditorLayout(props: StandardEditorLayoutProps) {
             onAddIndividual={canEdit ? (iri: string) => onAddEntity(iri, "individual") : undefined}
             onNavigateToIndividual={(iri: string) => { setActiveTab("individuals"); setSelectedIndividualIri(iri); }}
             refreshKey={detailRefreshKey}
+            onRulesChanged={props.onRulesChanged}
           />
         ) : activeTab === "properties" ? (
           <PropertyDetailPanel

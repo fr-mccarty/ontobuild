@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { lintApi } from "@/lib/api/lint";
 import { qualityApi } from "@/lib/api/quality";
+import { rulesApi } from "@/lib/api/rules";
 import type { AgentHealthSummary } from "@/lib/agent/healthSummary";
 
 export const healthQueryKeys = {
@@ -17,10 +18,11 @@ async function settle<T>(p: Promise<T>): Promise<T | null> {
 }
 
 export async function fetchHealthSummary(projectId: string, branch?: string): Promise<AgentHealthSummary> {
-  const [lint, consistency, duplicates] = await Promise.all([
+  const [lint, consistency, duplicates, rules] = await Promise.all([
     settle(lintApi.getStatus(projectId)),
     settle(qualityApi.getConsistencyIssues(projectId, branch)),
     settle(qualityApi.getLatestDuplicates(projectId, branch)),
+    settle(rulesApi.getViolations(projectId, branch)),
   ]);
   const running = !!lint?.last_run && ["pending", "running"].includes(lint.last_run.status);
   return {
@@ -41,6 +43,15 @@ export async function fetchHealthSummary(projectId: string, branch?: string): Pr
       : null,
     consistency: consistency ? { count: consistency.issues.length, checkedAt: consistency.checked_at } : null,
     duplicates: duplicates ? { count: duplicates.clusters.length, checkedAt: duplicates.checked_at } : null,
+    rules: rules
+      ? {
+          errors: rules.counts.error,
+          warnings: rules.counts.warning,
+          info: rules.counts.info,
+          total: rules.counts.total,
+          checkedAt: rules.checked_at,
+        }
+      : null,
   };
 }
 

@@ -40,6 +40,8 @@ function makePR(overrides: Partial<PullRequest> = {}): PullRequest {
     merge_commit_hash: null,
     base_commit_hash: null,
     head_commit_hash: null,
+    merge_blocked_reason: null,
+    rule_violations_added: [],
     updated_at: null,
     id: "pr-1",
     project_id: "proj-1",

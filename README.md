@@ -27,9 +27,15 @@ optional editor agent, which calls OpenRouter (see [Editor agent](#editor-agent)
   delete entities through forms. Every change is saved immediately as a git commit.
 - **Branches and pull requests.** Work on branches, open pull requests, review, comment and
   merge.
-- **Health checks.** Lint rules, consistency checks, duplicate detection and normalization,
-  run as background jobs, with results shown in the editor's **Health** tab. The same counts
+- **Health checks.** Lint rules, consistency checks, duplicate detection, rule validation and
+  normalization, run as background jobs, with results shown in the editor's **Health** tab. The same counts
   appear in the **Agent** tab with a **Fix issues** button (see [Editor agent](#editor-agent)).
+- **Rules.** Validation rules written in the ontology itself as `rule:Rule` terms (from the
+  bundled vocabulary `https://ontobuild.dev/rules`): required and maximum counts, value classes,
+  datatypes, allowed values, patterns, lengths and closed classes, with a severity and a message.
+  They are checked as SHACL against the ontology and its imports after every commit, their
+  violations appear in the **Health** tab, and a pull request that adds violations can't be merged.
+  `GET /api/v1/projects/<id>/rules/shacl` exports the derived shapes.
 - **Changes made outside the editor.** If the ontology file in the project folder is changed by
   something else (a terminal, a text editor, another agent), the editor shows a notice and
   refuses to save over it until you commit or discard the change.
@@ -136,7 +142,7 @@ somewhere else.
 - `data/import-cache/`: cached copies of imported ontologies fetched from the web
 - `data/ontobuild.db`: SQLite database (projects, branch metadata, pull requests, reviews,
   comments, lint runs, issues and per-project lint configs, quality results, normalization
-  runs, entity change events, background jobs, user and agent settings)
+  runs, rule validations, entity change events, background jobs, user and agent settings)
 - `data/projects/<folder>/`: one folder per project, named after the project when it is
   created. It is a normal git repository: `ontology.ttl` (Turtle, or the active ontology file
   of a cloned repository) and a `code/` folder for the project's code. Each branch is a git
@@ -175,7 +181,7 @@ they find.
   header). Each change is a normal commit on the current branch with its own message, and the
   editor refreshes as the agent works, keeping your unsaved form edits.
 - **Show:** after a change, it selects the entity in the editor so you can see the result.
-- **Health:** run lint, consistency and duplicate checks, read the full report, fix the issues
+- **Health:** run lint, consistency, duplicate and rule checks, read the full report, fix the issues
   and re-run the checks to confirm. **Fix issues** in the Agent tab's health strip puts that
   request in the message box for you to send.
 - **Branches and pull requests:** create and switch branches, and open, comment on, merge and
@@ -238,7 +244,7 @@ browser ──> Next.js (App Router pages, React Query)
                                                     ├── server/routes/*.ts
                                                     ├── SQLite (node:sqlite)   data/ontobuild.db
                                                     ├── git CLI                data/projects/<folder>/
-                                                    ├── in-process jobs (lint, quality, normalization, index)
+                                                    ├── in-process jobs (lint, quality, rules, normalization, index)
                                                     └── editor agent (server/agent) ──> OpenRouter
 ```
 
@@ -247,7 +253,7 @@ app/, components/, lib/, public/             frontend (Next.js App Router)
 app/api/v1/[[...path]]/route.ts               forwards every /api/v1/* request to Hono
 server/app.ts                                 Hono app (basePath /api/v1), error handler, /health, /openapi.json
 server/http.ts                                shared request and response helpers
-server/routes/<domain>.ts                     projects, ontology, pullRequests, lint, quality,
+server/routes/<domain>.ts                     projects, ontology, pullRequests, lint, quality, rules,
                                               normalization, analytics, userSettings, agent,
                                               imports, github, workspace, prompts, tools
 server/openapi/                               OpenAPI 3.1 spec built from the Hono route table
@@ -273,6 +279,8 @@ server/rdf.ts                                 parse Turtle, N3, N-Triples, N-Qua
                                               serialize Turtle
 server/ontology.ts                            load a branch into an N3 store (cached by commit), commit edits
 server/linter.ts  quality.ts                  lint rules, consistency checks, duplicate detection
+server/rules.ts  rulesVocabulary.ts           rules: reading and writing rule:Rule terms, SHACL derivation, validation
+server/vocabularies/rules.ttl                 the bundled rules vocabulary (https://ontobuild.dev/rules)
 server/jobs.ts                                in-process background jobs
 server/user.ts                                the fixed local user (author of every commit and comment)
 ```

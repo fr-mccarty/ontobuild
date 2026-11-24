@@ -16,6 +16,9 @@ vi.mock("@/lib/stores/preferencesStore", () => ({
   usePreferencesStore: (selector: (s: Record<string, unknown>) => unknown) => selector({}),
 }));
 
+vi.mock("@/components/editor/rules/EntityViolationsSection", () => ({
+  EntityViolationsSection: () => null,
+}));
 vi.mock("@/lib/hooks/useIriLabels", () => ({
   useIriLabels: () => ({}),
 }));

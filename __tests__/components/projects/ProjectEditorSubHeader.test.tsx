@@ -373,6 +373,7 @@ describe("Side panel toggle", () => {
     lint: { errors: 0, warnings: 0, info: 0, total: 0, checkedAt: "now", running: false },
     consistency: { count: 0, checkedAt: "now" },
     duplicates: { count: 0, checkedAt: "now" },
+    rules: null,
     ...over,
   });
   const lint = (errors: number, warnings: number, info: number) => ({

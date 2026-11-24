@@ -48,6 +48,13 @@ export const guideChapters: GuideChapter[] = [
     description:
       "From the base rdf:Property to OWL's three property kinds, characteristic axioms (functional, transitive, …), and disjointness.",
   },
+  {
+    slug: "rules",
+    title: "What are Rules?",
+    shortTitle: "Rules",
+    description:
+      "Write validation rules in the ontology, checked as SHACL in the Health tab and before every merge.",
+  },
 ];
 
 export function getAdjacentChapters(currentSlug: string) {

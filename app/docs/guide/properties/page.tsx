@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { GuidePrevNext } from "@/components/docs/GuidePrevNext";
 
 export default function PropertiesPage() {
@@ -284,8 +285,10 @@ ex:hasGrandparent owl:propertyChainAxiom ( ex:hasParent ex:hasParent ) .`}</pre>
               entailments. Asserting <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded-sm text-xs">hasParent rdfs:domain Person</code>{" "}
               and then writing <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded-sm text-xs">ex:Spot ex:hasParent ex:Rex</code> doesn&apos;t{" "}
               raise an error; it lets a reasoner conclude that Spot <em>is</em> a Person.{" "}
-              Use SHACL or domain-specific lint rules if you want classical &ldquo;wrong type&rdquo;{" "}
-              validation.
+              Use{" "}
+              <Link href="/docs/guide/rules" className="text-blue-600 dark:text-blue-400 hover:underline">Rules</Link>{" "}
+              (a <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded-sm text-xs">rule:valueClass</code> on the{" "}
+              property) if you want classical &ldquo;wrong type&rdquo; validation.
             </p>
           </div>
         </section>

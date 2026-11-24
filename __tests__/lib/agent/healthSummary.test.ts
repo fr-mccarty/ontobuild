@@ -12,6 +12,7 @@ const health: AgentHealthSummary = {
   lint: { errors: 2, warnings: 1, info: 0, total: 3, checkedAt: "2026-11-17T10:00:00Z", running: false },
   consistency: { count: 1, checkedAt: "2026-11-17T10:05:00Z" },
   duplicates: { count: 0, checkedAt: null },
+  rules: null,
 };
 
 describe("healthSummary", () => {
@@ -34,6 +35,7 @@ describe("healthSummary", () => {
       lint: { ...health.lint!, running: true },
       consistency: null,
       duplicates: null,
+      rules: null,
     });
     expect(text).toContain("a run is in progress");
     expect(text).toContain("Consistency: unavailable");
@@ -43,6 +45,15 @@ describe("healthSummary", () => {
     expect(buildHealthFixPrompt(health)).toContain("(2 lint errors, 1 lint warning and 1 consistency issue)");
     const clean = { ...health, lint: { ...health.lint!, errors: 0, warnings: 0, total: 0 }, consistency: { count: 0, checkedAt: null } };
     expect(buildHealthFixPrompt(clean)).toMatch(/Run all the health checks/);
+  });
+
+  it("counts rule violations in the strip, the context and the fix prompt", () => {
+    const withRules = { ...health, rules: { errors: 1, warnings: 0, info: 2, total: 3, checkedAt: "2026-11-17T10:10:00Z" } };
+    expect(totalHealthIssues(withRules)).toBe(7);
+    const parts = healthIssueParts(withRules);
+    expect(parts.length).toBe(healthIssueParts(health).length + 2);
+    expect(formatHealthContext(withRules)).toContain("2026-11-17T10:10:00Z");
+    expect(buildHealthFixPrompt(withRules)).toContain(parts[parts.length - 1]);
   });
 
   it("is included in the agent's page context when known", () => {

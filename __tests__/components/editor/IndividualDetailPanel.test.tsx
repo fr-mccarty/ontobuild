@@ -45,6 +45,9 @@ vi.mock("@/lib/stores/preferencesStore", () => ({
     selector({ ...preferencesOverrides }),
 }));
 
+vi.mock("@/components/editor/rules/EntityViolationsSection", () => ({
+  EntityViolationsSection: () => null,
+}));
 vi.mock("@/lib/hooks/useIriLabels", () => ({
   useIriLabels: () => ({}),
 }));

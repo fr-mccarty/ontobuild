@@ -3,6 +3,7 @@ import { agentDocs, agentSchemas } from "./agent";
 import { userDocs, userSchemas } from "./users";
 import { lintDocs, lintSchemas } from "./lint";
 import { qualityDocs, qualitySchemas } from "./quality";
+import { rulesDocs, rulesSchemas } from "./rules";
 import { normalizationDocs, normalizationSchemas } from "./normalization";
 import { pullRequestDocs, pullRequestSchemas } from "./pullRequests";
 import { projectDocs, projectSchemas } from "./projects";
@@ -19,6 +20,7 @@ export const operationDocs: DocMap = {
   ...userDocs,
   ...lintDocs,
   ...qualityDocs,
+  ...rulesDocs,
   ...normalizationDocs,
   ...pullRequestDocs,
   ...projectDocs,
@@ -44,6 +46,7 @@ export const schemaSources: Record<string, Schema>[] = [
   userSchemas,
   lintSchemas,
   qualitySchemas,
+  rulesSchemas,
   normalizationSchemas,
   pullRequestSchemas,
   projectSchemas,
@@ -78,6 +81,7 @@ export const tags: { name: string; description: string }[] = [
   { name: "Pull Requests", description: "Local pull requests between branches, with reviews and comments." },
   { name: "Lint", description: "Rule-based health checks of an ontology." },
   { name: "Quality", description: "Consistency checks and duplicate detection." },
+  { name: "Rules", description: "Validation rules written in the ontology, checked as SHACL." },
   { name: "Normalization", description: "Canonical Turtle formatting of a project's source." },
   { name: "Analytics", description: "Change activity, contributors and entity history." },
   { name: "Agent", description: "Settings for, and chat with, the AI editing agent." },

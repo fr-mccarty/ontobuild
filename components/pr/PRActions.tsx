@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+import { ApiError } from "@/lib/api/client";
 import { branchesApi } from "@/lib/api/revisions";
 import { Tooltip } from "@/components/ui/tooltip";
 
@@ -51,6 +52,7 @@ export function PRActions({
   const isClosed = pr.status === "closed";
   const isMerged = pr.status === "merged";
   const nothingToMerge = pr.status === "open" && pr.commits_ahead === 0;
+  const blockedReason = !pr.can_merge ? pr.merge_blocked_reason : null;
 
   useEffect(() => {
     if (isMerged && sourceBranchExists === null) {
@@ -67,11 +69,18 @@ export function PRActions({
   }, [isMerged, sourceBranchExists, projectId, pr.source_branch]);
 
   const handleMerge = async () => {
-    await pullRequestsApi.merge(
-      projectId,
-      pr.pr_number,
-      { delete_source_branch: deleteSourceBranch }
-    );
+    try {
+      await pullRequestsApi.merge(
+        projectId,
+        pr.pr_number,
+        { delete_source_branch: deleteSourceBranch }
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "rule_violations") {
+        onUpdate(await pullRequestsApi.get(projectId, pr.pr_number));
+      }
+      throw err;
+    }
 
     const updatedPR = await pullRequestsApi.get(
       projectId,
@@ -315,7 +324,7 @@ export function PRActions({
             Review
           </Button>
 
-          <Tooltip content={!pr.can_merge ? `Cannot merge: ${nothingToMerge ? "nothing to merge" : "approval requirements not met"}` : undefined}>
+          <Tooltip content={!pr.can_merge ? `Cannot merge: ${blockedReason ?? (nothingToMerge ? "nothing to merge" : "approval requirements not met")}` : undefined}>
             <span className="inline-flex">
               <Button
                 size="sm"
@@ -378,12 +387,17 @@ export function PRActions({
         variant="danger"
       />
 
-      {!pr.can_merge && nothingToMerge && (
+      {blockedReason && (
+        <p role="status" data-testid="merge-blocked-reason" className="text-sm text-amber-600 dark:text-amber-400">
+          {blockedReason}
+        </p>
+      )}
+      {!blockedReason && !pr.can_merge && nothingToMerge && (
         <p className="text-sm text-slate-600 dark:text-slate-400">
           Nothing to merge: {pr.target_branch} already contains all commits from {pr.source_branch}.
         </p>
       )}
-      {!pr.can_merge && !nothingToMerge && (
+      {!blockedReason && !pr.can_merge && !nothingToMerge && (
         <p className="text-sm text-amber-600 dark:text-amber-400">
           This pull request requires additional approvals before it can be merged.
           Current: {pr.approval_count} approvals

@@ -48,6 +48,7 @@ import { useToast } from "@/lib/context/ToastContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { ImportedMarker } from "@/lib/ontology/types";
 import { useSaveShortcut } from "@/lib/hooks/useSaveShortcut";
+import { ClassRulesSection } from "@/components/editor/rules/ClassRulesSection";
 
 export function ensureTrailingEmpty(arr: LocalizedString[]): LocalizedString[] {
   if (arr.length === 0 || arr[arr.length - 1].value.trim() !== "") {
@@ -76,6 +77,7 @@ interface ClassDetailPanelProps {
   onNavigateToIndividual?: (iri: string) => void;
   refreshKey?: number;
   headerActions?: ReactNode;
+  onRulesChanged?: () => void | Promise<void>;
 }
 
 export function ClassDetailPanel({
@@ -91,6 +93,7 @@ export function ClassDetailPanel({
   onNavigateToIndividual,
   refreshKey,
   headerActions,
+  onRulesChanged,
 }: ClassDetailPanelProps) {
   const [classDetail, setClassDetail] = useState<OWLClassDetail | null>(null);
   // A class from an imported ontology (owl:imports) is shown read-only.
@@ -981,6 +984,17 @@ export function ClassDetailPanel({
           >
             <EntityLinkList items={classDetail.instances ?? []} onNavigate={onNavigateToIndividual} icon={<IndividualIcon className="h-3.5 w-3.5" />} />
           </DisclosureSection>
+
+          <ClassRulesSection
+            projectId={projectId}
+            classIri={classIri}
+            classLabel={getPreferredLabel(classDetail.labels) || getLocalName(classIri)}
+            branch={branch}
+            canEdit={editable}
+            onRulesChanged={onRulesChanged}
+            onNavigateToClass={onNavigateToClass}
+            onNavigateToEntity={(iri) => onNavigateToIndividual?.(iri)}
+          />
 
           <CrossReferencesPanel
             projectId={projectId}

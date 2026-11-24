@@ -1,5 +1,6 @@
 import type { Quad, Store, Term } from "n3";
 import { NS } from "./rdf";
+import { isRule } from "./rulesVocabulary";
 
 export type LintSeverity = "error" | "warning" | "info";
 export type LintSubjectType = "class" | "property" | "individual" | "other";
@@ -761,7 +762,7 @@ export function lintOntology(
 ): LintResult[] {
   const g = new Graph(store);
   const enabled = opts.enabledRules ?? ALL_RULE_IDS;
-  const uriSubjects = uniqueNamed(store.getSubjects(null, null, null)).filter((s) => s.value !== OWL_THING);
+  const uriSubjects = uniqueNamed(store.getSubjects(null, null, null)).filter((s) => s.value !== OWL_THING && !isRule(store, s.value));
   let externalClasses: ReadonlySet<string> = new Set();
   try {
     externalClasses = resolverG.__ontobuildLintExternalClasses?.(store) ?? new Set();

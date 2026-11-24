@@ -401,6 +401,38 @@ interface ClassDetailResponse {
 
 const OWL_ONTOLOGY = "http://www.w3.org/2002/07/owl#Ontology";
 
+const nullableCount = (description: string): JsonSchema => ({ type: ["integer", "null"], minimum: 0, description });
+const nullableIri = (description: string): JsonSchema => ({ type: ["string", "null"], description });
+
+const RULE_FIELDS: Record<string, JsonSchema> = {
+  applies_to_iri: str("Class whose instances the rule checks"),
+  property_iri: nullableIri("Property whose values the rule checks; required unless closed"),
+  min_count: nullableCount("Fewest values the property may have"),
+  max_count: nullableCount("Most values the property may have"),
+  value_class_iri: nullableIri("Each value must be an instance of this class"),
+  value_datatype_iri: nullableIri("Each value must be a literal of this datatype, e.g. xsd:integer"),
+  allowed_values: {
+    type: ["array", "null"],
+    description: "The only values allowed. An IRI value must be a full IRI.",
+    items: {
+      type: "object",
+      properties: {
+        value: str("The value"),
+        type: { type: "string", enum: ["iri", "literal"], description: "Whether the value is an IRI or a literal" },
+        datatype: str("Datatype of a typed literal, e.g. xsd:integer; omit for a plain string"),
+      },
+      required: ["value", "type"],
+    },
+  },
+  pattern: { type: ["string", "null"], description: "Regular expression each value must match" },
+  min_length: nullableCount("Fewest characters each value may have"),
+  max_length: nullableCount("Most characters each value may have"),
+  closed: { type: "boolean", description: "Only properties with a rule for this class may be used on its instances" },
+  severity: { type: "string", enum: ["error", "warning", "info"], description: "Default error" },
+  label: { type: ["string", "null"], description: "rdfs:label of the rule" },
+  message: { type: ["string", "null"], description: "Message shown for a violation (the rule's rdfs:comment)" },
+};
+
 const s = (input: Record<string, unknown>, key: string) => input[key] as string;
 const opt = <T>(input: Record<string, unknown>, key: string): T | undefined => input[key] as T | undefined;
 
@@ -1032,7 +1064,7 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
     name: "get_health_report",
     kind: "read",
     description:
-      "Read every issue currently shown in the Health tab, without re-running anything: the latest lint results (counts and open issues, default branch), the latest consistency check issues and the latest duplicate clusters (current branch). Call this first when the user asks to fix health issues. A section whose checked_at is null has never been run; run it with run_lint, run_consistency_check or find_duplicates.",
+      "Read every issue currently shown in the Health tab, without re-running anything: the latest lint results (counts and open issues, default branch), the latest consistency check issues, the latest duplicate clusters and the latest rule violations (current branch). Call this first when the user asks to fix health issues. A section whose checked_at is null has never been run; run it with run_lint, run_consistency_check, find_duplicates or run_rule_validation.",
     parameters: {
       type: "object",
       properties: {
@@ -1046,7 +1078,7 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
     },
     async run(input, ctx) {
       const lintLimit = opt<number>(input, "lint_limit") ?? 200;
-      const [status, lintIssues, consistency, duplicates] = await Promise.all([
+      const [status, lintIssues, consistency, duplicates, rules] = await Promise.all([
         call<{
           last_run: { status: string; completed_at?: string | null; error_message?: string | null } | null;
           error_count: number;
@@ -1062,6 +1094,11 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
           ctx,
           "GET",
           projectPath(ctx, "/quality/duplicates/latest"),
+        ),
+        call<{ checked_at: string | null; stale: boolean; counts: { total: number }; violations: unknown[] }>(
+          ctx,
+          "GET",
+          projectPath(ctx, "/rules/violations"),
         ),
       ]);
       const lintStatus = status.data;
@@ -1092,10 +1129,17 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
           cluster_count: clusters.length,
           clusters,
         },
+        rules: {
+          branch: ctx.branch,
+          checked_at: rules.data.checked_at,
+          stale: rules.data.stale,
+          counts: rules.data.counts,
+          violations: rules.data.violations,
+        },
       };
       return {
         result,
-        summary: `Health: ${lintStatus.total_issues} lint issues, ${consistencyIssues.length} consistency issues, ${clusters.length} duplicate clusters`,
+        summary: `Health: ${lintStatus.total_issues} lint issues, ${consistencyIssues.length} consistency issues, ${clusters.length} duplicate clusters, ${rules.data.counts.total} rule violations`,
         mutated: false,
       };
     },
@@ -1176,6 +1220,97 @@ const ONTOLOGY_TOOLS: ToolDef[] = [
         summary: `Found ${Array.isArray(clusters) ? clusters.length : 0} duplicate clusters`,
         mutated: false,
       };
+    },
+  },
+  {
+    name: "list_rules",
+    kind: "read",
+    description:
+      "List the validation rules (rule:Rule terms) in the ontology and its imports. Rules from imports are read_only. With class_iri, only the rules that apply to that class or one of its superclasses.",
+    parameters: {
+      type: "object",
+      properties: { class_iri: str("Only rules for this class (full IRI or prefixed name)") },
+    },
+    async run(input, ctx) {
+      const { data } = await call<{ rules: unknown[] }>(ctx, "GET", projectPath(ctx, "/rules"), {
+        query: { class: opt<string>(input, "class_iri") },
+      });
+      return { result: data, summary: `Listed ${data.rules.length} rules`, mutated: false };
+    },
+  },
+  {
+    name: "run_rule_validation",
+    kind: "read",
+    description:
+      "Validate the current branch against its rules (and its imports' rules) and wait for the result: every violation with its rule, focus node, property, value, severity and message.",
+    parameters: { type: "object", properties: {} },
+    async run(_input, ctx) {
+      const result = (await runJob(ctx, "/rules/validate", "/rules/jobs", {})) as { counts?: { total: number } };
+      return { result, summary: `Rule validation found ${result.counts?.total ?? 0} violations`, mutated: false };
+    },
+  },
+  {
+    name: "get_rule_violations",
+    kind: "read",
+    description:
+      "Read the latest rule validation of the current branch without running it again, optionally only for one class's rules or one entity. stale is true when the branch has changed since; checked_at null means it never ran (call run_rule_validation).",
+    parameters: {
+      type: "object",
+      properties: {
+        class_iri: str("Only violations of rules that apply to this class"),
+        entity_iri: str("Only violations by this entity"),
+      },
+    },
+    async run(input, ctx) {
+      const { data } = await call<{ violations: unknown[] }>(ctx, "GET", projectPath(ctx, "/rules/violations"), {
+        query: { class: opt<string>(input, "class_iri"), entity: opt<string>(input, "entity_iri") },
+      });
+      return { result: data, summary: `Read ${data.violations.length} rule violations`, mutated: false };
+    },
+  },
+  {
+    name: "create_rule",
+    kind: "ontology",
+    description:
+      "Add a validation rule to the ontology as a commit. A rule applies to the instances of one class (and its subclasses) and constrains one property: counts, value class, datatype, allowed values, pattern or length. closed true limits the class's instances to the properties that have rules for it (plus rdf:type and annotations). message becomes the rule's rdfs:comment, shown for its violations. The first rule adds owl:imports of the rules vocabulary.",
+    parameters: { type: "object", properties: { ...RULE_FIELDS, iri: str("IRI for the rule. Omit to generate one."), commit_message: COMMIT_MESSAGE }, required: ["applies_to_iri"] },
+    async run(input, ctx) {
+      const { data } = await call<{ rule: { iri: string }; commit_hash: string }>(ctx, "POST", projectPath(ctx, "/rules"), {
+        body: input,
+      });
+      return { result: data, summary: `Created rule ${localName(data.rule.iri)}`, mutated: true };
+    },
+  },
+  {
+    name: "update_rule",
+    kind: "ontology",
+    description:
+      "Change a rule of this ontology (not one from an import). Partial update: only the fields you pass change; pass null to remove a constraint.",
+    parameters: { type: "object", properties: { iri: str("IRI of the rule"), ...RULE_FIELDS, commit_message: COMMIT_MESSAGE }, required: ["iri"] },
+    async run(input, ctx) {
+      const iri = s(input, "iri");
+      const { data: current } = await call<Record<string, unknown>>(ctx, "GET", projectPath(ctx, `/rules/${enc(iri)}`));
+      const { iri: _iri, read_only: _readOnly, imported_from: _from, ...fields } = current;
+      const { iri: _given, ...changes } = input;
+      const { data } = await call<{ rule: unknown; commit_hash: string }>(ctx, "PUT", projectPath(ctx, `/rules/${enc(iri)}`), {
+        body: { ...fields, ...changes },
+      });
+      return { result: data, summary: `Updated rule ${localName(iri)}`, mutated: true };
+    },
+  },
+  {
+    name: "delete_rule",
+    kind: "ontology",
+    description: "Delete a rule of this ontology (not one from an import).",
+    parameters: {
+      type: "object",
+      properties: { iri: str("IRI of the rule"), commit_message: COMMIT_MESSAGE },
+      required: ["iri"],
+    },
+    async run(input, ctx) {
+      const iri = s(input, "iri");
+      await call(ctx, "DELETE", projectPath(ctx, `/rules/${enc(iri)}`), { query: { commit_message: opt<string>(input, "commit_message") } });
+      return { result: { iri, deleted: true }, summary: `Deleted rule ${localName(iri)}`, mutated: true, deleted_iris: [iri] };
     },
   },
   {

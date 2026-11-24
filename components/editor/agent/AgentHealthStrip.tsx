@@ -24,7 +24,7 @@ export function AgentHealthStrip({ health, onFix, disabled }: AgentHealthStripPr
   if (!health || totalHealthIssues(health) === 0) return null;
   const summary = healthIssueParts(health).join(" · ");
   if (summary === dismissedSummary) return null;
-  const hasErrors = (health.lint?.errors ?? 0) > 0 || (health.consistency?.count ?? 0) > 0;
+  const hasErrors = (health.lint?.errors ?? 0) > 0 || (health.consistency?.count ?? 0) > 0 || (health.rules?.errors ?? 0) > 0;
   return (
     <AgentNotice
       tone={hasErrors ? "error" : "warning"}

@@ -38,6 +38,7 @@ import {
   type ProjectRow,
 } from "./ontology";
 import { formatFromFilename, parseRdf, parseTurtle, serializeTurtle, type RdfFormat } from "./rdf";
+import { isRulesOntologyIri, rulesVocabulary, RULES_ONTOLOGY_IRI } from "./rulesVocabulary";
 import { findBlockSpan, iriTurtleForms, lexTurtle, parseDeclarations, type TurtleToken } from "@/lib/ontology/turtleUtils";
 
 export const OWL_IMPORTS = NS.owl + "imports";
@@ -57,7 +58,7 @@ const ACCEPT = "text/turtle, application/rdf+xml, application/ld+json;q=0.9, */*
 
 export interface ImportStatus {
   iri: string;
-  source: "project" | "remote";
+  source: "project" | "remote" | "bundled";
   project_id?: string;
   project_name?: string;
   status: "ok" | "error" | "cycle";
@@ -473,6 +474,14 @@ async function resolveOne(
   rootProjectId: string,
   refresh: boolean,
 ): Promise<{ status: Omit<ImportStatus, "direct" | "imported_by">; store: Store | null; ontologyIri: string }> {
+  if (isRulesOntologyIri(iri)) {
+    const { store } = rulesVocabulary();
+    return {
+      status: { iri, source: "bundled", status: "ok", class_count: listClasses(store).length, label: ontologyLabel(store, RULES_ONTOLOGY_IRI) },
+      store,
+      ontologyIri: RULES_ONTOLOGY_IRI,
+    };
+  }
   const project = await findProjectByIri(iri);
   if (project) {
     const base = { iri, source: "project" as const, project_id: project.projectId, project_name: project.name };
@@ -593,6 +602,10 @@ export async function resolveClosure(
   return { direct, resolved: [...entries.values()] };
 }
 
+export function importsGeneration(): number {
+  return state.generation;
+}
+
 export function closureResponse(closure: ImportClosure): ImportsResponse {
   return { direct: closure.direct, closure: closure.resolved.map((r) => r.status) };
 }
@@ -637,7 +650,7 @@ export async function getImportView(onto: LoadedOntology): Promise<ImportView> {
   const merged = new Store(onto.store.getQuads(null, null, null, null));
   const importedFrom = new Map<string, ImportedFrom>();
   for (const r of closure.resolved) {
-    if (!r.store) continue;
+    if (!r.store || r.status.source === "bundled") continue;
     const headers = new Set(ontologySubjects(r.store));
     for (const q of r.store.getQuads(null, null, null, null)) {
       if (headers.has(q.subject.value)) continue;
@@ -672,7 +685,7 @@ setExternalClassResolver((store) => {
 // Editing owl:imports in the Turtle source (text-preserving)
 // ---------------------------------------------------------------------------
 
-function termForm(iri: string, prefixes: Record<string, string>): string {
+export function termForm(iri: string, prefixes: Record<string, string>): string {
   for (const [alias, ns] of Object.entries(prefixes)) {
     if (iri.startsWith(ns)) {
       const local = iri.slice(ns.length);
@@ -891,7 +904,7 @@ export async function addImport(
   const target = await findProjectByIri(iri);
   if (target?.projectId === projectId) httpError(400, "An ontology cannot import itself");
   if (directImports(onto.store).some((d) => normIri(d) === n)) httpError(409, `Already imported: ${iri}`);
-  if (!target) {
+  if (!target && !isRulesOntologyIri(iri)) {
     let scheme = "";
     try {
       scheme = new URL(iri).protocol;

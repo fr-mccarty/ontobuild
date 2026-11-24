@@ -1,0 +1,101 @@
+@prefix rule: <https://ontobuild.dev/rules#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ontobuild.dev/rules> a owl:Ontology ;
+    rdfs:label "OntoBuild rules" ;
+    rdfs:comment "Terms for writing validation rules in an ontology. OntoBuild turns the rules into SHACL shapes when it validates the ontology and its imports." .
+
+rule:Rule a owl:Class ;
+    rdfs:label "Rule" ;
+    rdfs:comment "A constraint on the instances of one class. Its rdfs:comment, when present, is the message shown for a violation." .
+
+rule:Severity a owl:Class ;
+    rdfs:label "Severity" ;
+    rdfs:comment "How serious a violation of a rule is." .
+
+rule:Error a owl:NamedIndividual, rule:Severity ;
+    rdfs:label "Error" ;
+    rdfs:comment "A violation that must be fixed. Rules are errors unless they say otherwise." .
+
+rule:Warning a owl:NamedIndividual, rule:Severity ;
+    rdfs:label "Warning" ;
+    rdfs:comment "A violation that should be looked at." .
+
+rule:Info a owl:NamedIndividual, rule:Severity ;
+    rdfs:label "Info" ;
+    rdfs:comment "A violation worth knowing about." .
+
+rule:appliesTo a owl:ObjectProperty ;
+    rdfs:label "applies to" ;
+    rdfs:comment "The class whose instances, including instances of its subclasses, the rule checks." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range owl:Class .
+
+rule:property a owl:ObjectProperty ;
+    rdfs:label "property" ;
+    rdfs:comment "The property whose values the rule checks. A closed rule may leave it out." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range rdf:Property .
+
+rule:minCount a owl:DatatypeProperty ;
+    rdfs:label "minimum count" ;
+    rdfs:comment "The fewest values the property may have on each instance." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range xsd:integer .
+
+rule:maxCount a owl:DatatypeProperty ;
+    rdfs:label "maximum count" ;
+    rdfs:comment "The most values the property may have on each instance." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range xsd:integer .
+
+rule:valueClass a owl:ObjectProperty ;
+    rdfs:label "value class" ;
+    rdfs:comment "Each value of the property must be an instance of this class." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range owl:Class .
+
+rule:valueDatatype a owl:ObjectProperty ;
+    rdfs:label "value datatype" ;
+    rdfs:comment "Each value of the property must be a literal of this datatype." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range rdfs:Datatype .
+
+rule:allowedValues a owl:ObjectProperty ;
+    rdfs:label "allowed values" ;
+    rdfs:comment "A list of the only values the property may have." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range rdf:List .
+
+rule:pattern a owl:DatatypeProperty ;
+    rdfs:label "pattern" ;
+    rdfs:comment "A regular expression each value of the property must match." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range xsd:string .
+
+rule:minLength a owl:DatatypeProperty ;
+    rdfs:label "minimum length" ;
+    rdfs:comment "The fewest characters each value of the property may have." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range xsd:integer .
+
+rule:maxLength a owl:DatatypeProperty ;
+    rdfs:label "maximum length" ;
+    rdfs:comment "The most characters each value of the property may have." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range xsd:integer .
+
+rule:closed a owl:DatatypeProperty ;
+    rdfs:label "closed" ;
+    rdfs:comment "When true, instances of the class may use only the properties that have a rule for the class, besides rdf:type and annotation properties such as rdfs:label and rdfs:comment." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range xsd:boolean .
+
+rule:severity a owl:ObjectProperty ;
+    rdfs:label "severity" ;
+    rdfs:comment "How serious a violation of the rule is: rule:Error (the default), rule:Warning or rule:Info." ;
+    rdfs:domain rule:Rule ;
+    rdfs:range rule:Severity .

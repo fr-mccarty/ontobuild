@@ -5,6 +5,7 @@ import { all, bool, fromJson, get } from "./db";
 import { httpError } from "./http";
 import { LOCAL_USER } from "./user";
 import { NS, parseTurtle, RdfParseError, findOntologyIri, stripLanguageTagsFromTurtle } from "./rdf";
+import { isRule } from "./rulesVocabulary";
 
 export { NS, findOntologyIri };
 
@@ -397,6 +398,7 @@ export function listIndividuals(store: Store): string[] {
     if (isNamed(q.subject) && isNamed(q.object) && classes.has(q.object.value)) out.add(q.subject.value);
   }
   for (const c of classes) out.delete(c);
+  for (const i of out) if (isRule(store, i)) out.delete(i);
   return [...out].sort();
 }
 

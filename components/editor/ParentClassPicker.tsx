@@ -14,6 +14,7 @@ interface ParentClassPickerProps {
   projectId: string;
   branch?: string;
   excludeIris: string[];
+  entityType?: "class" | "property";
   onSelect: (iri: string, label: string) => void;
   onClose: () => void;
 }
@@ -22,6 +23,7 @@ export function ParentClassPicker({
   projectId,
   branch,
   excludeIris,
+  entityType = "class",
   onSelect,
   onClose,
 }: ParentClassPickerProps) {
@@ -58,7 +60,7 @@ export function ParentClassPicker({
           projectId,
           query.trim(),
           branch,
-          "class",
+          entityType,
         );
         const excludeSet = new Set(excludeIris);
         setResults(response.results.filter((r) => !excludeSet.has(r.iri)));
@@ -69,7 +71,7 @@ export function ParentClassPicker({
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, projectId, branch, excludeIris]);
+  }, [query, projectId, branch, excludeIris, entityType]);
 
   const handleSelect = useCallback(
     (result: PickerResult) => {
@@ -94,7 +96,7 @@ export function ParentClassPicker({
           onKeyDown={(e) => {
             if (e.key === "Escape") onClose();
           }}
-          placeholder="Search for a class..."
+          placeholder={`Search for a ${entityType}...`}
           className="flex-1 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden dark:text-white dark:placeholder:text-slate-500"
         />
         <button
@@ -121,7 +123,7 @@ export function ParentClassPicker({
                   "hover:bg-slate-50 dark:hover:bg-slate-600",
                 )}
               >
-                <EntityTypeIcon type="class" className="h-4 w-4" />
+                <EntityTypeIcon type={entityType} className="h-4 w-4" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-slate-900 dark:text-white">
                     {result.label || getLocalName(result.iri)}
@@ -144,11 +146,11 @@ export function ParentClassPicker({
           </div>
         ) : query.trim() ? (
           <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">
-            No classes found
+            No {entityType === "class" ? "classes" : "properties"} found
           </p>
         ) : (
           <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">
-            Type to search for classes
+            Type to search for {entityType === "class" ? "classes" : "properties"}
           </p>
         )}
       </div>

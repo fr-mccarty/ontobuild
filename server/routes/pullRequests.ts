@@ -5,6 +5,7 @@ import { all, get, insert, newId, nowIso, run, transaction, update } from "../db
 import { httpError, noContent, queryInt, readJson } from "../http";
 import { LOCAL_USER } from "../user";
 import { emitOntologyEvent, enforcePlainLiterals, requireProject } from "../ontology";
+import { violationsAddedBy, type RuleViolation } from "../rules";
 
 const r = new Hono();
 
@@ -94,6 +95,27 @@ async function commitsAhead(projectId: string, pr: PRRow): Promise<number> {
     .length;
 }
 
+async function ruleViolationsAdded(pr: PRRow): Promise<RuleViolation[]> {
+  if (pr.status !== "open" || !git.repoExists(pr.project_id)) return [];
+  try {
+    return await violationsAddedBy(pr.project_id, pr.target_branch, pr.source_branch);
+  } catch {
+    return [];
+  }
+}
+
+function ruleViolationsReason(pr: PRRow, added: RuleViolation[]): string {
+  return `Merging would add ${added.length} rule violation${added.length === 1 ? "" : "s"} to '${pr.target_branch}'. Fix ${added.length === 1 ? "it" : "them"} on '${pr.source_branch}' first`;
+}
+
+function mergeBlockedReason(pr: PRRow, ahead: number, approvals: number, required: number, added: RuleViolation[]): string | null {
+  if (pr.status !== "open") return "Pull request is not open";
+  if (ahead === 0) return `Nothing to merge: '${pr.target_branch}' already contains all commits from '${pr.source_branch}'`;
+  if (approvals < required) return `Pull request requires ${required} approvals, but has ${approvals}`;
+  if (added.length) return ruleViolationsReason(pr, added);
+  return null;
+}
+
 async function toPrResponse(pr: PRRow, approvalRequired: number) {
   const counts = get<{ review_count: number; approval_count: number }>(
     `SELECT COUNT(*) AS review_count, COALESCE(SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END), 0) AS approval_count
@@ -106,6 +128,8 @@ async function toPrResponse(pr: PRRow, approvalRequired: number) {
   )!.n;
   const approvalCount = Number(counts.approval_count);
   const ahead = await commitsAhead(pr.project_id, pr);
+  const added = await ruleViolationsAdded(pr);
+  const blocked = mergeBlockedReason(pr, ahead, approvalCount, approvalRequired, added);
   return {
     id: pr.id,
     project_id: pr.project_id,
@@ -129,7 +153,9 @@ async function toPrResponse(pr: PRRow, approvalRequired: number) {
     approval_count: approvalCount,
     comment_count: Number(commentCount),
     commits_ahead: ahead,
-    can_merge: pr.status === "open" && ahead > 0 && approvalCount >= approvalRequired,
+    can_merge: blocked === null,
+    merge_blocked_reason: blocked,
+    rule_violations_added: added,
   };
 }
 
@@ -359,6 +385,8 @@ r.post("/projects/:id/pull-requests/:prNumber/merge", async (c) => {
   if ((await commitsAhead(id, pr)) === 0) {
     httpError(409, `Nothing to merge: '${pr.target_branch}' already contains all commits from '${pr.source_branch}'`);
   }
+  const added = await ruleViolationsAdded(pr);
+  if (added.length) httpError(409, ruleViolationsReason(pr, added), { code: "rule_violations", rule_violations_added: added });
 
   const result = await git.mergeBranch(id, pr.source_branch, pr.target_branch, {
     message: mergeMessage,

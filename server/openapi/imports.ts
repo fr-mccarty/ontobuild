@@ -9,9 +9,9 @@ export const importsSchemas: Record<string, Schema> = {
       iri: { type: "string", description: "The imported ontology IRI, as written in `owl:imports`." },
       source: {
         type: "string",
-        enum: ["project", "remote"],
+        enum: ["project", "remote", "bundled"],
         description:
-          "`project`: another OntoBuild project whose ontology IRI matches, read from its default branch. `remote`: fetched over http(s) and cached.",
+          "`project`: another OntoBuild project whose ontology IRI matches, read from its default branch. `remote`: fetched over http(s) and cached. `bundled`: shipped with OntoBuild (the rules vocabulary, `https://ontobuild.dev/rules`), never fetched.",
       },
       project_id: { type: "string", description: "Set when `source` is `project`." },
       project_name: { type: "string", description: "Set when `source` is `project`." },

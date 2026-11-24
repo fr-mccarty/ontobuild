@@ -6,7 +6,7 @@ import { api } from "./client";
 
 export interface ImportStatus {
   iri: string;
-  source: "project" | "remote";
+  source: "project" | "remote" | "bundled";
   project_id?: string;
   project_name?: string;
   status: "ok" | "error" | "cycle";

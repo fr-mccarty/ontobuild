@@ -1,4 +1,5 @@
 import { api } from "./client";
+import type { RuleViolation } from "./rules";
 
 export type PRStatus = "open" | "merged" | "closed";
 export type ReviewStatus = "approved" | "changes_requested" | "commented";
@@ -32,8 +33,10 @@ export interface PullRequest {
   approval_count: number;
   comment_count: number;
   commits_ahead: number;
-  /** Open, has commits to merge (commits_ahead > 0) and enough approvals. */
+  /** Open, has commits to merge (commits_ahead > 0), enough approvals and adds no rule violations. */
   can_merge: boolean;
+  merge_blocked_reason: string | null;
+  rule_violations_added: RuleViolation[];
 }
 
 export interface PRListResponse {

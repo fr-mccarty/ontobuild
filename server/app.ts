@@ -11,6 +11,7 @@ import userSettings from "./routes/userSettings";
 import ontology from "./routes/ontology";
 import lint from "./routes/lint";
 import quality from "./routes/quality";
+import rules from "./routes/rules";
 import normalization from "./routes/normalization";
 import { createAgentRoutes } from "./routes/agent";
 import workspace from "./routes/workspace";
@@ -54,6 +55,7 @@ app.get("/health", (c) => {
 
 app.route("/", lint);
 app.route("/", quality);
+app.route("/", rules);
 app.route("/", normalization);
 app.route("/", pullRequests);
 app.route("/", projects);

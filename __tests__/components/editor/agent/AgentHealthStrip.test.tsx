@@ -5,7 +5,7 @@ import type { AgentHealthSummary } from "@/lib/agent/healthSummary";
 import { AgentHealthStrip } from "@/components/editor/agent/AgentHealthStrip";
 
 const health = (consistency: number): AgentHealthSummary =>
-  ({ lint: null, consistency: { count: consistency, checkedAt: "2026-11-17T10:00:00Z" }, duplicates: null }) as AgentHealthSummary;
+  ({ lint: null, consistency: { count: consistency, checkedAt: "2026-11-17T10:00:00Z" }, duplicates: null, rules: null }) as AgentHealthSummary;
 
 const strip = (h: AgentHealthSummary) => (
   <TooltipPrimitive.Provider>

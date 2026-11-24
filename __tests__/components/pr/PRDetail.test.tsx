@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type {
   PullRequest,
   Review,
@@ -53,6 +54,8 @@ function makePR(overrides: Partial<PullRequest> = {}): PullRequest {
     merge_commit_hash: null,
     base_commit_hash: null,
     head_commit_hash: null,
+    merge_blocked_reason: null,
+    rule_violations_added: [],
     updated_at: null,
     id: "pr-1",
     project_id: "proj-1",
@@ -169,6 +172,36 @@ describe("PRDetail", () => {
       expect(screen.getByText("Add owl:Thing subclass")).toBeDefined();
       expect(screen.getByText("#7")).toBeDefined();
     });
+  });
+
+  it("lists the rule violations a pull request adds", async () => {
+    setupSuccessfulLoad(
+      makePR({
+        rule_violations_added: [
+          {
+            rule_iri: "http://example.org/rule-1",
+            applies_to_iri: "http://example.org/Book",
+            focus_node: "http://example.org/book-1",
+            property_iri: null,
+            value: null,
+            constraint: "min_count",
+            severity: "error",
+            message: "Book needs an ISBN",
+          },
+        ],
+      })
+    );
+    render(<PRDetail projectId="proj-1" prNumber={7} />, { wrapper: TooltipPrimitive.Provider });
+    await waitFor(() => {
+      expect(screen.getByText("Book needs an ISBN")).toBeDefined();
+    });
+  });
+
+  it("lists nothing when a pull request adds no rule violations", async () => {
+    setupSuccessfulLoad();
+    render(<PRDetail projectId="proj-1" prNumber={7} />);
+    await waitFor(() => expect(screen.getByTestId("pr-actions")).toBeDefined());
+    expect(screen.queryByTestId("pr-rule-violations")).toBeNull();
   });
 
   it("renders Open status badge for open PRs", async () => {

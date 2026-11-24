@@ -14,6 +14,7 @@ export interface AgentHealthSummary {
   consistency: { count: number; checkedAt: string | null } | null;
   /** Duplicate detection on the branch open in the editor; null when it could not be loaded. */
   duplicates: { count: number; checkedAt: string | null } | null;
+  rules: { errors: number; warnings: number; info: number; total: number; checkedAt: string | null } | null;
 }
 
 function plural(n: number, one: string, many = `${one}s`): string {
@@ -23,7 +24,7 @@ function plural(n: number, one: string, many = `${one}s`): string {
 /** Issues the user can act on: lint issues, consistency issues and duplicate groups. */
 export function totalHealthIssues(h: AgentHealthSummary | null | undefined): number {
   if (!h) return 0;
-  return (h.lint?.total ?? 0) + (h.consistency?.count ?? 0) + (h.duplicates?.count ?? 0);
+  return (h.lint?.total ?? 0) + (h.consistency?.count ?? 0) + (h.duplicates?.count ?? 0) + (h.rules?.total ?? 0);
 }
 
 /** Short parts such as "2 lint errors", "1 consistency issue"; empty when nothing is wrong. */
@@ -36,6 +37,11 @@ export function healthIssueParts(h: AgentHealthSummary): string[] {
   }
   if (h.consistency?.count) parts.push(plural(h.consistency.count, "consistency issue"));
   if (h.duplicates?.count) parts.push(plural(h.duplicates.count, "duplicate group"));
+  if (h.rules) {
+    if (h.rules.errors) parts.push(plural(h.rules.errors, "rule error"));
+    if (h.rules.warnings) parts.push(plural(h.rules.warnings, "rule warning"));
+    if (h.rules.info) parts.push(`${h.rules.info} rule info`);
+  }
   return parts;
 }
 
@@ -67,6 +73,12 @@ export function formatHealthContext(h: AgentHealthSummary): string {
       ? `- ${section("Duplicates (this branch)", h.duplicates.checkedAt, plural(h.duplicates.count, "group"))}`
       : "- Duplicates: unavailable",
   );
+  if (h.rules) {
+    const body = `${plural(h.rules.errors, "error")}, ${plural(h.rules.warnings, "warning")}, ${h.rules.info} info`;
+    lines.push(`- ${section("Rule violations (this branch)", h.rules.checkedAt, body)}`);
+  } else {
+    lines.push("- Rule violations: unavailable");
+  }
   return lines.join("\n");
 }
 

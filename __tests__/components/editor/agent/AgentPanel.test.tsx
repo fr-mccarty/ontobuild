@@ -102,6 +102,7 @@ describe("AgentPanel", () => {
       lint: { errors: 1, warnings: 2, info: 0, total: 3, checkedAt: "2026-11-17T10:00:00Z", running: false },
       consistency: { count: 0, checkedAt: null },
       duplicates: { count: 1, checkedAt: "2026-11-17T10:00:00Z" },
+      rules: null,
     };
     renderWithQueryClient(<AgentPanel pageInfo={{ ...pageInfo, health }} />);
     const strip = await screen.findByTestId("agent-health-strip");
@@ -114,7 +115,7 @@ describe("AgentPanel", () => {
   });
 
   it("hides the health strip when there are no issues", async () => {
-    const health = { lint: null, consistency: { count: 0, checkedAt: null }, duplicates: null };
+    const health = { lint: null, consistency: { count: 0, checkedAt: null }, duplicates: null, rules: null };
     renderWithQueryClient(<AgentPanel pageInfo={{ ...pageInfo, health }} />);
     await screen.findByLabelText("Message the agent");
     expect(screen.queryByTestId("agent-health-strip")).toBeNull();

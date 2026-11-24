@@ -30,6 +30,7 @@ import Link from "next/link";
 import { cn, formatDateTime, getLocalName } from "@/lib/utils";
 import { EntityTypeIcon, EntityTypeTooltipContent } from "@/components/editor/shared/EntityTypeIcon";
 import { Tooltip } from "@/components/ui/tooltip";
+import { RuleHealthTab } from "@/components/editor/rules/RuleHealthTab";
 
 interface HealthCheckPanelProps {
   projectId: string;
@@ -43,7 +44,14 @@ interface HealthCheckPanelProps {
   onResultsChanged?: () => void;
 }
 
-type HealthTab = "lint" | "consistency" | "duplicates";
+type HealthTab = "lint" | "consistency" | "duplicates" | "rules";
+const TAB_LABELS: Record<HealthTab, string> = {
+  lint: "Lint",
+  consistency: "Consistency",
+  duplicates: "Duplicates",
+  rules: "Rules",
+};
+
 type IssueFilter = "all" | "error" | "warning" | "info";
 
 const issueIcons = {
@@ -502,7 +510,7 @@ export function HealthCheckPanel({
           </div>
         </div>
         <div className="flex px-4">
-          {(["lint", "consistency", "duplicates"] as HealthTab[]).map((tab) => (
+          {(["lint", "consistency", "duplicates", "rules"] as HealthTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -513,7 +521,7 @@ export function HealthCheckPanel({
                   : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
               )}
             >
-              {tab === "lint" ? "Lint" : tab === "consistency" ? "Consistency" : "Duplicates"}
+              {TAB_LABELS[tab]}
             </button>
           ))}
         </div>
@@ -708,6 +716,15 @@ export function HealthCheckPanel({
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === "rules" && (
+        <RuleHealthTab
+          projectId={projectId}
+          branch={branch}
+          onNavigate={onNavigateToClass}
+          onResultsChanged={notifyResultsChanged}
+        />
       )}
 
       {activeTab === "duplicates" && (

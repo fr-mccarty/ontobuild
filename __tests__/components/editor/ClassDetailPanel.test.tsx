@@ -94,6 +94,9 @@ vi.mock("@/components/editor/AutoSaveAffordanceBar", () => ({
     );
   },
 }));
+vi.mock("@/components/editor/rules/ClassRulesSection", () => ({
+  ClassRulesSection: () => null,
+}));
 vi.mock("@/components/editor/CrossReferencesPanel", () => ({
   CrossReferencesPanel: () => null,
 }));

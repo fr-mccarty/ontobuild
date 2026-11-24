@@ -588,6 +588,12 @@ export default function ProjectEditorPage() {
     }
   };
 
+  const handleRulesChanged = async () => {
+    await reloadSourceAfterAgent();
+    setDetailRefreshKey((k) => k + 1);
+    void queryClient.invalidateQueries({ queryKey: branchQueryKeys.list(projectId) });
+  };
+
   // Imports and GitHub pulls change ontology.ttl outside the editor. The editor saves by rewriting
   // its cached source, so reload it (and the tree) or the next save would undo those changes.
   const reloadOntologyFromServer = () => {
@@ -1028,6 +1034,7 @@ export default function ProjectEditorPage() {
               selectedNodeFallback={selectedNodeFallback}
               onUpdateClass={handleUpdateClass}
               detailRefreshKey={detailRefreshKey}
+              onRulesChanged={handleRulesChanged}
               sourceContent={sourceContent}
               onUpdateProperty={handleUpdateProperty}
               onUpdateIndividual={handleUpdateIndividual}

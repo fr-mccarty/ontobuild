@@ -43,6 +43,7 @@ const eslintConfig = [
       ".claude/**",
       ".serena/**",
       "next-env.d.ts",
+      "data/**",
     ],
   },
 ];
